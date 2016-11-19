@@ -254,6 +254,9 @@ def sample_combine(beamlets):
     s = 'rate={}'.format(rate) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
     md5 = hashlib.md5(s.encode('utf-8'))
     output = '{}.egsphsp1'.format(md5.hexdigest())
+    if os.path.exists(output):
+        logger.info('Combined beamlets file {} already exists'.format(output))
+        return output
     logger.info('Combining {} beamlets into {}'.format(len(beamlets), output))
     command = ['beamdpr', 'sample-combine', '--rate', str(rate), '-o', output] + paths
     result = run_process(command, stdout=PIPE, stderr=PIPE)
