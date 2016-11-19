@@ -1,0 +1,7 @@
+.DS_Store
+__pycache__
+*.log
+*.grace
+*.pdf
+*.eps
+*.egsphsp1
