@@ -3743,7 +3743,7 @@ BrassC35300_516kV
  Electron-step algorithm= PRESTA-II
  Spin effects= On
  Brems angular sampling= Simple
- Brems cross sections= KM
+ Brems cross sections= BH
  Bound Compton scattering= On
  Compton cross sections= default
  Pair angular sampling= Simple
