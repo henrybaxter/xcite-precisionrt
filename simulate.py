@@ -82,6 +82,7 @@ def parse_args():
     parser.add_argument('--dos-egsinp', default='dosxyz_input_template.egsinp', help='.egsinp for dosxyznrc')
     parser.add_argument('--dose-histories', default=50000000, type=int, help='Histories for dosxyznrc')
     parser.add_argument('--collimator', default='stamped', help='Input egsinp path or use stamped values')
+    parser.add_argument('--rotate', action='store_true', help='Rotate phase space files before collimator?')
     args = parser.parse_args()
     if 'all' in args.builds:
         args.builds = set(stages)
@@ -445,6 +446,23 @@ def filter_source(beamlets, args):
     return filtered_beamlets
 
 
+def rotate(beamlets):
+    logger.info("Rotating beamlets")
+    for beamlet in beamlets:
+        beamlet['hash'].update('zrotatep=90'.encode('utf-8'))
+        filename = beamlet['hash'].hexdigest() + '.egsphsp1'
+        output = os.path.join(os.path.dirname(beamlet['phsp']), filename)
+        command = ['beamdpr', 'rotate', beamlet['phsp'], output, '-a', str(math.pi / 2)]
+        result = run_process(command, stdout=PIPE, stderr=PIPE)
+        if result.returncode != 0:
+            logger.error('Command failed: "{}"'.format(' '.join(command)))
+            logger.error(result.stdout.decode('utf-8'))
+            logger.error(result.stderr.decode('utf-8'))
+            sys.exit(1)
+        beamlet['phsp'] = output
+    return beamlets
+
+
 def collimate(beamlets, args):
     logger.info('Collimating')
     template = get_egsinp(args.egsinp_template)
@@ -578,6 +596,13 @@ def grace_plot(base_dir, phsp_paths, args):
             'ymin': -args.target_length / 2,
             'ymax': args.target_length / 2
         }}
+        if args.rotate:
+            xmin = kwargs['extents']['xmin']
+            kwargs['extents']['xmin'] = kwargs['extents']['ymin']
+            kwargs['extents']['ymin'] = xmin
+            xmax = kwargs['extents']['xmax']
+            kwargs['extents']['xmax'] = kwargs['extents']['ymax']
+            kwargs['extents']['ymax'] = xmax
         path = os.path.join(base_dir, '{}_xy.grace'.format(stage))
         if not os.path.exists(path):
             grace.xy(phsp_path, path, **kwargs)
@@ -680,6 +705,8 @@ if __name__ == '__main__':
     phsp['source'] = sample_combine(beamlets['source'])
 
     beamlets['filter'] = beamlet_stats(filter_source(beamlets['source'], args))
+    if args.rotate:
+        beamlets['filter'] = rotate(beamlets['filter'])
     phsp['filter'] = sample_combine(beamlets['filter'])
 
     beamlets['collimator'] = beamlet_stats(collimate(beamlets['filter'], args))

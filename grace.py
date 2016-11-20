@@ -262,3 +262,36 @@ def spectral_distribution(input_path, output_path, **kwargs):
     ]
     generate(arguments, output_path)
     return args
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--eps')
+    parser.add_argument('--xy')
+    parser.add_argument('--fluencey')
+    parser.add_argument('--xmin', type=float, default=-100.0)
+    parser.add_argument('--ymin', type=float, default=-100.0)
+    parser.add_argument('--xmax', type=float, default=100.0)
+    parser.add_argument('--ymax', type=float, default=100.0)
+    args = parser.parse_args()
+    extents = {
+        'xmin': args.xmin,
+        'xmax': args.xmax,
+        'ymin': args.ymin,
+        'ymax': args.ymax
+    }
+    import os
+    if args.eps:
+        for path in os.listdir(args.eps):
+            if path.endswith('.grace'):
+                path = os.path.join(args.eps, path)
+                print('generating eps for {}'.format(path))
+                eps(path)
+    elif args.xy:
+        output = args.xy.replace('.egsphsp1', '.grace')
+        xy(args.xy, output, extents=extents)
+        view(output)
+    elif args.fluencey:
+        output = args.fluencey.replace('.egsphsp1', '.fluencey.grace')
+        energy_fluence_vs_position(args.fluencey, output, axis='y', extents=extents)
+        view(output)
