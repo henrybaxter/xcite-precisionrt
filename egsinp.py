@@ -488,7 +488,7 @@ def parse_egsinp(text):
         ]))
     d.update(pick(lines, [
         ('iqin', Integer()),
-        ('isourc', Words(['1', '13']))  # in future can be 13a (!)
+        ('isourc', Words(['1', '6', '13', '21']))  # in future can be 13a (!)
     ], peek=True))
     if d['isourc'] == '1':
         d.update(pick(lines, [
@@ -498,6 +498,15 @@ def parse_egsinp(text):
             ('uinc', Float()),
             ('vinc', Float()),
             ('winc', Float())
+        ]))
+    elif d['isourc'] == '6':
+        d.update(pick(lines, [
+            ('iqin', Integer()),
+            ('isourc', Word()),
+            ('xbeam0', NonNegativeFloat()),
+            ('ybeam0', NonNegativeFloat()),
+            ('xbeam', NonNegativeFloat()),
+            ('ybeam', NonNegativeFloat())
         ]))
     elif d['isourc'] == '13':
         d.update(pick(lines, [

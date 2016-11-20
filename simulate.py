@@ -81,6 +81,7 @@ def parse_args():
     parser.add_argument('--phantom', default='16cmcylinder2mmvoxel.egsphant', help='.egsphant file')
     parser.add_argument('--dos-egsinp', default='dosxyz_input_template.egsinp', help='.egsinp for dosxyznrc')
     parser.add_argument('--dose-histories', default=50000000, type=int, help='Histories for dosxyznrc')
+    parser.add_argument('--collimator', default='stamped', help='Input egsinp path or use stamped values')
     args = parser.parse_args()
     if 'all' in args.builds:
         args.builds = set(stages)
@@ -448,46 +449,59 @@ def collimate(beamlets, args):
     logger.info('Collimating')
     template = get_egsinp(args.egsinp_template)
     template['cms'] = []
-    for i, block in enumerate(interpolation.make_blocks(args.collimator_length, args.interpolating_blocks)):
-        cm = {
-            'type': 'BLOCK',
-            'identifier': 'BLCK{}'.format(i),
-            'rmax_cm': 100,
-            'title': 'BLCK{}'.format(i),
-            'zmin': block['zmin'],
-            'zmax': block['zmax'],
-            'zfocus': args.phantom_target_distance + args.collimator_length,
-            'xpmax': block['xpmax'],
-            'ypmax': block['ypmax'],
-            'xnmax': block['xnmax'],
-            'ynmax': block['ynmax'],
-            'air_gap': {
-                'ecut': 0,
-                'pcut': 0,
-                'dose_zone': 0,
-                'iregion_to_bit': 0
-            },
-            'opening': {
-                'ecut': 0,
-                'pcut': 0,
-                'dose_zone': 0,
-                'iregion_to_bit': 0,
-                'medium': 'Air_516kVb'
-            },
-            'block': {
-                'ecut': 0,
-                'pcut': 0,
-                'dose_zone': 0,
-                'iregion_to_bit': 0,
-                'medium': 'PB516'
-            },
-            'regions': []
-        }
-        for region in block['regions']:
-            cm['regions'].append({
-                'points': [{'x': x, 'y': y} for x, y in region]
-            })
-        template['cms'].append(cm)
+    if args.collimator:
+        collimator = get_egsinp(args.collimator)
+        zoffset = None
+        for cm in collimator['cms']:
+            if cm['type'] != 'BLOCK':
+                continue
+            if zoffset is None:
+                zoffset = cm['zmin']
+            cm['zmin'] -= zoffset
+            cm['zmax'] -= zoffset
+            cm['zfocus'] -= zoffset
+            template['cms'].append(cm)
+    else:
+        for i, block in enumerate(interpolation.make_blocks(args.collimator_length, args.interpolating_blocks)):
+            cm = {
+                'type': 'BLOCK',
+                'identifier': 'BLCK{}'.format(i),
+                'rmax_cm': 100,
+                'title': 'BLCK{}'.format(i),
+                'zmin': block['zmin'],
+                'zmax': block['zmax'],
+                'zfocus': args.phantom_target_distance + args.collimator_length,
+                'xpmax': block['xpmax'],
+                'ypmax': block['ypmax'],
+                'xnmax': block['xnmax'],
+                'ynmax': block['ynmax'],
+                'air_gap': {
+                    'ecut': 0,
+                    'pcut': 0,
+                    'dose_zone': 0,
+                    'iregion_to_bit': 0
+                },
+                'opening': {
+                    'ecut': 0,
+                    'pcut': 0,
+                    'dose_zone': 0,
+                    'iregion_to_bit': 0,
+                    'medium': 'Air_516kVb'
+                },
+                'block': {
+                    'ecut': 0,
+                    'pcut': 0,
+                    'dose_zone': 0,
+                    'iregion_to_bit': 0,
+                    'medium': 'PB516'
+                },
+                'regions': []
+            }
+            for region in block['regions']:
+                cm['regions'].append({
+                    'points': [{'x': x, 'y': y} for x, y in region]
+                })
+            template['cms'].append(cm)
 
     template['isourc'] = '21'
     for k in ['init_icm', 'nrcycl', 'iparallel', 'parnum', 'isrc_dbs', 'rsrc_dbs', 'ssdrc_dbs', 'zsrc_dbs']:
