@@ -545,13 +545,14 @@ def rotate(beamlets):
         beamlet['hash'].update('zrotatep=90'.encode('utf-8'))
         filename = beamlet['hash'].hexdigest() + '.egsphsp1'
         phsp = os.path.join(os.path.dirname(beamlet['phsp']), filename)
-        command = ['beamdpr', 'rotate', beamlet['phsp'], phsp, '-a', str(math.pi / 2)]
-        result = run_process(command, stdout=PIPE, stderr=PIPE)
-        if result.returncode != 0:
-            logger.error('Command failed: "{}"'.format(' '.join(command)))
-            logger.error(result.stdout.decode('utf-8'))
-            logger.error(result.stderr.decode('utf-8'))
-            sys.exit(1)
+        if not os.path.exists(phsp):
+            command = ['beamdpr', 'rotate', beamlet['phsp'], phsp, '-a', str(math.pi / 2)]
+            result = run_process(command, stdout=PIPE, stderr=PIPE)
+            if result.returncode != 0:
+                logger.error('Command failed: "{}"'.format(' '.join(command)))
+                logger.error(result.stdout.decode('utf-8'))
+                logger.error(result.stderr.decode('utf-8'))
+                sys.exit(1)
         beamlet['phsp'] = phsp
     return beamlets
 
@@ -820,12 +821,12 @@ if __name__ == '__main__':
     phsp = {}
     beamlets = {}
     beamlets['source'] = beamlet_stats(generate_source(args))
+    if args.rotate:
+        beamlets['source'] = rotate(beamlets['source'])
     phsp['source'] = sample_combine(beamlets['source'])
     output.send_file(phsp['source'], 'sampled_source.egsphsp1')
 
     beamlets['filter'] = beamlet_stats(filter_source(beamlets['source'], args))
-    if args.rotate:
-        beamlets['filter'] = rotate(beamlets['filter'])
     phsp['filter'] = sample_combine(beamlets['filter'])
     output.send_file(phsp['filter'], 'sampled_filter.egsphsp1')
 

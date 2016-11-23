@@ -195,7 +195,7 @@ def energy_fluence_vs_position(input_path, output_path, **kwargs):
     }
     assert args['bins'] <= 2000
     field_shape_requirement = field_shape_requirements[args['field_shape']]
-    extents = ", ".join(str(args['extents'][key]) for key in field_shape_requirement)
+    extents = ", ".join('{:.4f}'.format(args['extents'][key]) for key in field_shape_requirement)
     arguments = [
         "y",  # show more detailed information
         str(processing_types[args['processing_type']]),
