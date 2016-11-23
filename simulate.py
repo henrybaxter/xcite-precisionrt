@@ -12,6 +12,7 @@ import functools
 import logging
 # import statistics
 
+import boto3
 from scipy.optimize import fsolve
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import cpu_count
@@ -30,19 +31,29 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 class Output(object):
 
+    def __init__(self):
+        self.bucket = boto3.resource('s3').Bucket('xcite-simulations')
+
     def set_dir(self, directory):
         self.directory = directory
 
     def send_contents(self, contents, filename):
         logger.info('Saving {}'.format(filename))
-        open(os.path.join(self.directory, filename), 'w').write(contents)
+        path = os.path.join(self.directory, filename)
+        open(path, 'w').write(contents)
+        self.upload(path, os.path.join(self.directory, filename))
 
     def send_file(self, path, filename):
         new_path = os.path.join(self.directory, filename)
         logger.info('Saving {} to {}'.format(path, new_path))
         shutil.copy(path, new_path)
-        # here we lop off the path? not sure
-        pass
+        self.upload(path, os.path.join(self.directory, filename))
+
+    def upload(self, path, key):
+        if os.path.getsize(path) > 1024 * 1024 * 10:
+            logger.warning('Skipping {} it is too big'.format(key))
+        else:
+            self.bucket.upload_file(path, key)
 output = Output()
 
 
@@ -696,8 +707,8 @@ def grace_plot(base_dir, phsp_paths, args):
     for stage in ['source', 'filter', 'collimator']:
         phsp_path = phsp_paths[stage]
         kwargs = {'extents': {
-            'xmin': -args.beam_width,
-            'xmax': args.beam_width,
+            'xmin': -args.beam_width * 10,
+            'xmax': args.beam_width * 10,
             'ymin': -args.target_length / 2,
             'ymax': args.target_length / 2
         }}
