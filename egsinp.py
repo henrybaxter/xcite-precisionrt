@@ -519,6 +519,8 @@ def parse_egsinp(text):
         ]))
     elif d['isourc'] == '21':
         d.update(pick(lines, [
+            ('iqin', Integer()),
+            ('isourc', Word()),
             ('init_icm', PositiveInteger()),
             ('nrcycl', NonNegativeInteger()),
             ('iparallel', NonNegativeInteger()),
@@ -556,18 +558,26 @@ def parse_egsinp(text):
         ('nfcmin', NonNegativeInteger()),
         ('nfcmax', NonNegativeInteger())
     ]))
+    # list of component modules to score
     iplane_to_cm = pickcounted(lines, 'nsc_planes', 'iplane_to_cm', NonNegativeInteger())
     d['scoring_planes'] = []
-    for i, cm in enumerate(iplane_to_cm):
-        plane = {'cm': cm}
+    for cm in iplane_to_cm:
+        plane = {
+            'cm': cm,
+            'zones': []
+        }
         plane.update(pick(lines, [
             ('nsc_zones', PositiveInteger()),
             ('mzone_type', PositiveInteger())
         ]))
         if plane['mzone_type'] in [0, 1]:
-            plane.update(pickone(lines, 'rscore_zone', PositiveInteger()))
+            # for now we just grab one
+            for i in range(plane['nsc_zones']):
+                # grab up to 10 values
+                for position, value in enumerate([v for v in values(next(lines)) if v], 2):
+                    plane['zones'].append(validate(lines.line_number, position, 'rscore_zone', PositiveFloat(), value))
         else:
-            plane.update(pick(lines, [
+            plane['zones'].append(pick(lines, [
                 ('xmin_zone', Float()),
                 ('xmax_zone', Float()),
                 ('ymin_zone', Float()),
@@ -627,6 +637,8 @@ def unparse_egsinp(d):
         lines.append(commalist(d, ('nsplit_phot', 'nsplit_elec')))
     if d['isourc'] == '1':
         lines.append(commalist(d, ('iqin', 'isourc', 'rbeam', 'uinc', 'vinc', 'winc')))
+    elif d['isourc'] == '6':
+        lines.append(commalist(d, ('iqin', 'isourc', 'xbeam0', 'ybeam0', 'xbeam', 'ybeam')))
     elif d['isourc'] == '13':
         lines.append(commalist(d, ('iqin', 'isourc', 'ybeam', 'zbeam', 'uinc', 'vinc')))
     elif d['isourc'] == '21':
@@ -651,9 +663,11 @@ def unparse_egsinp(d):
     for plane in d['scoring_planes']:
         lines.append(commalist(plane, ('nsc_zones', 'mzone_type')))
         if plane['mzone_type'] in [0, 1]:
-            lines.append(plane['rscore_zone'])
+            for zone in plane['zones']:
+                lines.append('{:.5f}'.format(zone))
         else:
-            lines.append(commalist(d, ('xmin_zone', 'xmax_zone', 'ymin_zone', 'ymax_zone', 'nx_zone', 'ny_zone')))
+            for zone in plane['zones']:
+                lines.append(commalist(zone, ('xmin_zone', 'xmax_zone', 'ymin_zone', 'ymax_zone', 'nx_zone', 'ny_zone')))
     lines.append(d['itdose_on'])
     if d['itdose_on']:
         raise NotImplementedError('itdose_on not yet implemented')
@@ -704,7 +718,11 @@ if __name__ == '__main__':
     import json
     parser = argparse.ArgumentParser()
     parser.add_argument('--print')
+    parser.add_argument('--regurg')
     args = parser.parse_args()
     if args.print:
         egsinp = parse_egsinp(open(args.print).read())
         print(json.dumps(egsinp, indent='\t'))
+    elif args.regurg:
+        egsinp = parse_egsinp(open(args.regurg).read())
+        open(args.regurg.replace('.egsinp', '.egsregurg'), 'w').write(unparse_egsinp(egsinp))
