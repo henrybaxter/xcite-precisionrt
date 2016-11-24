@@ -17,6 +17,7 @@ from scipy.optimize import fsolve
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import cpu_count
 
+import latexmake
 import egsinp
 import grace
 import interpolation
@@ -128,6 +129,7 @@ def parse_args():
         'common': {
             'name': args.name,
             'pegs4': args.pegs4,
+            'scoring_zone_size': args.rmax
         },
         'source': {
             'rmax': args.rmax,
@@ -524,6 +526,7 @@ def filter_source(beamlets, args):
         args.simulation_properties['filter']['slabs'].append(description)
         logger.info(description)
     template['isourc'] = '21'
+    template['iqin'] = '0'
     for k in ['nrcycl', 'iparallel', 'parnum', 'isrc_dbs', 'rsrc_dbs', 'ssdrc_dbs', 'zsrc_dbs']:
         template[k] = '0'
     template['init_icm'] = 1
@@ -637,6 +640,15 @@ def collimate(beamlets, args):
             template['cms'].append(cm)
 
     template['isourc'] = '21'
+    template['iqin'] = '0'
+    template['default_medium'] = 'Air_516kV'
+    template['nsc_planes'] = '1'
+    template['scoring_planes'] = [{
+        'cm': len(template['cms']),  # the LAST block of the collimator
+        'mzone_type': 1,
+        'nsc_zones': 1,
+        'zones': [args.rmax]
+    }]
     for k in ['init_icm', 'nrcycl', 'iparallel', 'parnum', 'isrc_dbs', 'rsrc_dbs', 'ssdrc_dbs', 'zsrc_dbs']:
         template[k] = '0'
     # always rebuild custom collimators!
@@ -771,7 +783,8 @@ def latex_itemize_properties(properties):
         'beam_distance': 'cm',
         'beam_width': 'cm',
         'beam_height': 'cm',
-        'length': 'cm'
+        'length': 'cm',
+        'scoring_zone_size': 'cm'
     }
     lines = []
 
