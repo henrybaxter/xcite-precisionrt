@@ -66,12 +66,14 @@ def parse_args():
     parser.add_argument('--pegs4', default='allkV')
     parser.add_argument('--name', required=True)
     parser.add_argument('--overwrite', '-f', action='store_true')
+    parser.add_argument('--rmax', type=float, default=50.0, help='Max extent of all component modules')
 
     # source arguments
     parser.add_argument('--beam-width', type=float, help='Beam width (y) in cm', default=0.2)
     parser.add_argument('--beam-height', type=float, help='Beam height (z) in cm', default=0.5)
     parser.add_argument('--beam-distance', type=float, help='Beam axis of rotation to target in cm', default=10.0)
     parser.add_argument('--target-length', type=float, help='Length of target in cm', default=75.0)
+    parser.add_argument('--target-angle', default=45.0, type=float, help='Angle of reflection target')
     increments = ['dy_simulations', 'dy_gap', 'dtheta', 'dflare', 'dlinear']
     parser.add_argument('--increment', choices=increments, default='dy_gap')
     parser.add_argument('--gap', type=float, default=0.0, help='Gap between incident beams (only valid if dy selected')
@@ -128,20 +130,24 @@ def parse_args():
             'pegs4': args.pegs4,
         },
         'source': {
+            'rmax': args.rmax,
             'histories': args.histories,
             'template': args.egsinp_template,
             'beam_distance': args.beam_distance,
             'beam_height': args.beam_height,
             'beam_width': args.beam_width,
             'length': args.target_length,
+            'angle': args.target_angle,
             'type': 'Reflection',
             'beam_merge_strategy': 'Translation and Combination'
         },
         'filter': {
+            'rmax': args.rmax,
             'template': args.egsinp_template,
             'slabs': []
         },
         'collimator': {
+            'rmax': args.rmax,
             'template': args.collimator or args.egsinp_template,
             'length': None,
             'regions_per_block': None,
@@ -432,6 +438,9 @@ def generate_source(args):
     template['ybeam'] = args.beam_width / 2
     template['zbeam'] = args.beam_height / 2
     logger.info('Using {} histories per beamlet for a total of {} source histories'.format(template['ncase'], template['ncase'] * len(y_values)))
+    xtube = template['cms'][0]
+    xtube['rmax_cm'] = args.rmax
+    xtube['anglei'] = args.target_angle
 
     logger.info('Creating egsinp files')
     beamlets = []
@@ -475,7 +484,7 @@ def filter_source(beamlets, args):
         {
             'type': 'SLABS',
             'identifier': 'FLTR',
-            'rmax_cm': 100,
+            'rmax_cm': args.rmax,
             'title': 'FLTR',
             'zmin_slabs': 0.01,
             'slabs': [
@@ -583,13 +592,14 @@ def collimate(beamlets, args):
             cm['zmin'] -= zoffset
             cm['zmax'] -= zoffset
             cm['zfocus'] -= zoffset
+            cm['rmax_cm'] = args.rmax
             template['cms'].append(cm)
     else:
         for i, block in enumerate(interpolation.make_blocks(args.collimator_length, args.interpolating_blocks)):
             cm = {
                 'type': 'BLOCK',
                 'identifier': 'BLCK{}'.format(i),
-                'rmax_cm': 100,
+                'rmax_cm': args.rmax,
                 'title': 'BLCK{}'.format(i),
                 'zmin': block['zmin'],
                 'zmax': block['zmax'],
