@@ -134,7 +134,6 @@ def parse_args():
         'source': {
             'rmax': args.rmax,
             'histories': args.histories,
-            'template': args.egsinp_template,
             'beam_distance': args.beam_distance,
             'beam_height': args.beam_height,
             'beam_width': args.beam_width,
@@ -145,12 +144,11 @@ def parse_args():
         },
         'filter': {
             'rmax': args.rmax,
-            'template': args.egsinp_template,
             'slabs': []
         },
         'collimator': {
             'rmax': args.rmax,
-            'template': args.collimator or args.egsinp_template,
+            'template': args.collimator,
             'length': None,
             'regions_per_block': None,
             'interpolating_blocks': None
@@ -346,11 +344,10 @@ def beam_simulation(folder, pegs4, simulation):
         sys.exit(1)
 
 
-def sample_combine(beamlets):
+def sample_combine(beamlets, desired=10000000):
     logger.info('Sampling and combining {} beamlets'.format(len(beamlets)))
     paths = [beamlet['phsp'] for beamlet in beamlets]
     particles = sum([beamlet['stats']['total_particles'] for beamlet in beamlets])
-    desired = 10000000
     rate = math.ceil(particles / desired)
     logger.info('Found {} particles, want {}, sample rate is {}'.format(particles, desired, rate))
     s = 'rate={}'.format(rate) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
@@ -841,7 +838,6 @@ def configure_logging():
     logging.getLogger().addHandler(file_handler)
     logging.getLogger().setLevel(logging.DEBUG)
 
-
 if __name__ == '__main__':
     start = time.time()
     configure_logging()
@@ -865,7 +861,7 @@ if __name__ == '__main__':
     output.send_file(phsp['filter'], 'sampled_filter.egsphsp1')
 
     beamlets['collimator'] = beamlet_stats(collimate(beamlets['filter'], args))
-    phsp['collimator'] = sample_combine(beamlets['collimator'])
+    phsp['collimator'] = sample_combine(beamlets['collimator'], desired=100000000)
     output.send_file(phsp['collimator'], 'sampled_collimator.egsphsp1')
 
     # dose_path = dose(hsh, args, phsp['collimator'])
@@ -878,5 +874,10 @@ if __name__ == '__main__':
     ).replace(
         '{{photons}}', itemize_photons(beamlets)
     )
-    open(os.path.join(args.output_dir, 'report.tex'), 'w').write(report)
+    path = os.path.join(args.output_dir, 'report.tex')
+    open(path, 'w').write(report)
+    latex_args, rest = latexmake.arg_parser().parse_known_args()
+    os.chdir(args.output_dir)
+    latexmake.LatexMaker('report', latex_args).run()
+    os.chdir('..')
     logger.info('Finished writing report files to {} in {:.2f} seconds'.format(args.output_dir, time.time() - start))
