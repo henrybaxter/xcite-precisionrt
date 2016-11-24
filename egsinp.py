@@ -694,9 +694,17 @@ def verify(d):
 
 if __name__ == '__main__':
     # read in the target one, write it out as comparision, and run diff
-    import sys
-    input_path = sys.argv[1]
-    output_path = '{}.unparsed'.format(input_path)
-    open(output_path, 'w').write(unparse_egsinp(parse_egsinp(open(input_path).read())))
-    import subprocess
-    subprocess.run(['diff', input_path, output_path])
+    # import sys
+    # input_path = sys.argv[1]
+    # output_path = '{}.unparsed'.format(input_path)
+    # open(output_path, 'w').write(unparse_egsinp(parse_egsinp(open(input_path).read())))
+    # import subprocess
+    # subprocess.run(['diff', input_path, output_path])
+    import argparse
+    import json
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--print')
+    args = parser.parse_args()
+    if args.print:
+        egsinp = parse_egsinp(open(args.print).read())
+        print(json.dumps(egsinp, indent='\t'))
