@@ -3,8 +3,6 @@ Create gap regions using the source plane, and a zfocus from
 the phantom plane.
 """
 import math
-import numpy as np
-import statistics
 
 def read(path):
     """Returns list of (width, gap) including center hole of stamped collimator,
@@ -102,11 +100,11 @@ def make_blocks(collimator_length, n_blocks):
 
 
 def make_hblocks(**kwargs):
-    length = kwargs.get('length', 10)
+    length = kwargs.get('length', 12)
     septa = kwargs.get('septa', .05)
     width = kwargs.get('width', 50)  # phantom width
     target_distance = kwargs.get('target_distance', 75)  # focus from phantom side
-    target_width = kwargs.get('target_width', 2)
+    target_width = kwargs.get('target_width', 1)
     n_blocks = kwargs.get('blocks', 10)
     size = kwargs.get('size', .2)
 
@@ -125,7 +123,7 @@ def make_hblocks(**kwargs):
         (septa / 2 + size / 2, size / 2)
     ]
     dx = septa / 2 + size * 2 + septa / 2
-    width_remaining = width - dx
+    width_remaining = width / 2 - dx
     regions = []
 
     def translate(points, dx):
@@ -145,13 +143,11 @@ def make_hblocks(**kwargs):
         for x, y in points:
             reflected.append((-x, y))
         return reflected
-    for region in regions[:]:
-        regions.insert(0, reflect(region))
     # ok now we have all points on phantom side
     # and we have the target points
     # we need to choose our x2 value
     def find_x(x0, z0, x1, z1, z2):
-        m = (z1 - z0) / (x1 - x0)
+        m = (z1 - z0) / ((x1 - x0) or 0.000001)
         x2 = (z2 - z0) / m + x0
         return x2
     # so now we need to interpolate between these
@@ -184,6 +180,8 @@ def make_hblocks(**kwargs):
                 (left_x + 3 * size / 2, size / 2),
                 (left_x + size / 2, size / 2)
             ])
+        for region in block_regions[:]:
+            block_regions.insert(0, reflect(region))
         blocks.append({
             'zmin': current_z,
             'zmax': current_z + block_length,
@@ -222,10 +220,11 @@ def area_polygon(corners):
     return area
 
 if __name__ == '__main__':
-    blocks = make_hblocks()
-    print(blocks[0]['regions'][0])
-    print(blocks[0]['regions'][1])
-    print(blocks[0]['regions'][0])
+    blocks = make_hblocks(interpolating_blocks=10)
+    for i in range(10):
+        print(blocks[i]['regions'][0][0], blocks[i]['regions'][0][3])
+    #print(blocks[0]['regions'][1])
+    #print(blocks[0]['regions'][0])
     print('n blocks', len(blocks))
     print('n regions', len(blocks[0]))
 

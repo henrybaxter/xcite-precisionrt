@@ -275,7 +275,7 @@ def parse_block(lines):
     d.update(pick(lines, [
         ('zmin', NonNegativeFloat()),
         ('zmax', NonNegativeFloat()),
-        ('zfocus', NonNegativeFloat())
+        ('zfocus', Float())
     ]))
     n_regions = pickvalue(lines, 'n_regions', NonNegativeInteger())
     d['regions'] = []

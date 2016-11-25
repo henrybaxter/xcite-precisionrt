@@ -42,13 +42,13 @@ class Output(object):
         logger.info('Saving {}'.format(filename))
         path = os.path.join(self.directory, filename)
         open(path, 'w').write(contents)
-        self.upload(path, os.path.join(self.directory, filename))
+        # self.upload(path, os.path.join(self.directory, filename))
 
     def send_file(self, path, filename):
         new_path = os.path.join(self.directory, filename)
         logger.info('Saving {} to {}'.format(path, new_path))
         shutil.copy(path, new_path)
-        self.upload(path, os.path.join(self.directory, filename))
+        # self.upload(path, os.path.join(self.directory, filename))
 
     def upload(self, path, key):
         if os.path.getsize(path) > 1024 * 1024 * 10:
@@ -89,6 +89,8 @@ def parse_args():
     parser.add_argument('--collimator-length', type=float, default=12.0, help='Length of collimator')
     parser.add_argument('--interpolating-blocks', type=int, default=2, help='Number of interpolating blocks to use for collimator')
     parser.add_argument('--phantom-target-distance', type=float, default=75.0, help='Distance from end of collimator to phantom target')
+    parser.add_argument('--septa-width', type=float, default=0.05, help='Septa width')
+    parser.add_argument('--hole-width', type=float, default=0.2, help='Minor size of hexagon')
     #   given
     parser.add_argument('--collimator', default='stamped', help='Input egsinp path or use stamped values')
     #   preprocess filter phase space
@@ -150,6 +152,8 @@ def parse_args():
             'rmax': args.rmax,
             'template': args.collimator,
             'length': None,
+            'septa_width': args.septa_width,
+            'hole_width': args.hole_width,
             'regions_per_block': None,
             'interpolating_blocks': None
         },
@@ -341,7 +345,6 @@ def beam_simulation(folder, pegs4, simulation):
         logger.error('Could not run simulation on {}'.format(simulation['egsinp']))
         logger.error(result.args)
         logger.error(command_output)
-        sys.exit(1)
 
 
 def sample_combine(beamlets, desired=10000000):
@@ -585,6 +588,8 @@ def collimate(beamlets, args):
         kwargs = {
             'length': args.collimator_length,
             'blocks': args.interpolating_blocks,
+            'septa': args.septa_width,
+            'size': args.hole_size
         }
         for i, block in enumerate(interpolation.make_hblocks(**kwargs)):
             cm = {
@@ -594,27 +599,27 @@ def collimate(beamlets, args):
                 'title': 'BLCK{}'.format(i),
                 'zmin': block['zmin'],
                 'zmax': block['zmax'],
-                'zfocus': '-1000000',
+                'zfocus': args.phantom_target_distance,
                 'xpmax': args.rmax,
                 'ypmax': args.rmax,
-                'xnmax': args.rmax,
-                'ynmax': args.rmax,
+                'xnmax': -args.rmax,
+                'ynmax': -args.rmax,
                 'air_gap': {
-                    'ecut': 0,
-                    'pcut': 0,
+                    'ecut': 0.811,
+                    'pcut': 0.01,
                     'dose_zone': 0,
                     'iregion_to_bit': 0
                 },
                 'opening': {
-                    'ecut': 0,
-                    'pcut': 0,
+                    'ecut': 0.811,
+                    'pcut': 0.01,
                     'dose_zone': 0,
                     'iregion_to_bit': 0,
                     'medium': 'Air_516kVb'
                 },
                 'block': {
-                    'ecut': 0,
-                    'pcut': 0,
+                    'ecut': 0.521,
+                    'pcut': 0.01,
                     'dose_zone': 0,
                     'iregion_to_bit': 0,
                     'medium': 'PB516'
@@ -680,6 +685,7 @@ def collimate(beamlets, args):
                     'points': [{'x': x, 'y': y} for x, y in region]
                 })
             template['cms'].append(cm)
+    # print(len(template['cms']))
     template['isourc'] = '21'
     template['iqin'] = '0'
     template['default_medium'] = 'Air_516kV'
@@ -728,6 +734,8 @@ def collimate(beamlets, args):
         })
         first = False
     beam_simulations(args.folders['collimator'], args.pegs4, simulations)
+    #egslst = os.path.join(args.folders['collimator'], simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
+    #output.send_file(egslst, 'collimator.egslst')
 
     return collimated_beamlets
 
@@ -899,14 +907,17 @@ if __name__ == '__main__':
         beamlets['source'] = rotate(beamlets['source'])
     phsp['source'] = sample_combine(beamlets['source'])
     output.send_file(phsp['source'], 'sampled_source.egsphsp1')
+    # output.send_file(phsp['source'].replace('.egsphsp1', '.egslst'), 'source.egslst')
 
     beamlets['filter'] = beamlet_stats(filter_source(beamlets['source'], args))
     phsp['filter'] = sample_combine(beamlets['filter'])
     output.send_file(phsp['filter'], 'sampled_filter.egsphsp1')
+    # output.send_file(phsp['filter'].replace('.egsphsp1', '.egslst'), 'filter.egslst')
 
     beamlets['collimator'] = beamlet_stats(collimate(beamlets['filter'], args))
     phsp['collimator'] = sample_combine(beamlets['collimator'], desired=100000000)
     output.send_file(phsp['collimator'], 'sampled_collimator.egsphsp1')
+    # output.send_file(phsp['collimator'].replace('.egsphsp1', '.egslst'), 'collimator.egslst')
 
     # dose_path = dose(hsh, args, phsp['collimator'])
     # dose(hsh, args, phsp['filter'])
