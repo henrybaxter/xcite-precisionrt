@@ -10,7 +10,7 @@ import hashlib
 import json
 import functools
 import logging
-# import statistics
+import statistics
 
 import boto3
 from scipy.optimize import fsolve
@@ -581,7 +581,52 @@ def collimate(beamlets, args):
     logger.info('Collimating')
     template = get_egsinp(args.egsinp_template)
     template['cms'] = []
-    if args.collimator:
+    if args.collimator == 'henry-1':
+        kwargs = {
+            'length': args.collimator_length,
+            'blocks': args.interpolating_blocks,
+        }
+        for i, block in enumerate(interpolation.make_hblocks(**kwargs)):
+            cm = {
+                'type': 'BLOCK',
+                'identifier': 'BLCK{}'.format(i),
+                'rmax_cm': args.rmax,
+                'title': 'BLCK{}'.format(i),
+                'zmin': block['zmin'],
+                'zmax': block['zmax'],
+                'zfocus': '-1000000',
+                'xpmax': args.rmax,
+                'ypmax': args.rmax,
+                'xnmax': args.rmax,
+                'ynmax': args.rmax,
+                'air_gap': {
+                    'ecut': 0,
+                    'pcut': 0,
+                    'dose_zone': 0,
+                    'iregion_to_bit': 0
+                },
+                'opening': {
+                    'ecut': 0,
+                    'pcut': 0,
+                    'dose_zone': 0,
+                    'iregion_to_bit': 0,
+                    'medium': 'Air_516kVb'
+                },
+                'block': {
+                    'ecut': 0,
+                    'pcut': 0,
+                    'dose_zone': 0,
+                    'iregion_to_bit': 0,
+                    'medium': 'PB516'
+                },
+                'regions': []
+            }
+            for region in block['regions']:
+                cm['regions'].append({
+                    'points': [{'x': x, 'y': y} for x, y in region]
+                })
+            template['cms'].append(cm)
+    elif args.collimator:
         collimator = get_egsinp(args.collimator)
         zoffset = None
         for cm in collimator['cms']:
@@ -635,7 +680,6 @@ def collimate(beamlets, args):
                     'points': [{'x': x, 'y': y} for x, y in region]
                 })
             template['cms'].append(cm)
-
     template['isourc'] = '21'
     template['iqin'] = '0'
     template['default_medium'] = 'Air_516kV'
