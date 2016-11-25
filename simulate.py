@@ -92,7 +92,7 @@ def parse_args():
     parser.add_argument('--septa-width', type=float, default=0.05, help='Septa width')
     parser.add_argument('--hole-width', type=float, default=0.2, help='Minor size of hexagon')
     #   given
-    parser.add_argument('--collimator', default='stamped', help='Input egsinp path or use stamped values')
+    parser.add_argument('--collimator', help='Input egsinp path or use stamped values')
     #   preprocess filter phase space
     parser.add_argument('--rotate', action='store_true', help='Rotate phase space files before collimator?')
 
@@ -589,7 +589,7 @@ def collimate(beamlets, args):
             'length': args.collimator_length,
             'blocks': args.interpolating_blocks,
             'septa': args.septa_width,
-            'size': args.hole_size
+            'size': args.hole_width
         }
         for i, block in enumerate(interpolation.make_hblocks(**kwargs)):
             cm = {
@@ -778,8 +778,8 @@ def grace_plot(base_dir, phsp_paths, args):
     for stage in ['source', 'filter', 'collimator']:
         phsp_path = phsp_paths[stage]
         kwargs = {'extents': {
-            'xmin': -args.beam_width * 10,
-            'xmax': args.beam_width * 10,
+            'xmin': -args.beam_width * 2,
+            'xmax': args.beam_width * 2,
             'ymin': -args.target_length / 2,
             'ymax': args.target_length / 2
         }}
