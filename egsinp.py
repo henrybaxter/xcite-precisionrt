@@ -708,7 +708,7 @@ def verify(d):
 
 
 def polygon_area(corners):
-    n = len(corners)  # of corners
+    n = len(corners)
     area = 0.0
     for i in range(n):
         j = (i + 1) % n
@@ -719,20 +719,13 @@ def polygon_area(corners):
 
 
 if __name__ == '__main__':
-    # read in the target one, write it out as comparision, and run diff
-    # import sys
-    # input_path = sys.argv[1]
-    # output_path = '{}.unparsed'.format(input_path)
-    # open(output_path, 'w').write(unparse_egsinp(parse_egsinp(open(input_path).read())))
-    # import subprocess
-    # subprocess.run(['diff', input_path, output_path])
     import argparse
     import json
     import statistics
     parser = argparse.ArgumentParser()
-    parser.add_argument('--print')
-    parser.add_argument('--regurg')
-    parser.add_argument('--collimator')
+    parser.add_argument('--print', help='Print the JSON representation of this egsinp')
+    parser.add_argument('--regurg', help='Read in an egsinp and write it out again (for testing)')
+    parser.add_argument('--collimator', help='Output some stats on a collimator')
     args = parser.parse_args()
     if args.print:
         egsinp = parse_egsinp(open(args.print).read())

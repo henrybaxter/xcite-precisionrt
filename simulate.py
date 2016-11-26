@@ -89,6 +89,7 @@ def parse_args():
     parser.add_argument('--collimator-length', type=float, default=12.0, help='Length of collimator')
     parser.add_argument('--interpolating-blocks', type=int, default=2, help='Number of interpolating blocks to use for collimator')
     parser.add_argument('--phantom-target-distance', type=float, default=75.0, help='Distance from end of collimator to phantom target')
+    parser.add_argument('--beam-weighting', action='store_true', help='Weight beams by r^2/r\'^2')
     parser.add_argument('--septa-width', type=float, default=0.05, help='Septa width')
     parser.add_argument('--hole-width', type=float, default=0.2, help='Minor size of hexagon')
     #   given
@@ -134,6 +135,7 @@ def parse_args():
             'scoring_zone_size': args.rmax
         },
         'source': {
+            'beam_weighting': args.beam_weighting,
             'rmax': args.rmax,
             'histories': args.histories,
             'beam_distance': args.beam_distance,
@@ -448,7 +450,12 @@ def generate_source(args):
     beamlets = []
     simulations = []
     first = True
+    histories = 0
     for y in y_values:
+        if args.beam_weighting:
+            weight = 1 + (y * y) / (args.phantom_target_distance * args.phantom_target_distance)
+            template['ncase'] = int(args.histories / len(y_values) * weight)
+            histories += template['ncase']
         theta = math.atan(y / args.beam_distance)
         cos_x = -math.cos(theta)
         cos_y = math.copysign(math.sqrt(1 - cos_x * cos_x), y)
@@ -473,7 +480,7 @@ def generate_source(args):
             'hash': md5
         })
         first = False
-
+    args.simulation_properties['source']['histories'] = histories
     beam_simulations(args.folders['source'], args.pegs4, simulations)
 
     return beamlets
@@ -599,7 +606,7 @@ def collimate(beamlets, args):
                 'title': 'BLCK{}'.format(i),
                 'zmin': block['zmin'],
                 'zmax': block['zmax'],
-                'zfocus': args.phantom_target_distance,
+                'zfocus': args.phantom_target_distance + args.collimator_length,
                 'xpmax': args.rmax,
                 'ypmax': args.rmax,
                 'xnmax': -args.rmax,
@@ -863,7 +870,8 @@ def latex_itemize_properties(properties):
 
 def itemize_photons(beamlets):
     lines = []
-    previous = None
+    previous = args.simulation_properties['source']['histories']
+    lines.append('\t\item {}: {}'.format('Incident electrons', str(previous)))
     for stage in ['source', 'filter', 'collimator']:
         photons = sum([beamlet['stats']['total_photons'] for beamlet in beamlets[stage]])
         if previous:
@@ -873,6 +881,8 @@ def itemize_photons(beamlets):
             text = '{} photons'.format(photons)
         lines.append('\t\item {}: {}'.format(stage.capitalize(), text))
         previous = photons
+    overall = args.simulation_properties['source']['histories'] / previous
+    lines.append('\t\item Overall efficiency: {:.2f} electrons to generate one photon'.format(overall))
     return '\n'.join(lines)
 
 
