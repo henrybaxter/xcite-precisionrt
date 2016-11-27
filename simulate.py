@@ -455,6 +455,7 @@ def generate_source(args):
         if args.beam_weighting:
             weight = 1 + (y * y) / (args.phantom_target_distance * args.phantom_target_distance)
             template['ncase'] = int(args.histories / len(y_values) * weight)
+            logger.info('Setting beam at {} to {} histories'.format(y, template['ncase']))
             histories += template['ncase']
         theta = math.atan(y / args.beam_distance)
         cos_x = -math.cos(theta)
@@ -747,10 +748,33 @@ def collimate(beamlets, args):
     return collimated_beamlets
 
 
-def dose(hsh, args, collimator_phsp_path):
+def dose(beamlets, args):
     logger.info('Dosing')
     template = open(args.dos_egsinp).read()
-    template = template.format(egsphant_path=args.phantom, phsp_path=collimator_phsp_path, ncase=args.dose_histories)
+    directory = os.path.join(args.egs_home, 'dosxyznrc')
+    for beamlet in beamlets:
+        kwargs = {
+            'egsphant_path': args.phantom,
+            'phsp_path': beamlet['phsp'],
+            'ncase': beamlet['stats']['total_particles']
+        }
+        template = template.format(**kwargs)
+        egsinp_str = egsinp.unparse_egsinp(template)
+        md5 = beamlet['hash'].copy()
+        md5.update(egsinp_str.encode('utf-8'))
+        base = md5.hexdigest()
+        inp = '{}.egsinp'.format(base)
+        inp_path = os.path.join(directory, inp)
+        phant = '{}.egsphant'.format(base)
+        phant_path = os.path.join(directory, phant)
+        shutil.copy(args.phantom, phant_path)
+        dose_filename = '{}.3ddose'.format(base)
+        dose_path = os.path.join(directory, dose_filename)
+        if os.path.exists(dose_path):
+            pass
+        else:
+            command = []
+
     hsh.update(template.encode('utf-8'))
     base = hsh.hexdigest()
     directory = os.path.join(args.egs_home, 'dosxyznrc')
@@ -929,8 +953,8 @@ if __name__ == '__main__':
     output.send_file(phsp['collimator'], 'sampled_collimator.egsphsp1')
     # output.send_file(phsp['collimator'].replace('.egsphsp1', '.egslst'), 'collimator.egslst')
 
-    # dose_path = dose(hsh, args, phsp['collimator'])
-    # dose(hsh, args, phsp['filter'])
+    dose_path = dose(beamlets['collimator'], args)
+
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)
     template = open('template.tex').read()
