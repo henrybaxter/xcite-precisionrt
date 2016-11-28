@@ -489,7 +489,7 @@ def generate_source(args):
             weight = 1 + (y * y) / (args.phantom_target_distance * args.phantom_target_distance)
             template['ncase'] = int(args.histories / len(y_values) * weight)
             logger.info('Setting beam at {} to {} histories'.format(y, template['ncase']))
-            histories += template['ncase']
+        histories += template['ncase']
         theta = math.atan(y / args.beam_distance)
         cos_x = -math.cos(theta)
         cos_y = math.copysign(math.sqrt(1 - cos_x * cos_x), y)
