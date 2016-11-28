@@ -10,7 +10,6 @@ import hashlib
 import json
 import functools
 import logging
-import statistics
 
 import boto3
 from scipy.optimize import fsolve
@@ -33,7 +32,8 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 class Output(object):
 
     def __init__(self):
-        self.bucket = boto3.resource('s3').Bucket('xcite-simulations')
+        pass
+        # self.bucket = boto3.resource('s3').Bucket('xcite-simulations')
 
     def set_dir(self, directory):
         self.directory = directory
@@ -299,6 +299,38 @@ def get_egsinp(path):
     return template
 
 
+def dose_simulations(folder, pegs4, simulations):
+    to_simulate = simulations
+    #for simulation in simulations:
+    #    if not os.path.exists(simulation['dose']):
+    #        to_simulate.append(simulation)
+    logger.info('Reusing {} and running {} dose calculations'.format(len(simulations) - len(to_simulate), len(to_simulate)))
+    dose = functools.partial(dose_simulation, folder, pegs4)
+    pool = Pool(cpu_count() - 1)
+    pool.map(dose, to_simulate)
+
+
+def dose_simulation(folder, pegs4, simulation):
+    try:
+        os.remove(simulation['dose'])
+    except IOError:
+        pass
+    command = ['dosxyznrc', '-p', pegs4, '-i', simulation['egsinp']]
+    logger.info('Running "{}"'.format(' '.join(command)))
+    result = run_process(command, stdout=PIPE, stderr=PIPE, cwd=folder)
+    command_output = result.stdout.decode('utf-8') + result.stderr.decode('utf-8')
+    if result.returncode != 0 or 'ERROR' in command_output:
+        logger.error('Could not run dosxyz on {}'.format(simulation['egsinp']))
+        logger.error(result.args)
+        logger.error(command_output)
+    #logger.info(result)
+    egslst = os.path.join(folder, simulation['egsinp'].replace('.egsinp', '.egslst'))
+    logger.info('Writing to {}'.format(egslst))
+    open(egslst, 'w').write(command_output)
+    if 'Warning' in command_output:
+        logger.info('Warning in {}'.format(egslst))
+
+
 def beam_simulations(folder, pegs4, simulations):
     to_simulate = []
     translate_y = False
@@ -307,8 +339,8 @@ def beam_simulations(folder, pegs4, simulations):
         if not os.path.exists(simulation['phsp']):
             to_simulate.append(simulation)
     logger.info('Reusing {} and running {} simulations'.format(len(simulations) - len(to_simulate), len(to_simulate)))
-    pool = Pool(cpu_count() - 1)
     simulate = functools.partial(beam_simulation, folder, pegs4)
+    pool = Pool(cpu_count() - 1)
     pool.map(simulate, to_simulate)
 
     if translate_y:
@@ -742,8 +774,8 @@ def collimate(beamlets, args):
         })
         first = False
     beam_simulations(args.folders['collimator'], args.pegs4, simulations)
-    #egslst = os.path.join(args.folders['collimator'], simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
-    #output.send_file(egslst, 'collimator.egslst')
+    # egslst = os.path.join(args.folders['collimator'], simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
+    # output.send_file(egslst, 'collimator.egslst')
 
     return collimated_beamlets
 
@@ -752,56 +784,37 @@ def dose(beamlets, args):
     logger.info('Dosing')
     template = open(args.dos_egsinp).read()
     directory = os.path.join(args.egs_home, 'dosxyznrc')
+    dose_contributions = []
+    simulations = []
+    first = True
     for beamlet in beamlets:
         kwargs = {
-            'egsphant_path': args.phantom,
+            'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
             'phsp_path': beamlet['phsp'],
             'ncase': beamlet['stats']['total_particles']
         }
-        template = template.format(**kwargs)
-        egsinp_str = egsinp.unparse_egsinp(template)
+        egsinp_str = template.format(**kwargs)
         md5 = beamlet['hash'].copy()
         md5.update(egsinp_str.encode('utf-8'))
         base = md5.hexdigest()
         inp = '{}.egsinp'.format(base)
         inp_path = os.path.join(directory, inp)
-        phant = '{}.egsphant'.format(base)
-        phant_path = os.path.join(directory, phant)
-        shutil.copy(args.phantom, phant_path)
+        open(inp_path, 'w').write(egsinp_str)
+        if first:
+            output.send_contents(egsinp_str, 'dosxyz.egsinp')
         dose_filename = '{}.3ddose'.format(base)
         dose_path = os.path.join(directory, dose_filename)
-        if os.path.exists(dose_path):
-            pass
-        else:
-            command = []
-
-    hsh.update(template.encode('utf-8'))
-    base = hsh.hexdigest()
-    directory = os.path.join(args.egs_home, 'dosxyznrc')
-    egsinp_filename = '{}.egsinp'.format(base)
-    egsinp_path = os.path.join(directory, egsinp_filename)
-    open(egsinp_path, 'w').write(template)
-    egsphant_filename = '{}.egsphant'.format(base)
-    egsphant_path = os.path.join(directory, egsphant_filename)
-    shutil.copy(args.phantom, egsphant_path)
-    dose_filename = '{}.3ddose'.format(base)
-    dose_path = os.path.join(directory, dose_filename)
-    if False and os.path.exists(dose_path):
-        logger.info('Already have 3ddose {}'.format(dose_path))
-    else:
-        command = ['dosxyznrc', '-p', args.pegs4, '-i', egsinp_filename]
-        logger.info('Running command "{}"'.format(' '.join(command)))
-        result = run_process(command, stdout=PIPE, stderr=PIPE)
-        if result.returncode != 0:
-            logger.error('Command failed: "{}"'.format(' '.join(command)))
-            logger.error(result.stdout.decode('utf-8'))
-            logger.error(result.stderr.decode('utf-8'))
-            sys.exit(1)
-    logger.info('Finished dosing {}'.format(args.phantom))
-    command = ['dosxyz_show', egsphant_filename, dose_filename]
-    result = run_process(command, cwd=directory)
-    logger.info(result.stdout.decode('utf-8'))
-    return (egsphant_path, dose_path)
+        simulations.append({
+            'egsinp': inp,
+            'dose': dose_path
+        })
+        dose_contributions.append({
+            'dose': dose_path,
+            'hash': md5
+        })
+        first = False
+    dose_simulations(directory, args.pegs4, simulations)
+    return dose_contributions
 
 
 def grace_plot(base_dir, phsp_paths, args):
@@ -953,7 +966,7 @@ if __name__ == '__main__':
     output.send_file(phsp['collimator'], 'sampled_collimator.egsphsp1')
     # output.send_file(phsp['collimator'].replace('.egsphsp1', '.egslst'), 'collimator.egslst')
 
-    dose_path = dose(beamlets['collimator'], args)
+    dose_contributions = dose(beamlets['collimator'], args)
 
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)

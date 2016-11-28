@@ -25,7 +25,7 @@ def main():
 
         # assume phantom is centered at zfocus of first block
         phantom = cgs.CGSSphere(2)
-        phantom.translate((0, 0, blocks[0]['zfocus']))
+        phantom.translate((0, 0, blocks[0]['zfocus'] * 10))
         scene.add(phantom)
 
         collimator = build_collimator(blocks)
@@ -43,8 +43,8 @@ def build_collimator(blocks):
     element = cgs.CGSElement()
     for block in blocks:
         for region in block['regions']:
-            points = [(p['x'], p['y']) for p in region['points']]
-            points, faces = solid_region(points, block['zmin'], block['zmax'], block['zfocus'])
+            points = [(p['x'] * 10, p['y'] * 10) for p in region['points']]
+            points, faces = solid_region(points, block['zmin'] * 10, block['zmax'] * 10, block['zfocus'] * 10)
             element.primitives.append(('polyhedron', points, faces))
     return element
 
