@@ -98,7 +98,7 @@ def parse_args():
     parser.add_argument('--rotate', action='store_true', help='Rotate phase space files before collimator?')
 
     # dose
-    parser.add_argument('--phantom', default='16cmcylinder2mmvoxel.egsphant', help='.egsphant file')
+    parser.add_argument('--phantom', default='cylindricalp.egsphant', help='.egsphant file')
     parser.add_argument('--dos-egsinp', default='dosxyz_input_template.egsinp', help='.egsinp for dosxyznrc')
     parser.add_argument('--dose-recycle', default=9, type=int, help='Use particles n + 1 times')
     parser.add_argument('--dose-photon-splitting', default=20, type=int, help='n_split in dose egsinp')
