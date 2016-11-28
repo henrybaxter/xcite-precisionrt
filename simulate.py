@@ -100,7 +100,8 @@ def parse_args():
     # dose
     parser.add_argument('--phantom', default='16cmcylinder2mmvoxel.egsphant', help='.egsphant file')
     parser.add_argument('--dos-egsinp', default='dosxyz_input_template.egsinp', help='.egsinp for dosxyznrc')
-    parser.add_argument('--dose-histories', default=50000000, type=int, help='Histories for dosxyznrc')
+    parser.add_argument('--dose-recycle', default=9, type=int, help='Use particles n + 1 times')
+    parser.add_argument('--dose-photon-splitting', default=20, type=int, help='n_split in dose egsinp')
 
     args = parser.parse_args()
     args.output_dir = args.name.replace(' ', '-')
@@ -791,9 +792,11 @@ def dose(beamlets, args):
         kwargs = {
             'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
             'phsp_path': beamlet['phsp'],
-            'ncase': beamlet['stats']['total_particles']
+            'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
+            'nrcycl': args.dose_recycle,
+            'n_split': args.dose_photon_splitting
         }
-        logger.info('Setting up dose run with {} histories'.format(kwargs['ncase']))
+        logger.info('Dose will use each particle {} times for a total of {} histories'.format(kwargs['nrcycl'] + 1, kwargs['ncase']))
         egsinp_str = template.format(**kwargs)
         md5 = beamlet['hash'].copy()
         md5.update(egsinp_str.encode('utf-8'))
