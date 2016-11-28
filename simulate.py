@@ -793,6 +793,7 @@ def dose(beamlets, args):
             'phsp_path': beamlet['phsp'],
             'ncase': beamlet['stats']['total_particles']
         }
+        logger.info('Setting up dose run with {} histories'.format(kwargs['ncase']))
         egsinp_str = template.format(**kwargs)
         md5 = beamlet['hash'].copy()
         md5.update(egsinp_str.encode('utf-8'))
