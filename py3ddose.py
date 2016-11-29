@@ -187,7 +187,7 @@ if __name__ == '__main__':
         elif path.endswith('.egsphant'):
             phantom = read_egsphant(args.input[0])
             for axis, label in enumerate(['x', 'y', 'z']):
-                print('{}'.format(label), phantom.boundaries[axis][-1])
+                print('{} [{}, {}]'.format(label, phantom.boundaries[axis][0], phantom.boundaries[axis][-1]))
         else:
             raise ValueError("Cannot describe {} files".format(path.split('.')[1]))
     elif args.normalize:

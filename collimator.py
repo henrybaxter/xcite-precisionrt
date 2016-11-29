@@ -74,7 +74,8 @@ def make_blocks(**kwargs):
             left_x = find_x(target_x_left, target_z, phantom_x_left, length, current_z)
             phantom_x_right = region[3][0]
             right_x = find_x(target_x_right, target_z, phantom_x_right, length, current_z)
-            size = right_x - left_x
+            size = (right_x - left_x) / 2
+            # scale that shit? no, we need to get the right values
             # print(size)
             block_regions.append([
                 (left_x, 0),
@@ -151,9 +152,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--length', type=float, default=10)
     parser.add_argument('--blocks', type=int, default=10)
-    parser.add_argument('--hole-size', type=float, default=0.2)
-    parser.add_argument('--septa-width', type=float, default=0.4)
-    parser.add_argument('--width', type=float, default=50)
+    parser.add_argument('--hole-size', type=float, default=0.4)
+    parser.add_argument('--septa-width', type=float, default=0)
+    parser.add_argument('--width', type=float, default=60)
     parser.add_argument('--target-distance', type=float, default=40.0)
     parser.add_argument('--target-width', type=float, default=1.0)
     parser.add_argument('--rmax', type=float, default=40.0)
