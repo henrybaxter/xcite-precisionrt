@@ -161,6 +161,21 @@ def combine_3ddose(paths, output_path):
     write_3ddose(output_path, Dose(boundaries, doses, errors))
 
 
+def weight_3ddose(paths, output_path, weights):
+    doses = []
+    errors = []
+    for path, weight in zip(paths, weights):
+        dose = read_3ddose(path)
+        boundaries = dose.boundaries
+        doses.append(dose.doses)
+        errors.append(dose.errors)
+    doses = (numpy.array(doses).T * weights).T.sum(axis=0)
+    # doses = numpy.tensordot(doses, weights, axes=1)
+    errors = numpy.array(errors)
+    errors = numpy.sqrt(numpy.square(errors).sum(axis=0))
+    write_3ddose(output_path, Dose(boundaries, doses, errors))
+
+
 def normalize_3ddose(path, output_path):
     dose = read_3ddose(path)
     result = dose.doses / dose.doses.sum()
@@ -175,10 +190,13 @@ if __name__ == '__main__':
     parser.add_argument('--dose')
     parser.add_argument('--combine')
     parser.add_argument('--normalize')
+    parser.add_argument('--weight')
     parser.add_argument('--describe', action='store_true')
     args = parser.parse_args()
     if args.combine:
         combine_3ddose(args.input, args.combine)
+    elif args.weight:
+        weight_3ddose(args.input, args.weight, numpy.ones(len(args.input)))
     elif args.describe:
         assert len(args.input) == 1
         path = args.input[0]
