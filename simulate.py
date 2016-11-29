@@ -27,6 +27,7 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # fix dyld problem:
 # $ install_name_tool -change ../egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/HEN_HOUSE/egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/egs_home/bin/osx/BEAM_TUMOTRAK
+# $ install_name_tool -change ../egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/HEN_HOUSE/egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/egs_home/bin/osx/dosxyznrc
 
 
 class Output(object):
@@ -88,7 +89,7 @@ def parse_args():
     #   generated
     parser.add_argument('--collimator-length', type=float, default=12.0, help='Length of collimator')
     parser.add_argument('--interpolating-blocks', type=int, default=2, help='Number of interpolating blocks to use for collimator')
-    parser.add_argument('--phantom-target-distance', type=float, default=75.0, help='Distance from end of collimator to phantom target')
+    parser.add_argument('--phantom-target-distance', type=float, default=40.0, help='Distance from end of collimator to phantom target')
     parser.add_argument('--beam-weighting', action='store_true', help='Weight beams by r^2/r\'^2')
     parser.add_argument('--septa-width', type=float, default=0.05, help='Septa width')
     parser.add_argument('--hole-width', type=float, default=0.2, help='Minor size of hexagon')
@@ -155,8 +156,8 @@ def parse_args():
             'rmax': args.rmax,
             'template': args.collimator,
             'length': None,
-            'septa_width': args.septa_width,
-            'hole_width': args.hole_width,
+            # 'septa_width': args.septa_width,
+            # 'hole_width': args.hole_width,
             'regions_per_block': None,
             'interpolating_blocks': None
         },
@@ -302,9 +303,9 @@ def get_egsinp(path):
 
 def dose_simulations(folder, pegs4, simulations):
     to_simulate = simulations
-    #for simulation in simulations:
-    #    if not os.path.exists(simulation['dose']):
-    #        to_simulate.append(simulation)
+    for simulation in simulations:
+        if not os.path.exists(simulation['dose']):
+            to_simulate.append(simulation)
     logger.info('Reusing {} and running {} dose calculations'.format(len(simulations) - len(to_simulate), len(to_simulate)))
     dose = functools.partial(dose_simulation, folder, pegs4)
     pool = Pool(cpu_count() - 1)
@@ -324,7 +325,7 @@ def dose_simulation(folder, pegs4, simulation):
         logger.error('Could not run dosxyz on {}'.format(simulation['egsinp']))
         logger.error(result.args)
         logger.error(command_output)
-    #logger.info(result)
+    # logger.info(result)
     egslst = os.path.join(folder, simulation['egsinp'].replace('.egsinp', '.egslst'))
     logger.info('Writing to {}'.format(egslst))
     open(egslst, 'w').write(command_output)
@@ -794,7 +795,8 @@ def dose(beamlets, args):
             'phsp_path': beamlet['phsp'],
             'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
             'nrcycl': args.dose_recycle,
-            'n_split': args.dose_photon_splitting
+            'n_split': args.dose_photon_splitting,
+            'dsource': args.phantom_target_distance
         }
         logger.info('Dose will use each particle {} times for a total of {} histories'.format(kwargs['nrcycl'] + 1, kwargs['ncase']))
         egsinp_str = template.format(**kwargs)
@@ -971,6 +973,8 @@ if __name__ == '__main__':
     # output.send_file(phsp['collimator'].replace('.egsphsp1', '.egslst'), 'collimator.egslst')
 
     dose_contributions = dose(beamlets['collimator'], args)
+    for i, dose_contribution in enumerate(dose_contributions):
+        output.send_file(dose_contribution['dose'], 'dose{}.3ddose'.format(i))
 
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)
