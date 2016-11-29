@@ -974,6 +974,7 @@ if __name__ == '__main__':
 
     dose_contributions = dose(beamlets['collimator'], args)
     for i, dose_contribution in enumerate(dose_contributions):
+        output.send_file(dose_contribution['dose'].replace('.3ddose', '.egslst'), 'dose{}.egslst'.format(i))
         output.send_file(dose_contribution['dose'], 'dose{}.3ddose'.format(i))
 
     # now we take the md5 of the args? collimated beamlets.
