@@ -20,23 +20,30 @@ def main():
             continue
         prev_hsh = hsh
 
-        scene = cgs.CGSElement()
-        blocks = get_blocks(args.egsinp)
-
-        # assume phantom is centered at zfocus of first block
-        phantom = cgs.CGSSphere(2)
-        phantom.translate((0, 0, blocks[0]['zfocus'] * 10))
-        scene.add(phantom)
-
-        collimator = build_collimator(blocks)
-        scene.add(collimator)
-
-        output_path = args.egsinp.replace('.egsinp', '.scad')
-        print('Rendering to {}'.format(output_path))
-        open(output_path, 'w').write(scene.render())
+        try:
+            render(args)
+        except Exception as e:
+            print('Could not render')
 
         if not args.watch:
             sys.exit()
+
+
+def render(args):
+    scene = cgs.CGSElement()
+    blocks = get_blocks(args.egsinp)
+
+    # assume phantom is centered at zfocus of first block
+    phantom = cgs.CGSSphere(2 * 10)
+    phantom.translate((0, 0, blocks[0]['zfocus'] * 10))
+    scene.add(phantom)
+
+    collimator = build_collimator(blocks)
+    scene.add(collimator)
+
+    output_path = args.egsinp.replace('.egsinp', '.scad')
+    print('Rendering to {}'.format(output_path))
+    open(output_path, 'w').write(scene.render())
 
 
 def build_collimator(blocks):
