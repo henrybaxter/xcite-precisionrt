@@ -302,7 +302,7 @@ def get_egsinp(path):
 
 
 def dose_simulations(folder, pegs4, simulations):
-    to_simulate = simulations
+    to_simulate = []
     for simulation in simulations:
         if not os.path.exists(simulation['dose']):
             to_simulate.append(simulation)

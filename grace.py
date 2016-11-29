@@ -55,7 +55,7 @@ def view(path):
 
 def eps(path):
     output = path.replace('.grace', '.eps')
-    Popen(['xmgrace', '-hardcopy', '-nosafe', '-printfile', output, path])
+    Popen(['grace', '-hardcopy', '-nosafe', '-printfile', output, path])
 
 
 def xy(input_path, output_path, **kwargs):
