@@ -1,7 +1,8 @@
 import os
 import numpy
+from scipy.optimize import nnls
 
-from py3ddose import read_3ddose
+from py3ddose import read_3ddose, Dose, write_3ddose, weight_3ddose
 
 
 """
@@ -33,18 +34,38 @@ correct_prediction = tf.equal(tf.argmax())
 # sum them together, and we have a problem
 
 d = 'henry-2-1e10'
-contributions = []
-for i in range(5):
-    try:
-        dose = read_3ddose(os.path.join(d, 'dose{}.3ddose'.format(i)))
-    except:
-        print('Skipping not there...')
-        continue
-    contributions.append(dose.doses.sum(axis=(0, 2)))
-    print('Got {}\'s contribution'.format(i))
+beams = []
+z = 2
+x = 50
+paths = []
+for i in range(374):
+    path = os.path.join(d, 'dose{}.3ddose'.format(i))
+    paths.append(path)
 
-contributions = numpy.array(contributions)
-print(len(contributions[0]))
-result = numpy.linalg.lstsq(contributions, numpy.ones(len(contributions[0])))
-print(result)
-#print(result)
+for path in paths:
+    print('Reading {}'.format(path))
+    dose = read_3ddose(path)
+    just_y = dose.doses[z, :, x]
+    beams.append(just_y)
+
+beams = numpy.array(beams)
+print('Constructed all beam contributions')
+target_dose = numpy.amax(beams)
+print('Target skin dose is {}'.format(target_dose))
+target_distribution = numpy.full(100, target_dose)
+print('Target distribution constructed')
+
+# result = numpy.array([0, 0, 0, 0, 100])
+# print(beams.T.shape, target_distribution.shape)
+print('Performing Non-negative least squares fit')
+result = nnls(beams.T, target_distribution)
+weights = result[0]
+print('Weights retrieved:\n{}'.format(weights))
+
+# ok now we have to take all the originals and weight them!
+#result = beams.T * weights
+#print('Max is {}'.format(numpy.amax(doses)))
+
+print('Writing dose')
+dose = Dose(dose.boundaries, result, dose.errors)
+weight_3ddose(paths, 'weighted.3ddose', weights)

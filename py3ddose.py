@@ -51,7 +51,7 @@ def write_3ddose(path, dose):
         for boundary in dose.boundaries:
             write_lines(f, boundary, 'float')
         # Row/Block 5 — dose values array (nxnynz values)
-        write_lines(f, numpy.nditer(dose.doses), 'float')
+        write_lines(f, numpy.nditer(dose.doses), 'scientific')
         # Row/Block 6 — error values array (relative errors, nxnynz values)
         write_lines(f, numpy.nditer(dose.errors), 'scientific')
 
@@ -165,11 +165,14 @@ def weight_3ddose(paths, output_path, weights):
     doses = []
     errors = []
     for path, weight in zip(paths, weights):
+        print('Weighting {} at {}'.format(path, weight))
         dose = read_3ddose(path)
         boundaries = dose.boundaries
         doses.append(dose.doses)
         errors.append(dose.errors)
     doses = (numpy.array(doses).T * weights).T.sum(axis=0)
+    print('Doses calculated')
+    print('Max is {}'.format(numpy.amax(doses)))
     # doses = numpy.tensordot(doses, weights, axes=1)
     errors = numpy.array(errors)
     errors = numpy.sqrt(numpy.square(errors).sum(axis=0))

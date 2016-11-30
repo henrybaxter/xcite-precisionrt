@@ -2,3 +2,4 @@ pathos
 scipy
 numpy
 boto3
+tensorflow
