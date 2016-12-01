@@ -1,6 +1,6 @@
 import argparse
 import filecmp
-from itertools import islice
+from itertools import islice, chain
 from collections import namedtuple
 
 import numpy
@@ -124,15 +124,14 @@ def write_lines(f, values, typ=None):
 
 
 def iter_values(f):
-    for line in f:
-        for value in line.split():
-            yield value
+    return chain(*[line.split() for line in f])
 
 
 def apply_dose(phantom):
     # for now assume dosing of 1 and sphere of size 5 starting at the origin
-    radius = 5
-    origin = numpy.array([0, 0, 0])
+    radius = 1
+    radius_2 = radius * radius
+    origin = numpy.array([-10, 20, 0])
     doses = numpy.zeros(phantom.medium_indices.shape)
     errors = numpy.zeros(phantom.medium_indices.shape)
     errors.fill(0.1)
@@ -140,10 +139,18 @@ def apply_dose(phantom):
         for y in range(len(phantom.boundaries[1]) - 1):
             for z in range(len(phantom.boundaries[2]) - 1):
                 corner = numpy.array([phantom.boundaries[0][x], phantom.boundaries[1][y], phantom.boundaries[2][z]])
+                vector = corner - origin
                 norm = numpy.linalg.norm(corner - origin)
-                if norm < radius:
+                if vector[0] > radius:
+                    continue
+                if vector[1] > radius:
+                    continue
+                if vector[2] > radius:
+                    continue
+                if norm < radius_2:
+                    doses[x, y, z] = 1
                     # drop off is exponential and zero after radius
-                    doses[x, y, z] = 1 - numpy.power(norm / radius, 10)
+                    # doses[x, y, z] = 1 - numpy.power(norm / radius, 10)
     return Dose(phantom.boundaries, doses, errors)
 
 
@@ -225,7 +232,7 @@ if __name__ == '__main__':
         if not filecmp.cmp(args.input, test_path):
             print('Files {} and {} differ'.format(args.input, test_path))
     elif args.dose:
-        phantom = read_egsphant(args.input)
+        phantom = read_egsphant(args.input[0])
         dose = apply_dose(phantom)
         write_3ddose(args.dose, dose)
     else:
