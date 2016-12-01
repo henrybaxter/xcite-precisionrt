@@ -33,39 +33,40 @@ correct_prediction = tf.equal(tf.argmax())
 # get a bunch of 3ddose files
 # sum them together, and we have a problem
 
+ideal_path = 'ideal.3ddose'
 d = 'henry-2-1e10'
 beams = []
-z = 2
-x = 50
 paths = []
 for i in range(374):
     path = os.path.join(d, 'dose{}.3ddose'.format(i))
     paths.append(path)
 
+ideal = read_3ddose(ideal_path)
+ideal_distribution = ideal.doses
+size = numpy.prod(ideal_distribution.shape)
+ideal_distribution = ideal_distribution.reshape(size)
+
 for path in paths:
     print('Reading {}'.format(path))
-    dose = read_3ddose(path)
-    just_y = dose.doses[z, :, x]
-    beams.append(just_y)
+    beams.append(read_3ddose(path).doses.reshape(size))
 
 beams = numpy.array(beams)
-print('Constructed all beam contributions')
-target_dose = numpy.amax(beams)
-print('Target skin dose is {}'.format(target_dose))
-target_distribution = numpy.full(100, target_dose)
-print('Target distribution constructed')
 
-# result = numpy.array([0, 0, 0, 0, 100])
-# print(beams.T.shape, target_distribution.shape)
 print('Performing Non-negative least squares fit')
-result = nnls(beams.T, target_distribution)
+result = nnls(beams.T, ideal_distribution)
 weights = result[0]
 print('Weights retrieved:\n{}'.format(weights))
 
+weighted_beams = (beams.T * weights).T
+expected_distribution = weighted_beams.sum(axis=0)
+# write to weighted
+# TODO correct errors
+write_3ddose('weighted.3ddose', Dose(ideal.boundaries, expected_distribution, ideal.errors))
+
+
 # ok now we have to take all the originals and weight them!
-#result = beams.T * weights
-#print('Max is {}'.format(numpy.amax(doses)))
+# result = beams.T * weights
+# print('Max is {}'.format(numpy.amax(doses)))
 
 print('Writing dose')
-dose = Dose(dose.boundaries, result, dose.errors)
 weight_3ddose(paths, 'weighted.3ddose', weights)

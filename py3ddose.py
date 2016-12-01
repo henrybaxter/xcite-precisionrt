@@ -129,7 +129,7 @@ def iter_values(f):
 
 def apply_dose(phantom):
     # for now assume dosing of 1 and sphere of size 5 starting at the origin
-    radius = 1
+    radius = 2
     radius_2 = radius * radius
     origin = numpy.array([-10, 20, 0])
     doses = numpy.zeros(phantom.medium_indices.shape)
@@ -140,14 +140,8 @@ def apply_dose(phantom):
             for z in range(len(phantom.boundaries[2]) - 1):
                 corner = numpy.array([phantom.boundaries[0][x], phantom.boundaries[1][y], phantom.boundaries[2][z]])
                 vector = corner - origin
-                norm = numpy.linalg.norm(corner - origin)
-                if vector[0] > radius:
-                    continue
-                if vector[1] > radius:
-                    continue
-                if vector[2] > radius:
-                    continue
-                if norm < radius_2:
+                r_2 = numpy.square(vector).sum()
+                if r_2 < radius_2:
                     doses[x, y, z] = 1
                     # drop off is exponential and zero after radius
                     # doses[x, y, z] = 1 - numpy.power(norm / radius, 10)
