@@ -52,6 +52,15 @@ for path in paths:
 
 beams = numpy.array(beams)
 
+max_dose = numpy.amax(beams)
+print('Max dose found: {:.g}'.format(max_dose))
+
+# now we need to normalize as a percentage of max dose
+beams = numpy.multiply(beams, 1 / max_dose)
+
+# now we want the max dose in the target, and the min dose around.
+# and we've got that now.
+
 print('Performing Non-negative least squares fit')
 result = nnls(beams.T, ideal_distribution)
 weights = result[0]
@@ -59,6 +68,7 @@ print('Weights retrieved:\n{}'.format(weights))
 
 weighted_beams = (beams.T * weights).T
 expected_distribution = weighted_beams.sum(axis=0)
+
 # write to weighted
 # TODO correct errors
 write_3ddose('weighted.3ddose', Dose(ideal.boundaries, expected_distribution, ideal.errors))
