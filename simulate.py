@@ -939,7 +939,7 @@ if __name__ == '__main__':
     for i, dose_contribution in enumerate(dose_contributions):
         egslst = dose_contribution['dose'].replace('.3ddose', '.egslst')
         output.send_file(egslst, 'dose{}.egslst'.format(i))
-        output.send_file(dose_contribution['dose'], 'dose{}.3ddose.npz'.format(i))
+        output.send_file(dose_contribution['dose'] + '.npz', 'dose{}.3ddose.npz'.format(i))
 
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)
