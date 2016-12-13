@@ -1,3 +1,5 @@
+import os
+import pickle
 import argparse
 import filecmp
 from itertools import islice, chain
@@ -22,26 +24,33 @@ Phantom = namedtuple('Phantom', ['medium_types', 'boundaries', 'medium_indices',
 
 
 def read_3ddose(path):
-    with open(path) as f:
-        values = iter_values(f)
-        # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
-        shape = numpy.fromiter(values, numpy.int32, 3)
-        size = numpy.prod(shape)
-        # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
-        # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
-        # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
-        boundaries = [numpy.fromiter(values, numpy.float32, n + 1) for n in shape]
-        # print(boundaries)
-        # Row/Block 5 — dose values array (nxnynz values)
-        doses = numpy.fromiter(values, numpy.float32, size).reshape(shape)
-        # print(doses)
-        # Row/Block 6 — error values array (relative errors, nxnynz values)
-        errors = numpy.fromiter(values, numpy.float32, size).reshape(shape)
-        # print(errors)
-        return Dose(boundaries, doses, errors)
+    pickle_path = path + '.pickle'
+    if not os.path.exists(pickle_path):
+        print('Reading {}'.format(path))
+        with open(path) as f:
+            values = iter_values(f)
+            # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
+            shape = numpy.fromiter(values, numpy.int32, 3)
+            size = numpy.prod(shape)
+            # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
+            # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
+            # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
+            boundaries = [numpy.fromiter(values, numpy.float32, n + 1) for n in shape]
+            # print(boundaries)
+            # Row/Block 5 — dose values array (nxnynz values)
+            doses = numpy.fromiter(values, numpy.float32, size).reshape(shape)
+            # print(doses)
+            # Row/Block 6 — error values array (relative errors, nxnynz values)
+            errors = numpy.fromiter(values, numpy.float32, size).reshape(shape)
+            # print(errors)
+            dose = Dose(boundaries, doses, errors)
+            pickle.dump(dose, open(pickle_path, 'wb'))
+    return pickle.load(open(pickle_path, 'rb'))
 
 
 def write_3ddose(path, dose):
+    assert len(dose.doses.shape) == 3, "Doses must be 3d array"
+    assert len(dose.errors.shape) == 3, "Errors must be 3d array"
     with open(path, 'w') as f:
         # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
         write_lines(f, [len(boundary) - 1 for boundary in dose.boundaries], 'integer')
@@ -186,6 +195,18 @@ def normalize_3ddose(path, output_path):
     write_3ddose(output_path, Dose(dose.boundaries, result, dose.errors))
 
 
+def compress(ipath):
+    opath = ipath + '.npz'
+    dose = read_3ddose(ipath)
+    boundaries = numpy.array(dose.boundaries)
+    numpy.savez_compressed(opath, boundaries=boundaries, doses=dose.doses, errors=dose.errors)
+
+
+def uncompress(ipath, opath):
+    loaded = numpy.load(ipath)
+    dose = Dose(loaded['boundaries'], loaded['doses'], loaded['errors'])
+    write_3ddose(opath, dose)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='+')
@@ -195,9 +216,19 @@ if __name__ == '__main__':
     parser.add_argument('--combine')
     parser.add_argument('--normalize')
     parser.add_argument('--weight')
+    parser.add_argument('--errors', action='store_true')
     parser.add_argument('--describe', action='store_true')
+    parser.add_argument('--compress', action='store_true')
+    parser.add_argument('--uncompress')
     args = parser.parse_args()
-    if args.combine:
+    if args.compress:
+        compress(args.input[0])
+    elif args.uncompress:
+        uncompress(args.input[0], args.uncompress)
+    elif args.errors:
+        dose = read_3ddose(args.input[0])
+        print('{} unique error values'.format(numpy.unique(dose.errors).size))
+    elif args.combine:
         combine_3ddose(args.input, args.combine)
     elif args.weight:
         weight_3ddose(args.input, args.weight, numpy.ones(len(args.input)))
