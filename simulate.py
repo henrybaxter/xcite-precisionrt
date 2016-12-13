@@ -11,8 +11,6 @@ import json
 import functools
 import logging
 
-import boto3
-from scipy.optimize import fsolve
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import cpu_count
 
@@ -20,21 +18,14 @@ import latexmake
 import egsinp
 import grace
 import interpolation
+import py3ddose
 
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
-# fix dyld problem:
-# $ install_name_tool -change ../egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/HEN_HOUSE/egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/egs_home/bin/osx/BEAM_TUMOTRAK
-# $ install_name_tool -change ../egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/HEN_HOUSE/egs++/dso/osx/libiaea_phsp.dylib /Users/henry/projects/EGSnrc/egs_home/bin/osx/dosxyznrc
-
 
 class Output(object):
-
-    def __init__(self):
-        pass
-        # self.bucket = boto3.resource('s3').Bucket('xcite-simulations')
 
     def set_dir(self, directory):
         self.directory = directory
@@ -49,13 +40,8 @@ class Output(object):
         new_path = os.path.join(self.directory, filename)
         logger.info('Saving {} to {}'.format(path, new_path))
         shutil.copy(path, new_path)
-        # self.upload(path, os.path.join(self.directory, filename))
 
-    def upload(self, path, key):
-        if os.path.getsize(path) > 1024 * 1024 * 10:
-            logger.warning('Skipping {} it is too big'.format(key))
-        else:
-            self.bucket.upload_file(path, key)
+
 output = Output()
 
 
@@ -68,41 +54,64 @@ def parse_args():
     parser.add_argument('--pegs4', default='allkV')
     parser.add_argument('--name', required=True)
     parser.add_argument('--overwrite', '-f', action='store_true')
-    parser.add_argument('--rmax', type=float, default=50.0, help='Max extent of all component modules')
+    parser.add_argument('--rmax', type=float, default=50.0,
+                        help='Max extent of all component modules')
 
     # source arguments
-    parser.add_argument('--beam-width', type=float, help='Beam width (y) in cm', default=0.2)
-    parser.add_argument('--beam-height', type=float, help='Beam height (z) in cm', default=0.5)
-    parser.add_argument('--beam-distance', type=float, help='Beam axis of rotation to target in cm', default=10.0)
-    parser.add_argument('--target-length', type=float, help='Length of target in cm', default=75.0)
-    parser.add_argument('--target-angle', default=45.0, type=float, help='Angle of reflection target')
+    parser.add_argument('--beam-width', type=float, default=0.2,
+                        help='Beam width (y) in cm')
+    parser.add_argument('--beam-height', type=float, default=0.5,
+                        help='Beam height (z) in cm')
+    parser.add_argument('--beam-distance', type=float, default=10.0,
+                        help='Beam axis of rotation to target in cm')
+    parser.add_argument('--target-length', type=float, default=75.0,
+                        help='Length of target in cm')
+    parser.add_argument('--target-angle', default=45.0, type=float,
+                        help='Angle of reflection target')
     increments = ['dy_simulations', 'dy_gap', 'dtheta', 'dflare', 'dlinear']
     parser.add_argument('--increment', choices=increments, default='dy_gap')
-    parser.add_argument('--gap', type=float, default=0.0, help='Gap between incident beams (only valid if dy selected')
-    parser.add_argument('--histories', type=int, default=int(1e9), help='Divided among source beamlets')
+    parser.add_argument('--gap', type=float, default=0.0,
+                        help='Gap between incident beams')
+    parser.add_argument('--histories', type=int, default=int(1e9),
+                        help='Divided among source beamlets')
 
     # utils
-    parser.add_argument('--clean', action='store_true', help='Remove all directories, forces rebuild')
-    parser.add_argument('--build', '-b', dest='builds', choices=stages + ['all'], action='append', default=[], help='Build BEAM_* executable')
+    parser.add_argument('--clean', action='store_true',
+                        help='Remove all directories, forces rebuild')
+    parser.add_argument('--build', action='append', default=[], dest='builds',
+                        choices=stages + ['all'],
+                        help='Build BEAM_* executable')
 
     # collimator
     #   generated
-    parser.add_argument('--collimator-length', type=float, default=12.0, help='Length of collimator')
-    parser.add_argument('--interpolating-blocks', type=int, default=2, help='Number of interpolating blocks to use for collimator')
-    parser.add_argument('--phantom-target-distance', type=float, default=40.0, help='Distance from end of collimator to phantom target')
-    parser.add_argument('--beam-weighting', action='store_true', help='Weight beams by r^2/r\'^2')
-    parser.add_argument('--septa-width', type=float, default=0.05, help='Septa width')
-    parser.add_argument('--hole-width', type=float, default=0.2, help='Minor size of hexagon')
+    parser.add_argument('--collimator-length', type=float, default=12.0,
+                        help='Length of collimator')
+    parser.add_argument('--interpolating-blocks', type=int, default=2,
+                        help='Number of BLOCK CMs in collimator')
+    parser.add_argument('--phantom-target-distance', type=float, default=40.0,
+                        help='Distance from collimator to phantom target')
+    parser.add_argument('--beam-weighting', action='store_true',
+                        help='Weight beams by r^2/r\'^2')
+    parser.add_argument('--septa-width', type=float, default=0.05,
+                        help='Septa width')
+    parser.add_argument('--hole-width', type=float, default=0.2,
+                        help='Minor size of hexagon')
     #   given
-    parser.add_argument('--collimator', help='Input egsinp path or use stamped values')
+    parser.add_argument('--collimator',
+                        help='Input egsinp path or use stamped values')
     #   preprocess filter phase space
-    parser.add_argument('--rotate', action='store_true', help='Rotate phase space files before collimator?')
+    parser.add_argument('--rotate', action='store_true',
+                        help='Rotate phase space files before collimator?')
 
     # dose
-    parser.add_argument('--phantom', default='cylindricalp.egsphant', help='.egsphant file')
-    parser.add_argument('--dos-egsinp', default='dosxyz_input_template.egsinp', help='.egsinp for dosxyznrc')
-    parser.add_argument('--dose-recycle', default=9, type=int, help='Use particles n + 1 times')
-    parser.add_argument('--dose-photon-splitting', default=20, type=int, help='n_split in dose egsinp')
+    parser.add_argument('--phantom', default='cylindricalp.egsphant',
+                        help='.egsphant file')
+    parser.add_argument('--dos-egsinp', default='dosxyz_input_template.egsinp',
+                        help='.egsinp for dosxyznrc')
+    parser.add_argument('--dose-recycle', type=int, default=9,
+                        help='Use particles n + 1 times')
+    parser.add_argument('--dose-photon-splitting', type=int, default=20,
+                        help='n_split in dose egsinp')
 
     args = parser.parse_args()
     args.output_dir = args.name.replace(' ', '-')
@@ -111,12 +120,13 @@ def parse_args():
         if args.overwrite:
             remove_folders([args.output_dir])
         else:
-            logger.warning('Output path {} exists already'.format(args.output_dir))
+            logger.warning('{} already exists'.format(args.output_dir))
     os.makedirs(args.output_dir, exist_ok=True)
 
     if 'all' in args.builds:
         args.builds = set(stages)
-    args.egs_home = os.path.abspath(os.path.join(os.environ['HEN_HOUSE'], '../egs_home/'))
+    args.egs_home = os.path.abspath(os.path.join(
+        os.environ['HEN_HOUSE'], '../egs_home/'))
     logger.info('egs_home is {}'.format(args.egs_home))
 
     if args.collimator:
@@ -178,7 +188,9 @@ def write_specmodule(egs_home, name, cms):
         identifiers.append(cm['identifier'])
     types_line = ' CM names:  {}'.format(' '.join(types))
     identifiers_line = ' Identifiers:  {}'.format(' '.join(identifiers))
-    path = os.path.join(egs_home, 'beamnrc/spec_modules', '{}.module'.format(name))
+    path = os.path.join(egs_home,
+                        'beamnrc/spec_modules',
+                        '{}.module'.format(name))
     open(path, 'w').write('\n'.join([types_line, identifiers_line]))
     logger.info('Spec module written')
 
@@ -203,7 +215,7 @@ def generate_dy(target_length, beam_width, spacing):
     """By spacing, use equal changes in incidence y coordinate"""
     logger.info('Generating y values by dy')
     gap = spacing - beam_width
-    logger.info('Spacing is {:3f} which means gaps of {:3f}'.format(spacing, gap))
+    logger.info('Spacing is {:3f} so gaps of {:3f}'.format(spacing, gap))
     offset = spacing / 2
     y = offset
     ymax = target_length / 2
@@ -228,64 +240,6 @@ def generate_dy_gaps(target_length, beam_width, gap):
     return generate_dy(target_length, beam_width, spacing)
 
 
-def generate_dtheta(target_length, beam_distance, simulations):
-    """By number of simulations, use equal changes in incidence angle"""
-    logger.info('Generating y values by dtheta')
-    ymax = target_length / 2
-    max_theta = math.atan(ymax / beam_distance)
-    dtheta = max_theta / simulations
-    offset = dtheta / 2
-    theta = offset
-    i = 0
-    result = []
-    while theta < max_theta:
-        y = beam_distance * math.tan(theta)
-        result.append(y)
-        i += 1
-        theta = i * dtheta + offset
-    return result
-
-
-def generate_dflare(target_length, beam_distance, beam_width):
-    """Using primary variables, solve for beam flares touching"""
-    logger.info('Genearting y values by dflare')
-    ymax = target_length / 2
-    y = 0
-    theta = 0
-    result = []
-    while True:
-        def f(next_theta):
-            # current y + half previous flare + half next flare = next y
-            flare = beam_width / math.cos(theta)
-            next_flare = beam_width / math.cos(next_theta)
-            next_y = beam_distance * math.tan(next_theta)
-            return y + flare / 2 + next_flare / 2 - next_y
-        theta = fsolve(f, theta)[0]
-        y = beam_distance * math.tan(theta)
-        if y < ymax:
-            result.append(y)
-        else:
-            break
-    return result
-
-
-def generate_dlinear(target_length, beam_width, simulations):
-    """Just linearly slowly decrease the gap from max to 0 over simulations"""
-    logger.info('Generating y values by dlinear with {} simulations'.format(simulations))
-    max_spacing = 2
-    offset = max_spacing / 2
-    y = offset
-    ymax = target_length / 2
-    slope = ymax / max_spacing
-    i = 0
-    result = []
-    while y < ymax:
-        result.append(y)
-        i += 1
-        y = offset + slope * i
-    return result
-
-
 def get_egsinp(path):
     logger.info('Reading egsinp template')
     try:
@@ -306,7 +260,8 @@ def dose_simulations(folder, pegs4, simulations):
     for simulation in simulations:
         if not os.path.exists(simulation['dose']):
             to_simulate.append(simulation)
-    logger.info('Reusing {} and running {} dose calculations'.format(len(simulations) - len(to_simulate), len(to_simulate)))
+    logger.info('Reusing {} and running {} dose calculations'.format(
+        len(simulations) - len(to_simulate), len(to_simulate)))
     dose = functools.partial(dose_simulation, folder, pegs4)
     pool = Pool(cpu_count() - 1)
     pool.map(dose, to_simulate)
@@ -320,17 +275,18 @@ def dose_simulation(folder, pegs4, simulation):
     command = ['dosxyznrc', '-p', pegs4, '-i', simulation['egsinp']]
     logger.info('Running "{}"'.format(' '.join(command)))
     result = run_process(command, stdout=PIPE, stderr=PIPE, cwd=folder)
-    command_output = result.stdout.decode('utf-8') + result.stderr.decode('utf-8')
-    if result.returncode != 0 or 'ERROR' in command_output:
+    out = result.stdout.decode('utf-8') + result.stderr.decode('utf-8')
+    if result.returncode != 0 or 'ERROR' in out:
         logger.error('Could not run dosxyz on {}'.format(simulation['egsinp']))
         logger.error(result.args)
-        logger.error(command_output)
+        logger.error(out)
     # logger.info(result)
     egslst = os.path.join(folder, simulation['egsinp'].replace('.egsinp', '.egslst'))
     logger.info('Writing to {}'.format(egslst))
-    open(egslst, 'w').write(command_output)
-    if 'Warning' in command_output:
+    open(egslst, 'w').write(out)
+    if 'Warning' in out:
         logger.info('Warning in {}'.format(egslst))
+    py3ddose.compress(simulation['dose'])
 
 
 def beam_simulations(folder, pegs4, simulations):
@@ -340,7 +296,8 @@ def beam_simulations(folder, pegs4, simulations):
         translate_y = translate_y or 'translate_y' in simulation
         if not os.path.exists(simulation['phsp']):
             to_simulate.append(simulation)
-    logger.info('Reusing {} and running {} simulations'.format(len(simulations) - len(to_simulate), len(to_simulate)))
+    logger.info('Reusing {} and running {} simulations'.format(
+        len(simulations) - len(to_simulate), len(to_simulate)))
     simulate = functools.partial(beam_simulation, folder, pegs4)
     pool = Pool(cpu_count() - 1)
     pool.map(simulate, to_simulate)
@@ -376,11 +333,11 @@ def beam_simulation(folder, pegs4, simulation):
     result = None
     logger.info('Running "{}"'.format(' '.join(command)))
     result = run_process(command, stdout=PIPE, stderr=PIPE, cwd=folder)
-    command_output = result.stdout.decode('utf-8') + result.stderr.decode('utf-8')
-    if result.returncode != 0 or 'ERROR' in command_output:
+    out = result.stdout.decode('utf-8') + result.stderr.decode('utf-8')
+    if result.returncode != 0 or 'ERROR' in out:
         logger.error('Could not run simulation on {}'.format(simulation['egsinp']))
         logger.error(result.args)
-        logger.error(command_output)
+        logger.error(out)
 
 
 def sample_combine(beamlets, desired=10000000):
@@ -434,7 +391,8 @@ def beamlet_stats(beamlets):
 
 
 def beamdpr_translate(folder, item):
-    command = ['beamdpr', 'translate', '-i', item['phsp'], '-y', '(' + str(item['translate_y']) + ')']
+    y = '(' + str(item['translate_y']) + ')'
+    command = ['beamdpr', 'translate', '-i', item['phsp'], '-y', y]
     result = None
     try:
         result = run_process(command, stdout=PIPE, stderr=PIPE, cwd=folder)
@@ -450,12 +408,6 @@ def generate_y(args):
         y_values = generate_dy_gaps(args.target_length, args.beam_width, args.gap)
     elif args.increment == 'dy_simulations':
         y_values = generate_dy_simulations(args.target_length, args.beam_width, args.simulations)
-    elif args.increment == 'dtheta':
-        y_values = generate_dtheta(args.target_length, args.beam_distance, args.simulations)
-    elif args.increment == 'dflare':
-        y_values = generate_dflare(args.target_length, args.beam_distance, args.beam_width)
-    elif args.increment == 'dlinear':
-        y_values = generate_dlinear(args.target_length, args.beam_width, args.simulations)
     else:
         raise ValueError('Unexpected increment {}'.format(args.increment))
     # generate symmetric y values
@@ -465,7 +417,7 @@ def generate_y(args):
 
 
 def generate_source(args):
-    logger.info('Generating source')
+    logger.info('Generating source with {} histories'.format(args.histories))
     y_values = generate_y(args)
     template = get_egsinp(args.egsinp_template)
 
@@ -475,7 +427,7 @@ def generate_source(args):
     template['ncase'] = args.histories // len(y_values)
     template['ybeam'] = args.beam_width / 2
     template['zbeam'] = args.beam_height / 2
-    logger.info('Using {} histories per beamlet for a total of {} source histories'.format(template['ncase'], template['ncase'] * len(y_values)))
+    logger.info('Using {} histories per beamlet'.format(template['ncase']))
     xtube = template['cms'][0]
     xtube['rmax_cm'] = args.rmax
     xtube['anglei'] = args.target_angle
@@ -687,7 +639,8 @@ def collimate(beamlets, args):
             cm['rmax_cm'] = args.rmax
             template['cms'].append(cm)
     else:
-        for i, block in enumerate(interpolation.make_blocks(args.collimator_length, args.interpolating_blocks)):
+        blocks = interpolation.make_blocks(args.collimator_length, args.interpolating_blocks)
+        for i, block in enumerate(blocks):
             cm = {
                 'type': 'BLOCK',
                 'identifier': 'BLCK{}'.format(i),
@@ -738,18 +691,23 @@ def collimate(beamlets, args):
         'nsc_zones': 1,
         'zones': [args.rmax]
     }]
-    for k in ['init_icm', 'nrcycl', 'iparallel', 'parnum', 'isrc_dbs', 'rsrc_dbs', 'ssdrc_dbs', 'zsrc_dbs']:
+    for k in ['init_icm', 'nrcycl', 'iparallel', 'parnum',
+              'isrc_dbs', 'rsrc_dbs', 'ssdrc_dbs', 'zsrc_dbs']:
         template[k] = '0'
     # always rebuild custom collimators!
     if 'collimator' in args.builds or not os.path.exists(args.folders['collimator']):
-        beam_build(args.egs_home, os.path.basename(args.folders['collimator']).replace('BEAM_', ''), template['cms'])
+        folder = os.path.basename(args.folders['collimator'])
+        name = folder.replace('BEAM_', '')
+        beam_build(args.egs_home, name, template['cms'])
     template['init_icm'] = 1
     for cm in template['cms']:
         if cm['type'] != 'BLOCK':
             raise ValueError('Unexpected collimator type {}'.format(cm['type']))
     args.simulation_properties['collimator']['interpolating_blocks'] = len(template['cms'])
-    args.simulation_properties['collimator']['length'] = template['cms'][-1]['zmax'] - template['cms'][0]['zmin']
-    args.simulation_properties['collimator']['regions_per_block'] = len(template['cms'][0]['regions'])
+    first_block = template['cms'][0]
+    last_block = template['cms'][-1]
+    args.simulation_properties['collimator']['length'] = last_block['zmax'] - first_block['zmin']
+    args.simulation_properties['collimator']['regions_per_block'] = len(first_block['regions'])
     simulations = []
     collimated_beamlets = []
     first = True
@@ -776,7 +734,8 @@ def collimate(beamlets, args):
         })
         first = False
     beam_simulations(args.folders['collimator'], args.pegs4, simulations)
-    # egslst = os.path.join(args.folders['collimator'], simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
+    # egslst = os.path.join(args.folders['collimator'],
+    # simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
     # output.send_file(egslst, 'collimator.egslst')
 
     return collimated_beamlets
@@ -798,7 +757,8 @@ def dose(beamlets, args):
             'n_split': args.dose_photon_splitting,
             'dsource': args.phantom_target_distance
         }
-        logger.info('Dose will use each particle {} times for a total of {} histories'.format(kwargs['nrcycl'] + 1, kwargs['ncase']))
+        logger.info('Dose using each particle {} times so {} histories'.format(
+            kwargs['nrcycl'] + 1, kwargs['ncase']))
         egsinp_str = template.format(**kwargs)
         md5 = beamlet['hash'].copy()
         md5.update(egsinp_str.encode('utf-8'))
@@ -925,7 +885,7 @@ def itemize_photons(beamlets):
         lines.append('\t\item {}: {}'.format(stage.capitalize(), text))
         previous = photons
     overall = args.simulation_properties['source']['histories'] / previous
-    lines.append('\t\item Overall efficiency: {:.2f} electrons to generate one photon'.format(overall))
+    lines.append('\t\item Efficiency: {:.2f} electrons generates one photon'.format(overall))
     return '\n'.join(lines)
 
 
@@ -943,6 +903,7 @@ def configure_logging():
     logging.getLogger().addHandler(file_handler)
     logging.getLogger().setLevel(logging.DEBUG)
 
+
 if __name__ == '__main__':
     start = time.time()
     configure_logging()
@@ -952,7 +913,9 @@ if __name__ == '__main__':
         remove_folders(args.folders.values())
         sys.exit()
     skip_args = ['clean', 'builds', 'plots', 'stages']
-    logger.info('Arguments: \n{}'.format('\n'.join(['\t{}: {}'.format(k, v) for k, v in sorted(args.__dict__.items()) if k not in skip_args])))
+    printable_args = [(k, v) for k, v in sorted(args.__dict__.items()) if k not in skip_args]
+    pretty_args = '\n'.join(['\t{}: {}'.format(k, v) for k, v in printable_args])
+    logger.info('Arguments: \n{}'.format(pretty_args))
     phsp = {}
     beamlets = {}
     beamlets['source'] = beamlet_stats(generate_source(args))
@@ -974,8 +937,9 @@ if __name__ == '__main__':
 
     dose_contributions = dose(beamlets['collimator'], args)
     for i, dose_contribution in enumerate(dose_contributions):
-        output.send_file(dose_contribution['dose'].replace('.3ddose', '.egslst'), 'dose{}.egslst'.format(i))
-        output.send_file(dose_contribution['dose'], 'dose{}.3ddose'.format(i))
+        egslst = dose_contribution['dose'].replace('.3ddose', '.egslst')
+        output.send_file(egslst, 'dose{}.egslst'.format(i))
+        output.send_file(dose_contribution['dose'], 'dose{}.3ddose.npz'.format(i))
 
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)
@@ -991,4 +955,5 @@ if __name__ == '__main__':
     os.chdir(args.output_dir)
     latexmake.LatexMaker('report', latex_args).run()
     os.chdir('..')
-    logger.info('Finished writing report files to {} in {:.2f} seconds'.format(args.output_dir, time.time() - start))
+    logger.info('Report written to {} in {:.2f} seconds'.format(
+        args.output_dir, time.time() - start))
