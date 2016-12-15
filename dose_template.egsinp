@@ -3,7 +3,7 @@ Cylinder                                                                        
 {egsphant_path}
 0.811, 0.01, 0
 1, 0, 1,
-0, 2, 0, 20, 0, 180, 0, {dsource}, 90, 0, 0, 0, 0, 0
+0, 2, 0, 20, -10, {theta}, {phi}, {dsource}, {phicol}, 0, 0, 0, 0, 0
 2, 0, 0, 200, 0, 0, 0, 0
 {phsp_path}
 {ncase}, 0, 500, 33, 97, 100.0, 0, 0, 0, 0, , {nrcycl}, 0, 0, {n_split}, 0, 0
