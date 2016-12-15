@@ -106,7 +106,7 @@ def parse_args():
     # dose
     parser.add_argument('--phantom', default='cylindricalp.egsphant',
                         help='.egsphant file')
-    parser.add_argument('--dos-egsinp', default='dosxyz_input_template.egsinp',
+    parser.add_argument('--dos-egsinp', default='dose_template.egsinp',
                         help='.egsinp for dosxyznrc')
     parser.add_argument('--dose-recycle', type=int, default=9,
                         help='Use particles n + 1 times')
@@ -749,36 +749,53 @@ def dose(beamlets, args):
     simulations = []
     first = True
     for beamlet in beamlets:
-        kwargs = {
-            'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
-            'phsp_path': beamlet['phsp'],
-            'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
-            'nrcycl': args.dose_recycle,
-            'n_split': args.dose_photon_splitting,
-            'dsource': args.phantom_target_distance
-        }
-        logger.info('Dose using each particle {} times so {} histories'.format(
-            kwargs['nrcycl'] + 1, kwargs['ncase']))
-        egsinp_str = template.format(**kwargs)
-        md5 = beamlet['hash'].copy()
-        md5.update(egsinp_str.encode('utf-8'))
-        base = md5.hexdigest()
-        inp = '{}.egsinp'.format(base)
-        inp_path = os.path.join(directory, inp)
-        open(inp_path, 'w').write(egsinp_str)
-        if first:
-            output.send_contents(egsinp_str, 'dosxyz.egsinp')
-        dose_filename = '{}.3ddose'.format(base)
-        dose_path = os.path.join(directory, dose_filename)
-        simulations.append({
-            'egsinp': inp,
-            'dose': dose_path
-        })
-        dose_contributions.append({
-            'dose': dose_path,
-            'hash': md5
-        })
-        first = False
+        # for each beamlet we want to simulate a range of angles
+        # let's start with every 5 degrees in a 120 degree arc = 24
+        # now, what about the min, max, and central angles?
+        # really we'll have 25 won't we
+        angles = [(0, 180)]
+        angular_increment = 5  # degrees
+        angular_sweep = 120  # degrees
+        n_angles_per_side = int(angular_sweep / angular_increment) // 2
+        for i in range(n_angles_per_side):
+            angles.append(((i + 1) * angular_increment, 180))
+        for i in range(n_angles_per_side):
+            angles.append(((i + 1) * angular_increment, 0))
+        print('angles are', angles)
+        for theta, phi in angles:
+            kwargs = {
+                'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
+                'phsp_path': beamlet['phsp'],
+                'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
+                'nrcycl': args.dose_recycle,
+                'n_split': args.dose_photon_splitting,
+                'dsource': args.phantom_target_distance,
+                'theta': theta,
+                'phi': phi,
+                'phicol': 90
+            }
+            logger.info('Dose using each particle {} times so {} histories'.format(
+                kwargs['nrcycl'] + 1, kwargs['ncase']))
+            egsinp_str = template.format(**kwargs)
+            md5 = beamlet['hash'].copy()
+            md5.update(egsinp_str.encode('utf-8'))
+            base = md5.hexdigest()
+            inp = '{}.egsinp'.format(base)
+            inp_path = os.path.join(directory, inp)
+            open(inp_path, 'w').write(egsinp_str)
+            if first:
+                output.send_contents(egsinp_str, 'dosxyz.egsinp')
+            dose_filename = '{}.3ddose'.format(base)
+            dose_path = os.path.join(directory, dose_filename)
+            simulations.append({
+                'egsinp': inp,
+                'dose': dose_path
+            })
+            dose_contributions.append({
+                'dose': dose_path,
+                'hash': md5
+            })
+            first = False
     dose_simulations(directory, args.pegs4, simulations)
     return dose_contributions
 
