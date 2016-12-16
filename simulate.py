@@ -741,6 +741,20 @@ def collimate(beamlets, args):
     return collimated_beamlets
 
 
+def gen_angles(args):
+    # recall that 180 theta is center
+    # and we do (theta, phi)
+    angles = [(180, 0)]
+    angular_increment = 5  # degrees
+    angular_sweep = 120  # degrees
+    n_angles_per_side = int(angular_sweep / angular_increment) // 2
+    for j in range(n_angles_per_side):
+        angles.append((180 - (j + 1) * angular_increment, 0))
+    for j in range(n_angles_per_side):
+        angles.append((180 - (j + 1) * angular_increment, 180))
+    return angles
+
+
 def dose(beamlets, args):
     logger.info('Dosing')
     template = open(args.dos_egsinp).read()
@@ -748,21 +762,9 @@ def dose(beamlets, args):
     dose_contributions = []
     simulations = []
     first = True
-    for beamlet in beamlets:
-        # for each beamlet we want to simulate a range of angles
-        # let's start with every 5 degrees in a 120 degree arc = 24
-        # now, what about the min, max, and central angles?
-        # really we'll have 25 won't we
-        angles = [(0, 180)]
-        angular_increment = 5  # degrees
-        angular_sweep = 120  # degrees
-        n_angles_per_side = int(angular_sweep / angular_increment) // 2
-        for i in range(n_angles_per_side):
-            angles.append(((i + 1) * angular_increment, 180))
-        for i in range(n_angles_per_side):
-            angles.append(((i + 1) * angular_increment, 0))
-        print('angles are', angles)
-        for theta, phi in angles:
+    for i, beamlet in enumerate(beamlets):
+        angled_dose_contributions = {}
+        for j, (theta, phi) in enumerate(gen_angles(args)):
             kwargs = {
                 'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
                 'phsp_path': beamlet['phsp'],
@@ -791,11 +793,12 @@ def dose(beamlets, args):
                 'egsinp': inp,
                 'dose': dose_path
             })
-            dose_contributions.append({
+            angled_dose_contributions[(theta, phi)] = {
                 'dose': dose_path,
                 'hash': md5
-            })
+            }
             first = False
+        dose_contributions.append(angled_dose_contributions)
     dose_simulations(directory, args.pegs4, simulations)
     return dose_contributions
 
@@ -954,9 +957,11 @@ if __name__ == '__main__':
 
     dose_contributions = dose(beamlets['collimator'], args)
     for i, dose_contribution in enumerate(dose_contributions):
-        egslst = dose_contribution['dose'].replace('.3ddose', '.egslst')
-        output.send_file(egslst, 'dose{}.egslst'.format(i))
-        output.send_file(dose_contribution['dose'] + '.npz', 'dose{}.3ddose.npz'.format(i))
+        for (theta, phi), contribution in dose_contribution.items():
+            slug = '{}_{}_{}'.format(i, theta, phi)
+            egslst = dose_contribution['dose'].replace('.3ddose', '.egslst')
+            output.send_file(egslst, 'dose{}.egslst'.format(slug))
+            output.send_file(dose_contribution['dose'] + '.npz', 'dose{}.3ddose.npz'.format(slug))
 
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)
