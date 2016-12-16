@@ -258,7 +258,8 @@ def get_egsinp(path):
 def dose_simulations(folder, pegs4, simulations):
     to_simulate = []
     for simulation in simulations:
-        if not os.path.exists(simulation['dose']):
+        # we only check for the compressed version, since we delete the 3ddose file to save space
+        if not os.path.exists(simulation['dose'] + '.npz'):
             to_simulate.append(simulation)
     logger.info('Reusing {} and running {} dose calculations'.format(
         len(simulations) - len(to_simulate), len(to_simulate)))

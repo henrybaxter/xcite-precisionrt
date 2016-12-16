@@ -88,31 +88,35 @@ def paddick(dose, target):
     return underdosed * overdosed
 
 
+def _read_3ddose(path):
+    with open(path) as f:
+        values = iter_values(f)
+        # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
+        shape = np.fromiter(values, np.int32, 3)  # shape in x, y, z
+        # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
+        # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
+        # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
+        boundaries = [np.fromiter(values, np.float32, n + 1) for n in shape]
+        boundaries = np.array(reversed(boundaries))
+        shape = np.flipud(shape)
+        size = np.prod(shape)
+        # print(boundaries)
+        # Row/Block 5 — dose values array (nxnynz values)
+        doses = np.fromiter(values, np.float32, size).reshape(shape)
+        # print(doses)
+        # Row/Block 6 — error values array (relative errors, nxnynz values)
+        errors = np.fromiter(values, np.float32, size).reshape(shape)
+        # print(errors)
+        return Dose(boundaries, doses, errors)
+
+
 def read_3ddose(path):
-    pickle_path = path + '.pickle'
-    if not os.path.exists(pickle_path):
-        print('Reading {}'.format(path))
-        with open(path) as f:
-            values = iter_values(f)
-            # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
-            shape = np.fromiter(values, np.int32, 3)  # shape in x, y, z
-            # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
-            # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
-            # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
-            boundaries = [np.fromiter(values, np.float32, n + 1) for n in shape]
-            boundaries = list(reversed(boundaries))
-            shape = np.flipud(shape)
-            size = np.prod(shape)
-            # print(boundaries)
-            # Row/Block 5 — dose values array (nxnynz values)
-            doses = np.fromiter(values, np.float32, size).reshape(shape)
-            # print(doses)
-            # Row/Block 6 — error values array (relative errors, nxnynz values)
-            errors = np.fromiter(values, np.float32, size).reshape(shape)
-            # print(errors)
-            dose = Dose(boundaries, doses, errors)
-            pickle.dump(dose, open(pickle_path, 'wb'))
-    return pickle.load(open(pickle_path, 'rb'))
+    if path.endswith('.npz'):
+        path = ''.join(path.rsplit('.npz', 1))
+    npz_path = path + '.npz'
+    if not os.path.exists(npz_path):
+        np.savez_compressed(npz_path, **_read_3ddose(path)._asdict())
+    return Dose(**np.load(npz_path))
 
 
 def write_3ddose(path, dose):
@@ -263,19 +267,6 @@ def normalize_3ddose(path, output_path):
     write_3ddose(output_path, Dose(dose.boundaries, result, dose.errors))
 
 
-def compress(ipath):
-    opath = ipath + '.npz'
-    dose = read_3ddose(ipath)
-    boundaries = np.array(dose.boundaries)
-    np.savez_compressed(opath, boundaries=boundaries, doses=dose.doses, errors=dose.errors)
-
-
-def uncompress(ipath, opath):
-    loaded = np.load(ipath)
-    dose = Dose(loaded['boundaries'], loaded['doses'], loaded['errors'])
-    write_3ddose(opath, dose)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='+')
@@ -288,13 +279,14 @@ if __name__ == '__main__':
     parser.add_argument('--errors', action='store_true')
     parser.add_argument('--describe', action='store_true')
     parser.add_argument('--compress', action='store_true')
-    parser.add_argument('--uncompress')
+    parser.add_argument('--uncompress', action='store_true')
     parser.add_argument('--paddick', action='store_true')
     args = parser.parse_args()
     if args.compress:
-        compress(args.input[0])
+        read_3ddose(args.input[0])
+        os.remove(args.input[0])
     elif args.uncompress:
-        uncompress(args.input[0], args.uncompress)
+        read_3ddose(args.input[0])
     elif args.errors:
         dose = read_3ddose(args.input[0])
         print('{} unique error values'.format(np.unique(dose.errors).size))
