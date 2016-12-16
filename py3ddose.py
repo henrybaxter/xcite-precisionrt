@@ -230,16 +230,18 @@ def apply_dose(phantom):
 
 
 def combine_3ddose(paths, output_path):
+    # possibly chunk this - sum in groups of 100 or something?
     doses = []
-    errors = []
+    # errors = []
     for path in paths:
         dose = read_3ddose(path)
         boundaries = dose.boundaries
+        errors = dose.errors
         doses.append(dose.doses)
-        errors.append(dose.errors)
+        # errors.append(dose.errors)
     doses = np.array(doses).sum(axis=0)
-    errors = np.array(errors)
-    errors = np.sqrt(np.square(errors).sum(axis=0))
+    # errors = np.array(errors)
+    # errors = np.sqrt(np.square(errors).sum(axis=0))
     write_3ddose(output_path, Dose(boundaries, doses, errors))
 
 

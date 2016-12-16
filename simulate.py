@@ -989,13 +989,23 @@ if __name__ == '__main__':
     # output.send_file(phsp['collimator'].replace('.egsphsp1', '.egslst'), 'collimator.egslst')
 
     dose_contributions = dose(beamlets['collimator'], args)
+    center_paths = []
+    arced_paths = []
     for i, dose_contribution in enumerate(dose_contributions):
+        paths = []
         for (theta, phi), contribution in dose_contribution.items():
             slug = '{}_{}_{}'.format(i, theta, phi)
             egslst = dose_contribution['dose'].replace('.3ddose', '.egslst')
             output.send_file(egslst, 'dose{}.egslst'.format(slug))
             output.send_file(dose_contribution['dose'] + '.npz', 'dose{}.3ddose.npz'.format(slug))
-
+            if theta == 180 and phi == 0:
+                center_paths.append(contribution['dose'])
+            paths.append(contribution['dose'])
+        arced_path = os.path.join(args.output_dir, 'arc.dose{}.3ddose.npz'.format(i))
+        arced_paths.append(arced_path)
+        py3ddose.combine_3ddose(paths, arced_path)
+    py3ddose.combine_3ddose(center_paths, os.path.join(args.output_dir, 'combined.3ddose.npz'))
+    py3ddose.combine_3ddose(arced_paths, os.path.join(args.output_dir, 'arced.3ddose.npz'))
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)
     template = open('template.tex').read()
