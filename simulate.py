@@ -265,7 +265,12 @@ def dose_simulations(folder, pegs4, simulations):
         len(simulations) - len(to_simulate), len(to_simulate)))
     dose = functools.partial(dose_simulation, folder, pegs4)
     pool = Pool(cpu_count() - 1)
-    pool.map(dose, to_simulate)
+    start = time.time()
+    for i, result in enumerate(pool.imap(dose, to_simulate)):
+        elapsed = time.time() - start
+        portion_complete = (i + 1) / len(to_simulate)
+        estimated_remaining = elapsed / portion_complete
+        print('{} of {} simulations complete, {:.2f} mimnutes remaining'.format(i + 1, len(to_simulate), estimated_remaining / 60))
 
 
 def dose_simulation(folder, pegs4, simulation):
@@ -287,7 +292,8 @@ def dose_simulation(folder, pegs4, simulation):
     open(egslst, 'w').write(out)
     if 'Warning' in out:
         logger.info('Warning in {}'.format(egslst))
-    py3ddose.compress(simulation['dose'])
+    py3ddose.read_3ddose(simulation['dose'])
+    os.remove(simulation['dose'])
 
 
 def beam_simulations(folder, pegs4, simulations):
@@ -301,13 +307,24 @@ def beam_simulations(folder, pegs4, simulations):
         len(simulations) - len(to_simulate), len(to_simulate)))
     simulate = functools.partial(beam_simulation, folder, pegs4)
     pool = Pool(cpu_count() - 1)
-    pool.map(simulate, to_simulate)
+    start = time.time()
+    for i, result in enumerate(pool.imap(simulate, to_simulate)):
+        elapsed = time.time() - start
+        portion_complete = (i + 1) / len(to_simulate)
+        estimated_remaining = elapsed / portion_complete
+        print('{} of {} simulations complete, {:.2f} mimnutes remaining'.format(i + 1, len(to_simulate), estimated_remaining / 60))
 
     if translate_y:
         logger.info('Translating source phase space files')
         pool = Pool(cpu_count() - 1)
         translate = functools.partial(beamdpr_translate, folder)
-        pool.map(translate, to_simulate)
+        start = time.time()
+        for i, result in enumerate(pool.imap(translate, to_simulate)):
+            elapsed = time.time() - start
+            portion_complete = (i + 1) / len(to_simulate)
+            estimated_remaining = elapsed / portion_complete
+            print('{} of {} translations complete, {:.2f} mimnutes remaining'.format(i + 1, len(to_simulate), estimated_remaining / 60))
+
 
     """
     logger.info('Checking sizes of phase space files')
@@ -557,21 +574,36 @@ def filter_source(beamlets, args):
     return filtered_beamlets
 
 
+def _rotate(angle, phsp):
+    command = ['beamdpr', 'rotate', phsp, phsp, '-a', str(math.pi / 2)]
+    result = run_process(command, stdout=PIPE, stderr=PIPE)
+    if result.returncode != 0:
+        logger.error('Command failed: "{}"'.format(' '.join(command)))
+        logger.error(result.stdout.decode('utf-8'))
+        logger.error(result.stderr.decode('utf-8'))
+        sys.exit(1)
+
+
 def rotate(beamlets):
     logger.info("Rotating beamlets")
-    for beamlet in beamlets:
+    to_rotate = []
+    for i, beamlet in enumerate(beamlets):
         beamlet['hash'].update('zrotatep=90'.encode('utf-8'))
         filename = beamlet['hash'].hexdigest() + '.egsphsp1'
         phsp = os.path.join(os.path.dirname(beamlet['phsp']), filename)
         if not os.path.exists(phsp):
-            command = ['beamdpr', 'rotate', beamlet['phsp'], phsp, '-a', str(math.pi / 2)]
-            result = run_process(command, stdout=PIPE, stderr=PIPE)
-            if result.returncode != 0:
-                logger.error('Command failed: "{}"'.format(' '.join(command)))
-                logger.error(result.stdout.decode('utf-8'))
-                logger.error(result.stderr.decode('utf-8'))
-                sys.exit(1)
+            to_rotate.append(beamlet['phsp'])
         beamlet['phsp'] = phsp
+    logger.info('Reusing {} and running {} rotations'.format(
+        len(beamlets) - len(to_rotate), len(to_rotate)))
+    pool = Pool(cpu_count() - 1)
+    __rotate = functools.partial(_rotate, str(math.pi / 2))
+    start = time.time()
+    for i, result in enumerate(pool.imap(__rotate, to_rotate)):
+        elapsed = time.time() - start
+        portion_complete = (i + 1) / len(to_rotate)
+        estimated_remaining = elapsed / portion_complete
+        print('{} of {} rotations complete, {:.2f} mimnutes remaining'.format(i + 1, len(to_rotate), estimated_remaining / 60))
     return beamlets
 
 
