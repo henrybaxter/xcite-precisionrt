@@ -116,8 +116,6 @@ def parse_args():
             'rmax': args.rmax,
             'template': args.collimator,
             'length': None,
-            # 'septa_width': args.septa_width,
-            # 'hole_width': args.hole_width,
             'regions_per_block': None,
             'interpolating_blocks': None
         },
@@ -191,7 +189,8 @@ def dose_simulations(folder, pegs4, simulations):
         elapsed = time.time() - start
         portion_complete = (i + 1) / len(to_simulate)
         estimated_remaining = elapsed / portion_complete
-        print('{} of {} simulations complete, {:.2f} mimnutes remaining'.format(i + 1, len(to_simulate), estimated_remaining / 60))
+        print('{} of {} simulations complete, {:.2f} mimnutes remaining'.format(
+            i + 1, len(to_simulate), estimated_remaining / 60))
 
 
 def dose_simulation(folder, pegs4, simulation):
@@ -543,7 +542,8 @@ def collimate(beamlets, args):
         inp = '{}.egsinp'.format(base)
         inp_path = os.path.join(folder, inp)
         open(inp_path, 'w').write(egsinp_str)
-        shutil.copy(inp_path, os.path.join(args.output_dir, 'collimator/collimator{}.egsinp'.format(i)))
+        shutil.copy(inp_path, os.path.join(
+            args.output_dir, 'collimator/collimator{}.egsinp'.format(i)))
         phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
         simulations.append({
             'egsinp': inp,  # filename
