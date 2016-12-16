@@ -1003,8 +1003,11 @@ if __name__ == '__main__':
             paths.append(contribution['dose'])
         arced_path = os.path.join(args.output_dir, 'arc.dose{}.3ddose.npz'.format(i))
         arced_paths.append(arced_path)
+        logger.info('Combining arced doses for beamlet {}'.format(i))
         py3ddose.combine_3ddose(paths, arced_path)
+    logger.info('Combining center doses')
     py3ddose.combine_3ddose(center_paths, os.path.join(args.output_dir, 'combined.3ddose.npz'))
+    logger.info('Combining arced doses')
     py3ddose.combine_3ddose(arced_paths, os.path.join(args.output_dir, 'arced.3ddose.npz'))
     # now we take the md5 of the args? collimated beamlets.
     plots = grace_plot(args.output_dir, phsp, args)
