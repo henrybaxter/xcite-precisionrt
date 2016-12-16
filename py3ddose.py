@@ -96,8 +96,7 @@ def _read_3ddose(path):
         # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
         # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
         # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
-        boundaries = [np.fromiter(values, np.float32, n + 1) for n in shape]
-        boundaries = np.array(reversed(boundaries))
+        boundaries = np.flipud([np.fromiter(values, np.float32, n + 1) for n in shape])
         shape = np.flipud(shape)
         size = np.prod(shape)
         # print(boundaries)
@@ -123,7 +122,7 @@ def write_3ddose(path, dose):
     assert len(dose.doses.shape) == 3, "Doses must be 3d array"
     assert len(dose.errors.shape) == 3, "Errors must be 3d array"
     with open(path, 'w') as f:
-        boundaries = list(reversed(dose.boundaries))
+        boundaries = np.flipud(dose.boundaries)
         # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
         write_lines(f, [len(boundary) - 1 for boundary in boundaries], 'integer')
         # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
@@ -236,6 +235,7 @@ def combine_3ddose(paths, output_path):
     for path in paths:
         dose = read_3ddose(path)
         boundaries = dose.boundaries
+        print(path)
         errors = dose.errors
         doses.append(dose.doses)
         # errors.append(dose.errors)
@@ -288,7 +288,8 @@ if __name__ == '__main__':
         read_3ddose(args.input[0])
         os.remove(args.input[0])
     elif args.uncompress:
-        read_3ddose(args.input[0])
+        dose = read_3ddose(args.input[0])
+        write_3ddose(args.input[0].replace('.npz', ''), dose)
     elif args.errors:
         dose = read_3ddose(args.input[0])
         print('{} unique error values'.format(np.unique(dose.errors).size))
