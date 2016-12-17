@@ -894,11 +894,11 @@ if __name__ == '__main__':
     # dose_contributions = dose(beamlets['collimator'], args)
     # combine_doses(dose_contributions)
     doses, arc_doses = fast_dose(beamlets['collimator'], args)
-    paths = [dose['path'] + '.npz' for dose in doses]
+    paths = [dose['dose'] + '.npz' for dose in doses]
     opath = os.path.join(args.output_dir, 'dose.3ddose')
     py3ddose.combine_3ddose(paths, opath)
     py3ddose.read_3ddose(opath)
-    paths = [dose['path'] + '.npz' for dose in arc_doses]
+    paths = [dose['dose'] + '.npz' for dose in arc_doses]
     opath = os.path.join(args.output_dir, 'arc_dose.3ddose')
     py3ddose.combine_3ddose(paths, opath)
     py3ddose.read_3ddose(opath)
