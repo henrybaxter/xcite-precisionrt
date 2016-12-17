@@ -23,7 +23,7 @@ Row/Block 6 — error values array (relative errors, nxnynz values)
 
 Dose = namedtuple('Dose', ['boundaries', 'doses', 'errors'])
 Phantom = namedtuple('Phantom', ['medium_types', 'boundaries', 'medium_indices', 'densities'])
-Target = namedtuple('Target', ['origin', 'radius'])
+Target = namedtuple('Target', ['isocenter', 'radius'])
 
 
 def volumes(boundaries):
@@ -47,7 +47,7 @@ def simplified_skin_to_target_ratio(dose, target):
     print('skin mean', skin_mean)
 
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
-    translated = centers - target.origin[:, np.newaxis]
+    translated = centers - target.isocenter[:, np.newaxis]
     d2 = reduce(np.add.outer, np.square(translated))
     r2 = np.square(target.radius)
     target_indices = np.where(d2 < r2)
@@ -62,7 +62,7 @@ def simplified_skin_to_target_ratio(dose, target):
 
 def paddick(dose, target):
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
-    translated = centers - target.origin[:, np.newaxis]
+    translated = centers - target.isocenter[:, np.newaxis]
     index = np.argmin(np.abs(translated), axis=1)
     reference_dose = dose.doses[tuple(index)]
     normalized = dose.doses / reference_dose
