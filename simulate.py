@@ -85,11 +85,6 @@ def parse_args():
         os.environ['HEN_HOUSE'], '../egs_home/'))
     logger.info('egs_home is {}'.format(args.egs_home))
 
-    skip_args = ['clean', 'build_collimator', 'plots', 'stages']
-    printable_args = [(k, v) for k, v in sorted(args.__dict__.items()) if k not in skip_args]
-    pretty_args = '\n'.join(['\t{}: {}'.format(k, v) for k, v in printable_args])
-    logger.info('Arguments: \n{}'.format(pretty_args))
-
     args.simulation_properties = {
         'common': {
             'name': args.name,
@@ -745,13 +740,15 @@ def itemize_photons(beamlets):
     return '\n'.join(lines)
 
 
-def configure_logging():
-    formatter = logging.Formatter('%(levelname)s %(asctime)s.%(msecs)03d %(message)s')
+def configure_logging(args):
+    revision = run_command(['git', 'rev-parse', '--short', 'HEAD']).strip()
+    formatter = logging.Formatter('%(levelname)s {name} {revision} %(asctime)s %(message)s'.format(
+        revision=revision, name=args.name), '%H:%M:%S')
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(formatter)
-    now = datetime.datetime.now()
-    filename = 'simulate.{}.log'.format(datetime.datetime.strftime(now, '%Y-%m-%d.%H:%M:%S'))
+    today = datetime.date.today()
+    filename = 'simulation.{}.{}.log'.format(args.name.replace(' ', ''), str(today))
     file_handler = logging.FileHandler(filename)
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
@@ -777,10 +774,17 @@ def write_report(args, beamlets):
         args.output_dir, time.time() - start))
 
 
+def log_args(args):
+    printable_args = [(k, v) for k, v in sorted(args.__dict__.items())]
+    pretty_args = '\n'.join(['\t{}: {}'.format(k, v) for k, v in printable_args])
+    logger.info('Arguments: \n{}'.format(pretty_args))
+
+
 if __name__ == '__main__':
     start = time.time()
-    configure_logging()
     args = parse_args()
+    configure_logging(args)
+    log_args(args)
 
     phsp = {}
     beamlets = {}
