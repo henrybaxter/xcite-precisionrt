@@ -209,6 +209,7 @@ def dose_simulation(folder, pegs4, simulation):
         logger.info('Warning in {}'.format(egslst))
     py3ddose.read_3ddose(simulation['dose'])
     os.remove(simulation['dose'])
+    os.remove(simulation['dose'].replace('.3ddose', '.egsdat'))
 
 
 def map_with_progress(function, items, cpus=None):
