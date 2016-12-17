@@ -69,6 +69,8 @@ def parse_args():
                         help='.egsphant file')
     parser.add_argument('--dos-egsinp', default='dose_template.egsinp',
                         help='.egsinp for dosxyznrc')
+    parser.add_argument('--arc-dose-egsinp', default='arc_dose_template.egsinp',
+                        help='.egsinp for arced dosxyznrc')
     parser.add_argument('--dose-recycle', type=int, default=9,
                         help='Use particles n + 1 times')
     parser.add_argument('--dose-photon-splitting', type=int, default=20,
@@ -78,7 +80,7 @@ def parse_args():
     args.output_dir = args.name.replace(' ', '-')
     if os.path.exists(args.output_dir):
         logger.warning('{} already exists'.format(args.output_dir))
-    for subfolder in ['source', 'filter', 'collimator', 'dose']:
+    for subfolder in ['dose', 'arc_dose']:
         os.makedirs(os.path.join(args.output_dir, subfolder), exist_ok=True)
 
     args.egs_home = os.path.abspath(os.path.join(
@@ -209,7 +211,6 @@ def dose_simulation(folder, pegs4, simulation):
         logger.info('Warning in {}'.format(egslst))
     py3ddose.read_3ddose(simulation['dose'])
     os.remove(simulation['dose'])
-    os.remove(simulation['dose'].replace('.3ddose', '.egsdat'))
 
 
 def map_with_progress(function, items, cpus=None):
@@ -358,7 +359,6 @@ def generate_source(args):
         inp = '{}.egsinp'.format(base)
         inp_path = os.path.join(folder, inp)
         open(inp_path, 'w').write(egsinp_str)
-        shutil.copy(inp_path, os.path.join(args.output_dir, 'source/source{}.egsinp'.format(i)))
         phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
         simulations.append({
             'egsinp': inp,
@@ -371,8 +371,11 @@ def generate_source(args):
         })
     args.simulation_properties['source']['histories'] = histories
     beam_simulations(folder, args.pegs4, simulations)
-    egslst = os.path.join(folder, simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
-    shutil.copy(egslst, os.path.join(args.output_dir, 'source0.egslst'))
+    index = len(simulations) // 2
+    egslst = os.path.join(folder, simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
+    shutil.copy(egslst, os.path.join(args.output_dir, 'source{}.egslst'.format(index)))
+    _egsinp = os.path.join(folder, simulations[index]['egsinp'])
+    shutil.copy(_egsinp, os.path.join(args.output_dir, 'source{}.egsinp'.format(index)))
     return beamlets
 
 
@@ -443,7 +446,6 @@ def filter_source(beamlets, args):
         inp = '{}.egsinp'.format(base)
         inp_path = os.path.join(folder, inp)
         open(inp_path, 'w').write(egsinp_str)
-        shutil.copy(inp_path, os.path.join(args.output_dir, 'filter/filter{}.egsinp'.format(i)))
         phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
         simulations.append({
             'egsinp': inp,  # filename
@@ -454,8 +456,11 @@ def filter_source(beamlets, args):
             'hash': md5
         })
     beam_simulations(folder, args.pegs4, simulations)
-    egslst = os.path.join(folder, simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
-    shutil.copy(egslst, os.path.join(args.output_dir, 'filter0.egslst'))
+    index = len(simulations) // 2
+    egslst = os.path.join(folder, simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
+    shutil.copy(egslst, os.path.join(args.output_dir, 'filter{}.egslst'.format(index)))
+    _egsinp = os.path.join(folder, simulations[index]['egsinp'])
+    shutil.copy(_egsinp, os.path.join(args.output_dir, 'filter{}.egsinp'.format(index)))
     return filtered_beamlets
 
 
@@ -538,8 +543,6 @@ def collimate(beamlets, args):
         inp = '{}.egsinp'.format(base)
         inp_path = os.path.join(folder, inp)
         open(inp_path, 'w').write(egsinp_str)
-        shutil.copy(inp_path, os.path.join(
-            args.output_dir, 'collimator/collimator{}.egsinp'.format(i)))
         phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
         simulations.append({
             'egsinp': inp,  # filename
@@ -550,8 +553,11 @@ def collimate(beamlets, args):
             'hash': md5
         })
     beam_simulations(folder, args.pegs4, simulations)
-    egslst = os.path.join(folder, simulations[0]['egsinp'].replace('.egsinp', '.egslst'))
-    shutil.copy(egslst, os.path.join(args.output_dir, 'collimator0.egslst'))
+    index = len(simulations) // 2
+    egslst = os.path.join(folder, simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
+    shutil.copy(egslst, os.path.join(args.output_dir, 'collimator{}.egslst'.format(index)))
+    _egsinp = os.path.join(folder, simulations[index]['egsinp'])
+    shutil.copy(_egsinp, os.path.join(args.output_dir, 'collimator{}.egsinp'.format(index)))
     return collimated_beamlets
 
 
@@ -569,8 +575,90 @@ def dose_angles(args):
     return angles
 
 
+def fast_dose(beamlets, args):
+    logger.info('Fast dosing')
+    template = open(args.dos_egsinp).read()
+    arc_template = open(args.arc_dose_egsinp).read()
+    folder = os.path.join(args.egs_home, 'dosxyznrc')
+    doses = []
+    arc_doses = []
+    simulations = []
+    arc_simulations = []
+    for i, beamlet in enumerate(beamlets):
+        # run two simulations, normal and arced
+        context = {
+            'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
+            'phsp_path': beamlet['phsp'],
+            'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
+            'nrcycl': args.dose_recycle,
+            'n_split': args.dose_photon_splitting,
+            'dsource': args.phantom_target_distance,
+            'phicol': 90,
+            'x': 0,
+            'y': 20,
+            'z': -10,
+            'idat': 1  # do NOT output intermediate files (.egsdat?)
+        }
+        dose_context = context.copy()
+        dose_context['theta'] = 180
+        dose_context['phi'] = 0
+        arc_context = context.copy()
+        egsinp_str = template.format(**dose_context)
+        arc_egsinp_str = arc_template.format(**arc_context)
+        md5 = beamlet['hash'].copy()
+        arc_md5 = beamlet['hash'].copy()
+        base = md5.hexdigest()
+        arc_base = arc_md5.hexdigest()
+        inp = '{}.egsinp'.format(base)
+        arc_inp = '{}.egsinp'.format(arc_base)
+        inp_path = os.path.join(folder, inp)
+        arc_inp_path = os.path.join(folder, arc_inp)
+        open(inp_path, 'w').write(egsinp_str)
+        open(arc_inp_path, 'w').write(arc_egsinp_str)
+        dose_filename = '{}.3ddose'.format(base)
+        arc_dose_filename = '{}.3ddose'.format(arc_base)
+        dose_path = os.path.join(folder, dose_filename)
+        arc_dose_path = os.path.join(folder, arc_dose_filename)
+        simulations.append({
+            'egsinp': inp,
+            'dose': dose_path
+        })
+        arc_simulations.append({
+            'egsinp': arc_inp,
+            'dose': arc_dose_path
+        })
+        doses.append({
+            'dose': dose_path,
+            'hash': md5
+        })
+        arc_doses.append({
+            'dose': arc_dose_path,
+            'hash': md5
+        })
+    dose_simulations(folder, args.pegs4, simulations)
+    dose_simulations(folder, args.pegs4, arc_simulations)
+    index = len(simulations) // 2
+    egslst = os.path.join(folder, simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
+    shutil.copy(egslst, os.path.join(args.output_dir, 'dose{}.egslst'.format(index)))
+    _egsinp = os.path.join(folder, simulations[index]['egsinp'])
+    shutil.copy(_egsinp, os.path.join(args.output_dir, 'dose{}.egsinp'.format(index)))
+    egslst = os.path.join(folder, arc_simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
+    shutil.copy(egslst, os.path.join(args.output_dir, 'arc_dose{}.egslst'.format(index)))
+    _egsinp = os.path.join(folder, arc_simulations[index]['egsinp'])
+    shutil.copy(_egsinp, os.path.join(args.output_dir, 'arc_dose{}.egsinp'.format(index)))
+    for i, dose in enumerate(doses):
+        ipath = dose['dose'] + '.npz'
+        opath = os.path.join(args.output_dir, 'dose/dose{}.3ddose.npz'.format(i))
+        shutil.copy(ipath, opath)
+    for i, dose in enumerate(arc_doses):
+        ipath = dose['dose'] + '.npz'
+        opath = os.path.join(args.output_dir, 'arc_dose/arc_dose{}.3ddose.npz'.format(i))
+        shutil.copy(ipath, opath)
+    return doses, arc_doses
+
+
 def dose(beamlets, args):
-    logger.info('Dosing')
+    logger.info('Slow dosing')
     template = open(args.dos_egsinp).read()
     folder = os.path.join(args.egs_home, 'dosxyznrc')
     dose_contributions = []
@@ -803,8 +891,17 @@ if __name__ == '__main__':
     phsp['collimator'] = sample_combine(beamlets['collimator'], desired=100000000)
     shutil.copy(phsp['collimator'], os.path.join(args.output_dir, 'sampled_collimator.egsphsp1'))
 
-    dose_contributions = dose(beamlets['collimator'], args)
-    combine_doses(dose_contributions)
+    # dose_contributions = dose(beamlets['collimator'], args)
+    # combine_doses(dose_contributions)
+    doses, arc_doses = fast_dose(beamlets['collimator'], args)
+    paths = [dose['path'] + '.npz' for dose in doses]
+    opath = os.path.join(args.output_dir, 'dose.3ddose')
+    py3ddose.combine_3ddose(paths, opath)
+    py3ddose.read_3ddose(opath)
+    paths = [dose['path'] + '.npz' for dose in arc_doses]
+    opath = os.path.join(args.output_dir, 'arc_dose.3ddose')
+    py3ddose.combine_3ddose(paths, opath)
+    py3ddose.read_3ddose(opath)
 
     plots = grace_plot(args.output_dir, phsp, args)
 
