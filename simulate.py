@@ -607,6 +607,8 @@ def fast_dose(beamlets, args):
         arc_egsinp_str = arc_template.format(**arc_context)
         md5 = beamlet['hash'].copy()
         arc_md5 = beamlet['hash'].copy()
+        md5.update(egsinp_str.encode('utf-8'))
+        arc_md5.update(arc_egsinp_str.encode('utf-8'))
         base = md5.hexdigest()
         arc_base = arc_md5.hexdigest()
         inp = '{}.egsinp'.format(base)
