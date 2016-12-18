@@ -795,7 +795,7 @@ if __name__ == '__main__':
 
     arc_dose = py3ddose.read_3ddose(arc_dose_path)
     data = {
-        'filter': _filter,
+        '_filter': _filter,
         'collimator': collimator,
         'collimator_stats': collimator_analyzer.analyze(collimator),
         'beamlets': beamlets,

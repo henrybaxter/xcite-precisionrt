@@ -42,7 +42,7 @@ The X-ray source consisted of an xray tube with the following parameters.
 
 The generated X-rays were then filtered with the following materials.
 \begin{itemize}
-	((* for slab in filter['cms']['slabs'] *))
+	((* for slab in _filter['cms']['slabs'] *))
 	\item \SI{((( slab['zthick'] )))}{\cm} of ((( slab['medium']|medium )))
 	((* endfor *))
 \end{itemize}
@@ -59,9 +59,9 @@ The collimator had the following properties.
 
 After collimation a phantom was dosed.
 \begin{itemize}
-	\item Target size: \SI{((( args.target_size )))}
-	\item Target depth: \SI{((( args.target_z | abs )))}
-	\item Distance from collimator to skin: \SI{((( skin_distance )))}
+	\item Target size: \SI{((( args.target_size )))}{\cm}
+	\item Target depth: \SI{((( args.target_z | abs )))}{\cm}
+	\item Distance from collimator to skin: \SI{((( skin_distance )))}{\cm}
 	\item Paddick's conformity index: ((( paddicks )))
 	\item Mean skin dose over mean target dose: ((( skin_to_target )))
 \end{itemize}
