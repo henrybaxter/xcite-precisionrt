@@ -71,6 +71,7 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
         generate(lines, output_path, overwrite)
         eps(output_path)
         generated.append(plot)
+    return generated
 
 
 def generate(arguments, output_path, overwrite):
