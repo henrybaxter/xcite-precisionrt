@@ -38,13 +38,14 @@ The X-ray source consisted of an xray tube with the following parameters.
 	\item Incident electrons simulated (histories): ((( args.histories )))
 	\item Tungsten target length: \SI{((( args.target_length )))}{\cm}
 	\item Gap between simulated electron beams: \SI{((( args.beam_gap )))}{\cm}
-\begin{itemize}
+\end{itemize}
 
 The generated X-rays were then filtered with the following materials.
 \begin{itemize}
 	((* for slab in filter['cms']['slabs'] *))
 	\item \SI{((( slab['zthick'] )))}{\cm} of ((( slab['medium']|medium )))
 	((* endfor *))
+\end{itemize}
 \end{abstract}
 
 The collimator had the following properties.
