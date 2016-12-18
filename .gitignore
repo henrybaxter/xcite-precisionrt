@@ -5,3 +5,6 @@ __pycache__
 *.pdf
 *.eps
 *.egsphsp1
+*.3ddose
+*.scad
+*.npz

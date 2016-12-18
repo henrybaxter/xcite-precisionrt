@@ -14,10 +14,13 @@ import logging
 
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import cpu_count
+import numpy as np
 
 import report
 import egsinp
 import grace
+import collimator_analyzer
+import dose_contours
 import py3ddose
 
 logger = logging.getLogger(__name__)
@@ -75,6 +78,8 @@ def parse_args():
                         help='Isocenter y coordinate')
     parser.add_argument('--target-x', type=float, default=0,
                         help='Isocenter x coordinate')
+    parser.add_argument('--target-size', type=float, default=1.0,
+                        help='Target size')
     parser.add_argument('--dos-egsinp', default='dose_template.egsinp',
                         help='.egsinp for dosxyznrc')
     parser.add_argument('--arc-dose-egsinp', default='arc_dose_template.egsinp',
@@ -692,6 +697,24 @@ def dose(beamlets, args):
     return dose_contributions
 
 
+def combine_fast_doses(doses, arc_doses):
+    paths = [dose['dose'] + '.npz' for dose in doses]
+    opath1 = os.path.join(args.output_dir, 'dose.3ddose')
+    if os.path.exists(opath1):
+        logger.warning('Combined dose {} already exists'.format(opath1))
+    else:
+        py3ddose.combine_3ddose(paths, opath1)
+        py3ddose.read_3ddose(opath1)
+    paths = [dose['dose'] + '.npz' for dose in arc_doses]
+    opath2 = os.path.join(args.output_dir, 'arc_dose.3ddose')
+    if os.path.exists(opath2):
+        logger.warning('Combined dose {} already exists'.format(opath2))
+    else:
+        py3ddose.combine_3ddose(paths, opath2)
+        py3ddose.read_3ddose(opath2)
+    return opath1, opath2
+
+
 def combine_doses(contributions):
     """Assumes contributions is a list of dictionaries, each containing entries like
     (theta, phi): { 'dose': path, 'hash': object }
@@ -762,23 +785,24 @@ if __name__ == '__main__':
     # dose_contributions = dose(beamlets['collimator'], args)
     # combine_doses(dose_contributions)
     doses, arc_doses = fast_dose(beamlets['collimator'], args)
-    paths = [dose['dose'] + '.npz' for dose in doses]
-    opath = os.path.join(args.output_dir, 'dose.3ddose')
-    py3ddose.combine_3ddose(paths, opath)
-    py3ddose.read_3ddose(opath)
-    paths = [dose['dose'] + '.npz' for dose in arc_doses]
-    opath = os.path.join(args.output_dir, 'arc_dose.3ddose')
-    py3ddose.combine_3ddose(paths, opath)
-    py3ddose.read_3ddose(opath)
+    dose_path, arc_dose_path = combine_fast_doses(doses, arc_doses)
+    target = py3ddose.Target(
+        np.array([args.target_z, args.target_y, args.target_x]),
+        args.target_size)
+    contour_plots = dose_contours.plot(args.phantom, dose_path, target, args.output_dir, 'dose')
+    arc_contour_plots = dose_contours.plot(args.phantom, arc_dose_path, target, args.output_dir, 'arc_dose')
 
     plots = grace.make_plots(args.output_dir, phsp, args.plot_config)
 
     data = {
         'filter': _filter,
         'collimator': collimator,
+        'collimator_stats': collimator_analyzer.analyze(collimator),
         'beamlets': beamlets,
         'phsp': phsp,
-        'plots': plots
+        'plots': plots,
+        'contour_plots': contour_plots,
+        'arc_contour_plots': arc_contour_plots
     }
     report.generate(data, args)
 

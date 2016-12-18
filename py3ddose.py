@@ -235,7 +235,6 @@ def combine_3ddose(paths, output_path):
     for path in paths:
         dose = read_3ddose(path)
         boundaries = dose.boundaries
-        print(path)
         errors = dose.errors
         doses.append(dose.doses)
         # errors.append(dose.errors)

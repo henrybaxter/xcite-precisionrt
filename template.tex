@@ -12,6 +12,7 @@
 \usepackage{hyperref}
 \usepackage{siunitx}
 \usepackage{mhchem}
+\usepackage{subfig}
 
 \title{Simulation ((( name )))}
 \author{
@@ -48,17 +49,17 @@ The generated X-rays were then filtered with the following materials.
 
 The collimator had the following properties.
 \begin{itemize}
-	\item Distance from anode to exit: \SI{((( collimator.length )))}{\cm}
-	\item Number of holes: ((( collimator.holes )))
-	\item Number of interpolating BLOCK CMs: ((( collimator.interpolating_blocks )))
-	\item Total area of holes on anode side: ((( collimator.anode_area )))
-	\item Total area of holes at exit: ((( collimator.exit_area )))
+	\item Distance from anode to exit: \SI{((( collimator_stats['length'] )))}{\cm}
+	\item Number of holes: ((( collimator_stats['blocks'][0]['regions'] )))
+	\item Number of interpolating BLOCK CMs: ((( collimator_stats['total_blocks'] )))
+	\item Total area of holes on anode side: ((( collimator_stats['anode_area'] )))
+	\item Total area of holes at exit: ((( collimator_stats['exit_area'] )))
 \end{itemize}
 
 After collimation a phantom was dosed.
 \begin{itemize}
-	\item Target size: \SI{((( collimator.target_size )))}
-	\item Target depth: \SI{((( abs(args.target_z) )))}
+	\item Target size: \SI{((( args.target_size )))}
+	\item Target depth: \SI{((( args.target_z | abs )))}
 	\item Distance from collimator to skin: \SI{((( args.target_distance - abs(args.target_z) )))}
 	\item Paddick's conformity index: ((( paddicks )))
 	\item Mean skin dose over mean target dose: ((( skin_to_target )))
@@ -88,6 +89,29 @@ After collimation a phantom was dosed.
 			\end{figure}
 		((* endfor *))
 
+((* endfor *))
+
+\section{Dose distributions}
+
+((* for plot in contour_plots *))
+	\susection{(((plot.name)))}
+	\begin{figure}[H]
+	\centering
+	\includegraphics[]{(((plot.path|strip_extension)))}
+	\caption{(((plot.name)))}
+	\label{fig:(((plot.slug)))}
+	\end{figure}
+((* endfor *))
+
+\section{Arced dose distributions}
+((* for plot in arc_contour_plots *))
+	\susection{(((plot.name)))}
+	\begin{figure}[H]
+	\centering
+	\includegraphics[]{(((plot.path|strip_extension)))}
+	\caption{(((plot.name)))}
+	\label{fig:(((plot.slug)))}
+	\end{figure}
 ((* endfor *))
 
 
