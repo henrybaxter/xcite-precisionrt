@@ -28,7 +28,7 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--plog-config', action='append', default=['grace.json'])
+    parser.add_argument('--plot-config', action='append', default=['grace.json'])
 
     # common
     parser.add_argument('name')
