@@ -1,8 +1,7 @@
 {
-	"plots": [
+	"scatter": [
 		{
 			"slug": "source_scatter",
-			"type": "scatter",
 			"name": "Reflection Target Scatter Plot",
 			"phsp": "source",
 			"extents": {
@@ -14,7 +13,6 @@
 		},
 		{
 			"slug": "source_scatter_section",
-			"type": "scatter",
 			"name": "Reflection Target Scatter Plot (Small Section)",
 			"phsp": "source",
 			"extents": {
@@ -26,7 +24,6 @@
 		},
 		{
 			"slug": "filter_scatter",
-			"type": "scatter",
 			"name": "Filter Scatter Plot",
 			"phsp": "filter",
 			"extents": {
@@ -39,7 +36,6 @@
 		},
 		{
 			"slug": "collimator_scatter",
-			"type": "scatter",
 			"name": "Collimator Scatter Plot",
 			"phsp": "collimator",
 			"extents": {
@@ -52,7 +48,6 @@
 		},
 		{
 			"slug": "collimator_scatter_section",
-			"type": "scatter",
 			"name": "Collimator Scatter Plot (Small Section)",
 			"phsp": "collimator",
 			"extents": {
@@ -62,5 +57,14 @@
 				"ymax": 1
 			}
 		}
+	],
+	"energy_fluence": [
+
+	],
+	"angular": [
+		
+	],
+	"spectral": [
+
 	]
 }

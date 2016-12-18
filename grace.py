@@ -47,10 +47,10 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
     # plots is a list of plots, we just merge them together
     plots = []
     for path in config_paths:
-        plots.extend(json.load(open(path))['plots'])
+        plots.extend(json.load(open(path)))
     os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
     generated = []
-    for plot in plots:
+    for plot_type, plot in plots.items():
         logger.info("Processing {}".format(plot['slug']))
         if plot['type'] == 'scatter':
             plotter = scatter

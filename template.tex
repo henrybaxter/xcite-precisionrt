@@ -70,10 +70,9 @@ After collimation a phantom was dosed.
 \tableofcontents
 
 
-((* for plot_type, plots in plots *))
+((* for plot_type, plots in plots.items() *))
 	\section{((( plot_type.title() ))) Plots}
-		
-		((* for plot in [p if p['type'] == plot_type for p in plots] *))
+		((* for plot in plots *))
 			\subsection{(((plot.name)))}
 			\begin{figure}[H]
 			\centering
@@ -82,10 +81,9 @@ After collimation a phantom was dosed.
 			\label{fig:(((plot.slug)))}
 			\end{figure}
 		((* endfor *))
-
 ((* endfor *))
 
-\section{Dose distributions}
+\section{Dose contributions}
 
 ((* for plot in contour_plots *))
 	\susection{(((plot.name)))}
@@ -97,7 +95,7 @@ After collimation a phantom was dosed.
 	\end{figure}
 ((* endfor *))
 
-\section{Arced dose distributions}
+\section{Arced dose contributions}
 ((* for plot in arc_contour_plots *))
 	\susection{(((plot.name)))}
 	\begin{figure}[H]
