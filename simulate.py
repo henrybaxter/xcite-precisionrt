@@ -479,10 +479,11 @@ def build_collimator(args):
     template['cms'] = [cm for cm in collimator['cms'] if cm['type'] == 'BLOCK']
     if not template['cms']:
         raise ValueError('No BLOCK CMs found in collimator')
+    # for collimators that are part of a larger egsinp simulation file
     zoffset = template['cms'][0]['zmin']
     if not args.target_distance:
-        # not given so infer it from zfocus
-        args.target_distance = template['cms'][0]['zfocus'] - zoffset
+        # target distance is measured from the end of the collimator
+        args.target_distance = template['cms'][0]['zfocus'] -  zoffset - template['cms'][-1]['zmax']
         logger.info('Inferring target distance of {} cm'.format(args.target_distance))
     for block in template['cms']:
         block['zmin'] -= zoffset
