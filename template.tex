@@ -10,8 +10,10 @@
 \usepackage{rotating}
 \usepackage{float}
 \usepackage{hyperref}
+\usepackage{siunitx}
+\usepackage{mhchem}
 
-\title{Simulation Report}
+\title{Simulation ((( name )))}
 \author{
         Henry Baxter \\
                 Department of Physics and Astronomy\\
@@ -25,155 +27,68 @@
 \maketitle
 
 \begin{abstract}
-An EGSnrc simulation was run using the following parameters:
+An EGSnrc simulation was run on ((( name ))).
+
+The X-ray source consisted of an xray tube with the following parameters.
 \begin{itemize}
-	{{parameters}}
-\end{itemize}
-The number of photons by stage:
-\begin{enumerate}
-	{{photons}}
-\end{enumerate}
+	\item Tungsten target angle: \ang{((( args.target_angle )))}
+	\item Distance from electron gun to target: \SI{((( args.beam_distance )))}{\cm}
+	\item Electron beam size: \SI{((( args.beam_width * 10 )))}{\mm} x \SI{((( args.beam_height * 10 )))}{\mm}
+	\item Incident electrons simulated (histories): ((( args.histories )))
+	\item Tungsten target length: \SI{((( args.target_length )))}{\cm}
+	\item Gap between simulated electron beams: \SI{((( args.beam_gap )))}{\cm}
+\begin{itemize}
+
+The generated X-rays were then filtered with the following materials.
+\begin{itemize}
+	((* for slab in _filter.slabs *))
+	\item \SI{((( slab.zthick )))}{\cm} of ((( slab.medium|medium )))
+	((* endfor *))
 \end{abstract}
+
+The collimator had the following properties.
+\begin{itemize}
+	\item Distance from anode to exit: \SI{((( collimator.length )))}{\cm}
+	\item Number of holes: ((( collimator.holes )))
+	\item Number of interpolating BLOCK CMs: ((( collimator.interpolating_blocks )))
+	\item Total area of holes on anode side: ((( collimator.anode_area )))
+	\item Total area of holes at exit: ((( collimator.exit_area )))
+\end{itemize}
+
+After collimation a phantom was dosed.
+\begin{itemize}
+	\item Target size: \SI{((( collimator.target_size )))}
+	\item Target depth: \SI{((( abs(args.target_z) )))}
+	\item Distance from collimator to skin: \SI{((( args.target_distance - abs(args.target_z) )))}
+	\item Paddick's conformity index: ((( paddicks )))
+	\item Mean skin dose over mean target dose: ((( skin_to_target )))
+	\item Distance from 20\% to 80\% isodose:
+		\begin{itemize}
+		\item X: ((( isodose_distance['x'] )))
+		\item Y: ((( isodose_distance['y'] )))
+		\item Z: ((( isodose_distance['z'] )))
+		\end{itemize}
+\end{itemize}
 
 \clearpage
 
 \tableofcontents
 
 
+((* for plot_type in ['scatter', 'fluence', 'spectral', 'angular'] *))
+	\section{((( plot_type.title() ))) Plots}
+		
+		((* for plot in [p if p['type'] == plot_type] *))
+			\subsection{(((plot.name)))}
+			\begin{figure}[H]
+			\centering
+			\includegraphics[scale=0.7,angle=270]{(((plot.path|strip_extension)))}
+			\caption{(((plot.name)))}
+			\label{fig:(((plot.slug)))}
+			\end{figure}
+		((* endfor *))
 
-\section{X-Y Scatter Plots}
-
-\subsection{Reflection Target X-Y Scatter Plot}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{source_xy}
-\caption{Reflection Target X-Y Scatter Plot}
-\label{fig:source_xy}
-\end{figure}
-
-\subsection{Filter X-Y Scatter Plot}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{filter_xy}
-\caption{Filter X-Y Scatter Plot}
-\label{fig:filter_xy}
-\end{figure}
-
-\subsection{Collimator X-Y Scatter Plot}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{collimator_xy}
-\caption{Collimator X-Y Scatter Plot}
-\label{fig:collimator_xy}
-\end{figure}
-
-
-
-\section{Energy Fluence Plots}
-
-\subsection{Reflection Target Energy Fluence X}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{source_energy_fluence_x}
-\caption{Reflection Target Energy Fluence X}
-\label{fig:source_energy_fluence_x}
-\end{figure}
-
-\subsection{Filter Energy Fluence X}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{filter_energy_fluence_x}
-\caption{Filter Energy Fluence X}
-\label{fig:filter_energy_fluence_x}
-\end{figure}
-
-\subsection{Collimator Energy Fluence X}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{collimator_energy_fluence_x}
-\caption{Collimator Energy Fluence X}
-\label{fig:collimator_energy_fluence_x}
-\end{figure}
-
-
-\subsection{Reflection Target Energy Fluence Y}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{source_energy_fluence_y}
-\caption{Reflection Target Energy Fluence Y}
-\label{fig:source_energy_fluence_y}
-\end{figure}
-
-\subsection{Filter Energy Fluence Y}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{filter_energy_fluence_y}
-\caption{Filter Energy Fluence Y}
-\label{fig:filter_energy_fluence_y}
-\end{figure}
-
-\subsection{Collimator Energy Fluence Y}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{collimator_energy_fluence_y}
-\caption{Collimator Energy Fluence Y}
-\label{fig:collimator_energy_fluence_y}
-\end{figure}
-
-
-\section{Spectral Distribution}
-
-\subsection{Reflection Target Spectral Distribution}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{source_spectral}
-\caption{Reflection Target Spectral Distribution}
-\label{fig:source_spectral}
-\end{figure}
-
-\subsection{Filter Spectral Distribution}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{filter_spectral}
-\caption{Filter Spectral Distribution}
-\label{fig:filter_spectral}
-\end{figure}
-
-\subsection{Collimator Spectral Distribution}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{collimator_spectral}
-\caption{Collimator Spectral Distribution}
-\label{fig:source_spectral}
-\end{figure}
-
-
-\section{Angular Distribution}
-
-\subsection{Reflection Target Angular Distribution}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{source_angular}
-\caption{Reflection Target Angular Distribution}
-\label{fig:source_angular}
-\end{figure}
-
-\subsection{Filter Angular Distribution}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{filter_angular}
-\caption{Filter Angular Distribution}
-\label{fig:filter_angular}
-\end{figure}
-
-\subsection{Collimator Angular Distribution}
-\begin{figure}[H]
-\centering
-\includegraphics[scale=0.7,angle=270]{collimator_angular}
-\caption{Collimator Angular Distribution}
-\label{fig:collimator_angular}
-\end{figure}
-
+((* endfor *))
 
 
 \end{document}

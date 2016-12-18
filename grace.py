@@ -1,7 +1,15 @@
 import logging
+import json
+import os
+import platform
 from subprocess import Popen, PIPE
 
 logger = logging.getLogger(__name__)
+
+
+GRACE = 'grace'
+if platform.system() == 'Darwin':
+    GRACE = 'xmgrace'
 
 """
 BEAMDP = {
@@ -25,8 +33,50 @@ GRACE = ['fluence_vs_position', 'energy_fluence_vs_position', 'spectral_distribu
          'particle_weight_distribution', 'xy_scatter_plot']
 """
 
+"""
+Grace operates on a json file that describes all of the options.
+In fact, it operates on a set of json files. And it can run
+totally independently of the report. It needs the phase space
+files, json configurations, etc.
 
-def generate(arguments, output_path):
+"""
+
+
+def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
+    # each config is a dictionary with one element, plots
+    # plots is a list of plots, we just merge them together
+    plots = []
+    for path in config_paths:
+        plots.extend(json.load(open(path))['plots'])
+    os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
+    generated = []
+    for plot in plots:
+        logger.info("Processing {}".format(plot['slug']))
+        if plot['type'] == 'scatter':
+            plotter = scatter
+        elif plot['type'] == 'energy_fluence':
+            plotter = energy_fluence_vs_position
+        elif plot['type'] == 'spectral':
+            plotter = spectral_distribution
+        elif plot['type'] == 'angular':
+            plotter = angular_distribution
+        else:
+            raise ValueError('Unknown plot type {}'.format(plot['type']))
+        input_path = phsp_paths[plot['phsp']]
+        filename = plot['slug'] + '.grace'
+        relpath = os.path.join('grace', filename)
+        output_path = os.path.join(output_dir, relpath)
+        plot['path'] = relpath
+        plot, lines = plotter(input_path, output_path, **plot)
+        generate(lines, output_path, overwrite)
+        eps(output_path)
+        generated.append(plot)
+
+
+def generate(arguments, output_path, overwrite):
+    if not overwrite and os.path.exists(output_path):
+        logger.info('Skipping plot {}, already exists'.format(output_path))
+        return
     logger.info('Generating grace plot:\n{}'.format('\n'.join(arguments)))
     p = Popen(['beamdp'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
     (stdout, stderr) = p.communicate("\n".join(arguments).encode('utf-8'))
@@ -50,15 +100,15 @@ def generate(arguments, output_path):
 
 
 def view(path):
-    Popen(['xmgrace', path])
+    Popen([GRACE, path])
 
 
 def eps(path):
     output = path.replace('.grace', '.eps')
-    Popen(['grace', '-hardcopy', '-nosafe', '-printfile', output, path])
+    Popen([GRACE, '-hardcopy', '-nosafe', '-printfile', output, path])
 
 
-def xy(input_path, output_path, **kwargs):
+def scatter(input_path, output_path, **kwargs):
     args = {
         'charge': 0,
         'field_shape': 'rectangular',
@@ -79,7 +129,7 @@ def xy(input_path, output_path, **kwargs):
     }
     field_shape_requirement = field_shape_requirements[args['field_shape']]
     extents = ', '.join(str(args['extents'][key]) for key in field_shape_requirement)
-    arguments = [
+    lines = [
         "y",  # show more detailed information
         "9",  # type of processing (9 = scatter plot)
         "{}, {}".format(args['charge'], extents),  # charge, (xmin, xmax, ymin, ymax | rmin, rmax)
@@ -87,16 +137,16 @@ def xy(input_path, output_path, **kwargs):
         "",  # I_IN_EX, Nbit1, Nbit2
         input_path,  # egsphsp input
         output_path,  # grace output
-        str(args['max_particles']),  # maximum number of particles to output (defaults to all apparently)
+        # maximum number of particles to output (defaults to all apparently)
+        str(args['max_particles']),  
         "",  # create another?
         "",  # grace?
         ""  # eof
     ]
-    generate(arguments, output_path)
-    return args
+    return (args, lines)
 
 
-def angular(input_path, output_path, **kwargs):
+def angular_distribution(input_path, output_path, **kwargs):
     args = {
         'charge': 0,
         'field_shape': 'rectangular',
@@ -131,7 +181,7 @@ def angular(input_path, output_path, **kwargs):
     assert args['bins'] <= 2000
     assert 0 <= args['min_angle'] < args['max_angle'] <= 180
     extents = ', '.join(str(args['extents'][key]) for key in field_shape_requirement)
-    arguments = [
+    lines = [
         'y',
         '6',
         '{}, {}'.format(args['charge'], extents),
@@ -146,8 +196,7 @@ def angular(input_path, output_path, **kwargs):
         '0',  # plot?
         '',
     ]
-    generate(arguments, output_path)
-    return args
+    return args, lines
 
 
 def energy_fluence_vs_position(input_path, output_path, **kwargs):
@@ -196,7 +245,7 @@ def energy_fluence_vs_position(input_path, output_path, **kwargs):
     assert args['bins'] <= 2000
     field_shape_requirement = field_shape_requirements[args['field_shape']]
     extents = ", ".join('{:.4f}'.format(args['extents'][key]) for key in field_shape_requirement)
-    arguments = [
+    lines = [
         "y",  # show more detailed information
         str(processing_types[args['processing_type']]),
         str(field_shapes[args['field_shape']]),
@@ -210,8 +259,7 @@ def energy_fluence_vs_position(input_path, output_path, **kwargs):
         "",  # open grace?
         ""  # eof
     ]
-    generate(arguments, output_path)
-    return args
+    return args, lines
 
 
 def spectral_distribution(input_path, output_path, **kwargs):
@@ -246,7 +294,7 @@ def spectral_distribution(input_path, output_path, **kwargs):
     assert args['bins'] <= 2000
     field_shape_requirement = field_shape_requirements[args['field_shape']]
     extents = ", ".join(str(args['extents'][key]) for key in field_shape_requirement)
-    arguments = [
+    lines = [
         "y",  # show more detailed information
         "3",  # type of processing (3 = spectral distribution)
         "{}, {}".format(args['charge'], extents),  # iq (-1 = electron, 0 = photon, 1 = positron, ...), xmin, xmax, ymin, ymax (or rmin, rmax)
@@ -260,38 +308,30 @@ def spectral_distribution(input_path, output_path, **kwargs):
         "",  # grace?
         ""  # eof
     ]
-    generate(arguments, output_path)
-    return args
+    return args, lines
+
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger('grace')
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('input')
     parser.add_argument('--eps')
-    parser.add_argument('--xy')
-    parser.add_argument('--fluencey')
-    parser.add_argument('--xmin', type=float, default=-100.0)
-    parser.add_argument('--ymin', type=float, default=-100.0)
-    parser.add_argument('--xmax', type=float, default=100.0)
-    parser.add_argument('--ymax', type=float, default=100.0)
+    parser.add_argument('--report', action='store_true')
+    parser.add_argument('--config', action='append', default=['grace.json'])
+    parser.add_argument('--force', '-f', action='store_true')
     args = parser.parse_args()
-    extents = {
-        'xmin': args.xmin,
-        'xmax': args.xmax,
-        'ymin': args.ymin,
-        'ymax': args.ymax
-    }
-    import os
     if args.eps:
         for path in os.listdir(args.eps):
             if path.endswith('.grace'):
                 path = os.path.join(args.eps, path)
                 print('generating eps for {}'.format(path))
                 eps(path)
-    elif args.xy:
-        output = args.xy.replace('.egsphsp1', '.grace')
-        xy(args.xy, output, extents=extents)
-        view(output)
-    elif args.fluencey:
-        output = args.fluencey.replace('.egsphsp1', '.fluencey.grace')
-        energy_fluence_vs_position(args.fluencey, output, axis='y', extents=extents)
-        view(output)
+    elif args.report:
+        phsp_paths = {
+            'source': os.path.join(args.input, 'sampled_source.egsphsp1'),
+            'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
+            'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
+        }
+        make_plots(args.input, phsp_paths, args.config, args.force)

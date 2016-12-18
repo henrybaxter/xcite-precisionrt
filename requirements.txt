@@ -5,3 +5,4 @@ boto3
 tensorflow
 matplotlib
 PyQt5
+Jinja2
