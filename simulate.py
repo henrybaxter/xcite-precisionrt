@@ -477,7 +477,7 @@ def build_collimator(args):
     zoffset = template['cms'][0]['zmin']
     if not args.target_distance:
         # not given so infer it from zfocus
-        args.target_distance = template['cms'][0]['zmax'] - zoffset
+        args.target_distance = template['cms'][0]['zfocus'] - zoffset
         logger.info('Inferring target distance of {} cm'.format(args.target_distance))
     for block in template['cms']:
         block['zmin'] -= zoffset
@@ -773,7 +773,14 @@ if __name__ == '__main__':
 
     plots = grace.make_plots(args.output_dir, phsp, args.plot_config)
 
-    report.generate(beamlets, plots, args)
+    data = {
+        'filter': _filter,
+        'collimator': collimator,
+        'beamlets': beamlets,
+        'phsp': phsp,
+        'plots': plots
+    }
+    report.generate(data, args)
 
     logger.info('Finished in {:.2f} seconds, output to {}'.format(
         time.time() - start), args.output_dir)
