@@ -3,6 +3,7 @@ import json
 import os
 import platform
 from subprocess import Popen, PIPE
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -45,33 +46,38 @@ files, json configurations, etc.
 def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
     # each config is a dictionary with one element, plots
     # plots is a list of plots, we just merge them together
-    plots = []
+    plots = {}
     for path in config_paths:
-        plots.extend(json.load(open(path)))
+        plots.update(json.load(open(path)))
     os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
-    generated = []
-    for plot_type, plot in plots.items():
-        logger.info("Processing {}".format(plot['slug']))
-        if plot['type'] == 'scatter':
+    generated = {}
+    for plot_type, plots in plots.items():
+        if plot_type == 'scatter':
             plotter = scatter
-        elif plot['type'] == 'energy_fluence':
+        elif plot_type == 'energy_fluence':
             plotter = energy_fluence_vs_position
-        elif plot['type'] == 'spectral':
+        elif plot_type == 'spectral':
             plotter = spectral_distribution
-        elif plot['type'] == 'angular':
+        elif plot_type == 'angular':
             plotter = angular_distribution
         else:
-            raise ValueError('Unknown plot type {}'.format(plot['type']))
-        input_path = phsp_paths[plot['phsp']]
-        filename = plot['slug'] + '.grace'
-        relpath = os.path.join('grace', filename)
-        output_path = os.path.join(output_dir, relpath)
-        plot['path'] = relpath
-        plot, lines = plotter(input_path, output_path, **plot)
-        generate(lines, output_path, overwrite)
-        eps(output_path)
-        generated.append(plot)
-    return generated
+            raise ValueError('Unknown plot type {}'.format(plot_type))
+        for plot in plots:
+            logger.info("Processing {}".format(plot['slug']))
+            input_path = phsp_paths[plot['phsp']]
+            filename = plot['slug'] + '.grace'
+            relpath = os.path.join('grace', filename)
+            output_path = os.path.join(output_dir, relpath)
+            plot['path'] = relpath
+            plot, lines = plotter(input_path, output_path, **plot)
+            generate(lines, output_path, overwrite)
+            eps(output_path)
+            generated.setdefault(plot_type, []).append(plot)
+    ordering = ['scatter', 'energy_fluence', 'spectral', 'angular']
+    result = OrderedDict()
+    for key in ordering:
+        result[key] = generated.get(key, [])
+    return result
 
 
 def generate(arguments, output_path, overwrite):
