@@ -53,8 +53,8 @@ def parse_args():
 
     # collimator
     #   generated
-    parser.add_argument('--phantom-target-distance', type=float, default=40.0,
-                        help='Distance from collimator to phantom target')
+    parser.add_argument('--target-distance', type=float, default=None,
+                        help='Distance from end of collimator to isocenter')
     parser.add_argument('--beam-weighting', action='store_true',
                         help='Weight beams by r^2/r\'^2')
     #   given
@@ -67,6 +67,12 @@ def parse_args():
     # dose
     parser.add_argument('--phantom', default='cylindricalp.egsphant',
                         help='.egsphant file')
+    parser.add_argument('--target-z', type=float, default=-10,
+                        help='Isocenter z coordinate')
+    parser.add_argument('--target-y', type=float, default=20,
+                        help='Isocenter y coordinate')
+    parser.add_argument('--target-x', type=float, default=0,
+                        help='Isocenter x coordinate')
     parser.add_argument('--dos-egsinp', default='dose_template.egsinp',
                         help='.egsinp for dosxyznrc')
     parser.add_argument('--arc-dose-egsinp', default='arc_dose_template.egsinp',
@@ -344,7 +350,7 @@ def generate_source(args):
     histories = 0
     for i, y in enumerate(y_values):
         if args.beam_weighting:
-            weight = 1 + (y * y) / (args.phantom_target_distance * args.phantom_target_distance)
+            weight = 1 + (y * y) / (args.target_distance * args.target_distance)
             template['ncase'] = int(args.histories / len(y_values) * weight)
             logger.info('Setting beam at {} to {} histories'.format(y, template['ncase']))
         histories += template['ncase']
@@ -497,9 +503,11 @@ def collimate(beamlets, args):
     if not template['cms']:
         raise ValueError('No BLOCK CMs found in collimator')
     zoffset = template['cms'][0]['zmin']
+    if not args.target_distance:
+        # not given so infer it from zfocus
+        args.target_distance = template['cms'][0]['zmax'] - zoffset
+        logger.info('Inferring target distance of {} cm'.format(args.target_distance))
     for block in template['cms']:
-        if zoffset is None:
-            zoffset = block['zmin']
         block['zmin'] -= zoffset
         block['zmax'] -= zoffset
         block['zfocus'] -= zoffset
@@ -592,11 +600,11 @@ def fast_dose(beamlets, args):
             'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
             'nrcycl': args.dose_recycle,
             'n_split': args.dose_photon_splitting,
-            'dsource': args.phantom_target_distance,
+            'dsource': args.target_distance,
             'phicol': 90,
-            'x': 0,
-            'y': 20,
-            'z': -10,
+            'x': args.target_x,
+            'y': args.target_y,
+            'z': args.target_z,
             'idat': 1  # do NOT output intermediate files (.egsdat?)
         }
         dose_context = context.copy()
@@ -674,7 +682,7 @@ def dose(beamlets, args):
                 'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
                 'nrcycl': args.dose_recycle,
                 'n_split': args.dose_photon_splitting,
-                'dsource': args.phantom_target_distance,
+                'dsource': args.target_distance,
                 'theta': theta,
                 'phi': phi,
                 'phicol': 90
