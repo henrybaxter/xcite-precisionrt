@@ -793,8 +793,11 @@ if __name__ == '__main__':
     contour_plots = dose_contours.plot(args.phantom, dose_path, target, args.output_dir, 'dose')
     arc_contour_plots = dose_contours.plot(args.phantom, arc_dose_path, target, args.output_dir, 'arc_dose')
 
-    plots = grace.make_plots(args.output_dir, phsp, args.plot_config)
+    plots = {}
+    for plot in grace.make_plots(args.output_dir, phsp, args.plot_config):
+        plots.setdefault(plot['type'], []).append(plot)
 
+    arc_dose = py3ddose.read_3ddose(arc_dose_path)
     data = {
         'filter': _filter,
         'collimator': collimator,
@@ -803,7 +806,10 @@ if __name__ == '__main__':
         'phsp': phsp,
         'plots': plots,
         'contour_plots': contour_plots,
-        'arc_contour_plots': arc_contour_plots
+        'arc_contour_plots': arc_contour_plots,
+        'skin_distance': args.target_distance - abs(args.target_z),
+        'paddicks': py3ddose.paddick(arc_dose, target),
+        'skin_to_target': py3ddose.simplified_skin_to_target_ratio(arc_dose, target)
     }
     report.generate(data, args)
 

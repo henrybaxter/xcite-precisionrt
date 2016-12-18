@@ -60,15 +60,9 @@ After collimation a phantom was dosed.
 \begin{itemize}
 	\item Target size: \SI{((( args.target_size )))}
 	\item Target depth: \SI{((( args.target_z | abs )))}
-	\item Distance from collimator to skin: \SI{((( args.target_distance - abs(args.target_z) )))}
+	\item Distance from collimator to skin: \SI{((( skin_distance )))}
 	\item Paddick's conformity index: ((( paddicks )))
 	\item Mean skin dose over mean target dose: ((( skin_to_target )))
-	\item Distance from 20\% to 80\% isodose:
-		\begin{itemize}
-		\item X: ((( isodose_distance['x'] )))
-		\item Y: ((( isodose_distance['y'] )))
-		\item Z: ((( isodose_distance['z'] )))
-		\end{itemize}
 \end{itemize}
 
 \clearpage
@@ -76,10 +70,10 @@ After collimation a phantom was dosed.
 \tableofcontents
 
 
-((* for plot_type in ['scatter', 'fluence', 'spectral', 'angular'] *))
+((* for plot_type, plots in plots *))
 	\section{((( plot_type.title() ))) Plots}
 		
-		((* for plot in [p if p['type'] == plot_type] *))
+		((* for plot in [p if p['type'] == plot_type for p in plots] *))
 			\subsection{(((plot.name)))}
 			\begin{figure}[H]
 			\centering

@@ -38,12 +38,14 @@ def block_stats(block):
     }
 
 
-def collimator_stats(blocks):
+def analyze(collimator):
+    blocks = collimator['cms']
+    stats = [block_stats(block) for block in blocks]
     return {
-        'blocks': [block_stats(block) for block in blocks],
+        'blocks': stats,
         'total_blocks': len(blocks),
-        'anode_area': blocks[0]['total_area'],
-        'exit_area': blocks[-1]['total_area']
+        'anode_area': stats[0]['total_area'],
+        'exit_area': stats[-1]['total_area']
     }
 
 
@@ -55,5 +57,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     cms = egsinp.parse_egsinp(open(args.input).read())['cms']
     blocks = [cm for cm in cms if cm['type'] == 'BLOCK']
-    stats = collimator_stats(blocks)
+    stats = analyze(blocks)
     print(json.dumps(stats, sort_keys=True, indent=2))
