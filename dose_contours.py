@@ -188,11 +188,12 @@ def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels=DEFAU
         relpath = os.path.join(output_slug, filename)
         path = os.path.join(output_dir, relpath)
         plt.savefig(path)
+        plane = x_name + y_name
         plots.append({
-            'plane': x_name + y_name,
+            'plane': plane,
             'slug': slug,
             'path': relpath,
-            'name': slug.replace('_', ' ').title()
+            'name': '{} {}'.format(output_slug.replace('_', ' ').title(), plane.upper())
         })
     return plots
 
