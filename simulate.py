@@ -598,11 +598,11 @@ def fast_dose(beamlets, args):
             open(inp_path, 'w').write(egsinp_str)
             dose_filename = '{}.3ddose'.format(base)
             dose_path = os.path.join(folder, dose_filename)
-            simulations[stage].append({
+            simulations.setdefault(stage, []).append({
                 'egsinp': inp,
                 'dose': dose_path
             })
-            doses[stage].append({
+            doses.setdefault(stage, []).append({
                 'dose': dose_path,
                 'hash': md5
             })
