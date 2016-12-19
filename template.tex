@@ -63,12 +63,12 @@ After collimation a phantom was dosed.
 	\item Mean skin dose over mean target dose: ((( skin_to_target )))
 \end{itemize}
 
-The overall efficiency was ((( '{.2f}'.format(photons['collimator'] / electrons * 100) )))\%.
+The overall efficiency was ((( '{:.2f}'.format(photons['collimator'] / electrons * 100) )))\%.
 \begin{tabular}{l | l | l}
 	& Particles & Reduction factor \\
 	Electron gun & ((( electrons ))) & \\
-	Photons generated & ((( photons['source'] ))) & ((( '{:.2f}'.format(electrons / photons['source']) )))
-	Filtered X-rays & ((( photons['filter'] ))) & ((( '{:.2f}'.format(photons['source'] / photons['filter']) )))
+	Photons generated & ((( photons['source'] ))) & ((( '{:.2f}'.format(electrons / photons['source']) ))) \\
+	Filtered X-rays & ((( photons['filter'] ))) & ((( '{:.2f}'.format(photons['source'] / photons['filter']) ))) \\
 	Collimated X-rays & ((( photons['collimator'] ))) & ((( '{:.2f}'.format(photons['filter'] / photons['collimator']) )))
 \end{tabular}
 
