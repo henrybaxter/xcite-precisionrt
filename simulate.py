@@ -80,7 +80,7 @@ def parse_args():
                         help='Isocenter x coordinate')
     parser.add_argument('--target-size', type=float, default=1.0,
                         help='Target size')
-    parser.add_argument('--dos-egsinp', default='dose_template.egsinp',
+    parser.add_argument('--dose-egsinp', default='dose_template.egsinp',
                         help='.egsinp for dosxyznrc')
     parser.add_argument('--arc-dose-egsinp', default='arc_dose_template.egsinp',
                         help='.egsinp for arced dosxyznrc')
@@ -483,7 +483,7 @@ def build_collimator(args):
     zoffset = template['cms'][0]['zmin']
     if not args.target_distance:
         # target distance is measured from the end of the collimator
-        args.target_distance = template['cms'][0]['zfocus'] -  zoffset - template['cms'][-1]['zmax']
+        args.target_distance = template['cms'][0]['zfocus'] - zoffset - template['cms'][-1]['zmax']
         logger.info('Inferring target distance of {} cm'.format(args.target_distance))
     for block in template['cms']:
         block['zmin'] -= zoffset
@@ -563,89 +563,63 @@ def dose_angles(args):
 
 def fast_dose(beamlets, args):
     logger.info('Fast dosing')
-    template = open(args.dos_egsinp).read()
-    arc_template = open(args.arc_dose_egsinp).read()
+    templates = {
+        'stationary': open(args.dose_egsinp).read(),
+        'arc': open(args.arc_dose_egsinp).read()
+    }
     folder = os.path.join(args.egs_home, 'dosxyznrc')
-    doses = []
-    arc_doses = []
-    simulations = []
-    arc_simulations = []
-    for i, beamlet in enumerate(beamlets):
-        # run two simulations, normal and arced
-        context = {
-            'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
-            'phsp_path': beamlet['phsp'],
-            'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
-            'nrcycl': args.dose_recycle,
-            'n_split': args.dose_photon_splitting,
-            'dsource': args.target_distance,
-            'phicol': 90,
-            'x': args.target_x,
-            'y': args.target_y,
-            'z': args.target_z,
-            'idat': 1  # do NOT output intermediate files (.egsdat?)
-        }
-        dose_context = context.copy()
-        dose_context['theta'] = 180
-        dose_context['phi'] = 0
-        arc_context = context.copy()
-        egsinp_str = template.format(**dose_context)
-        arc_egsinp_str = arc_template.format(**arc_context)
-        md5 = beamlet['hash'].copy()
-        arc_md5 = beamlet['hash'].copy()
-        md5.update(egsinp_str.encode('utf-8'))
-        arc_md5.update(arc_egsinp_str.encode('utf-8'))
-        base = md5.hexdigest()
-        arc_base = arc_md5.hexdigest()
-        inp = '{}.egsinp'.format(base)
-        arc_inp = '{}.egsinp'.format(arc_base)
-        inp_path = os.path.join(folder, inp)
-        arc_inp_path = os.path.join(folder, arc_inp)
-        open(inp_path, 'w').write(egsinp_str)
-        open(arc_inp_path, 'w').write(arc_egsinp_str)
-        dose_filename = '{}.3ddose'.format(base)
-        arc_dose_filename = '{}.3ddose'.format(arc_base)
-        dose_path = os.path.join(folder, dose_filename)
-        arc_dose_path = os.path.join(folder, arc_dose_filename)
-        simulations.append({
-            'egsinp': inp,
-            'dose': dose_path
-        })
-        arc_simulations.append({
-            'egsinp': arc_inp,
-            'dose': arc_dose_path
-        })
-        doses.append({
-            'dose': dose_path,
-            'hash': md5
-        })
-        arc_doses.append({
-            'dose': arc_dose_path,
-            'hash': md5
-        })
-    dose_simulations(folder, args.pegs4, simulations)
-    dose_simulations(folder, args.pegs4, arc_simulations)
-    index = len(simulations) // 2
-    egslst = os.path.join(folder, simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
-    shutil.copy(egslst, os.path.join(args.output_dir, 'dose{}.egslst'.format(index)))
-    _egsinp = os.path.join(folder, simulations[index]['egsinp'])
-    shutil.copy(_egsinp, os.path.join(args.output_dir, 'dose{}.egsinp'.format(index)))
-    egslst = os.path.join(folder, arc_simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
-    shutil.copy(egslst, os.path.join(args.output_dir, 'arc_dose{}.egslst'.format(index)))
-    _egsinp = os.path.join(folder, arc_simulations[index]['egsinp'])
-    shutil.copy(_egsinp, os.path.join(args.output_dir, 'arc_dose{}.egsinp'.format(index)))
-    for i, dose in enumerate(doses):
-        ipath = dose['dose'] + '.npz'
-        opath = os.path.join(args.output_dir, 'dose/dose{}.3ddose.npz'.format(i))
-        shutil.copy(ipath, opath)
-    for i, dose in enumerate(arc_doses):
-        ipath = dose['dose'] + '.npz'
-        opath = os.path.join(args.output_dir, 'arc_dose/arc_dose{}.3ddose.npz'.format(i))
-        shutil.copy(ipath, opath)
-    return doses, arc_doses
+    doses = {}
+    simulations = {}
+    for stage in ['stationary', 'arc']:
+        for i, beamlet in enumerate(beamlets):
+            # run two simulations, normal and arced
+            context = {
+                'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
+                'phsp_path': beamlet['phsp'],
+                'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
+                'nrcycl': args.dose_recycle,
+                'n_split': args.dose_photon_splitting,
+                'dsource': args.target_distance,
+                'phicol': 90,
+                'x': args.target_x,
+                'y': args.target_y,
+                'z': args.target_z,
+                'idat': 1,
+                # only for stationary
+                'theta': 180,
+                'phi': 0
+            }
+            egsinp_str = templates[stage].format(**context)
+            md5 = beamlet['hash'].copy()
+            md5.update(egsinp_str.encode('utf-8'))
+            base = md5.hexdigest()
+            inp = '{}.egsinp'.format(base)
+            inp_path = os.path.join(folder, inp)
+            open(inp_path, 'w').write(egsinp_str)
+            dose_filename = '{}.3ddose'.format(base)
+            dose_path = os.path.join(folder, dose_filename)
+            simulations[stage].append({
+                'egsinp': inp,
+                'dose': dose_path
+            })
+            doses[stage].append({
+                'dose': dose_path,
+                'hash': md5
+            })
+        dose_simulations(folder, args.pegs4, simulations[stage])
+        index = len(simulations) // 2
+        egslst = os.path.join(folder, simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
+        shutil.copy(egslst, os.path.join(args.output_dir, '{}_dose{}.egslst'.format(stage, index)))
+        _egsinp = os.path.join(folder, simulations[index]['egsinp'])
+        shutil.copy(_egsinp, os.path.join(args.output_dir, '{}_dose{}.egsinp'.format(stage, index)))
+        for i, dose in enumerate(doses):
+            ipath = dose['dose'] + '.npz'
+            opath = os.path.join(args.output_dir, '{}_dose/{}_dose{}.3ddose.npz'.format(stage, stage, i))
+            shutil.copy(ipath, opath)
+    return doses
 
 
-def dose(beamlets, args):
+def slow_dose(beamlets, args):
     logger.info('Slow dosing')
     template = open(args.dos_egsinp).read()
     folder = os.path.join(args.egs_home, 'dosxyznrc')
@@ -698,26 +672,36 @@ def dose(beamlets, args):
     return dose_contributions
 
 
-def combine_fast_doses(doses, arc_doses):
+def combine_fast_doses(doses):
     logger.info('Combining doses')
-    paths = [dose['dose'] + '.npz' for dose in doses]
-    opath1 = os.path.join(args.output_dir, 'dose.3ddose')
-    if os.path.exists(opath1):
-        logger.warning('Combined dose {} already exists'.format(opath1))
-    else:
-        py3ddose.combine_3ddose(paths, opath1)
-        py3ddose.read_3ddose(opath1)
-    paths = [dose['dose'] + '.npz' for dose in arc_doses]
-    opath2 = os.path.join(args.output_dir, 'arc_dose.3ddose')
-    if os.path.exists(opath2):
-        logger.warning('Combined dose {} already exists'.format(opath2))
-    else:
-        py3ddose.combine_3ddose(paths, opath2)
-        py3ddose.read_3ddose(opath2)
-    return opath1, opath2
+    result = {}
+    weights = {
+        'weighted': np.ones(len(doses)),
+        'arc_weighted': np.ones(len(doses))
+    }
+    doses = {
+        'stationary': doses['stationary'],
+        'weighted': doses['stationary'],
+        'arc': doses['arc'],
+        'arc_weighted': doses['arc']
+    }
+    for stage, beamlet_doses in doses.items():
+        paths = [dose['dose'] + '.npz' for dose in beamlet_doses]
+        path = os.path.join(args.output_dir, '{}.3ddose'.format(stage))
+        if os.path.exists(path):
+            logger.warning('Combined dose {} already exists'.format(path))
+        else:
+            logger.info('Combining {}'.format(stage))
+            if stage in weights:
+                py3ddose.weight_3ddose(paths, path, weights[stage])
+            else:
+                py3ddose.combine_3ddose(paths, path)
+            py3ddose.read_3ddose(path)
+        result[slug] = path
+    return result
 
 
-def combine_doses(contributions):
+def combine_slow_doses(contributions):
     """Assumes contributions is a list of dictionaries, each containing entries like
     (theta, phi): { 'dose': path, 'hash': object }
     """
@@ -787,19 +771,25 @@ if __name__ == '__main__':
 
     # dose_contributions = dose(beamlets['collimator'], args)
     # combine_doses(dose_contributions)
-    doses = fast_dose(beamlets['collimator'], args)
-    paths = combine_fast_doses(doses)
+    doses = fast_dose(beamlets['collimator'], args)  # stationary, arc
+    combined_doses = combine_fast_doses(doses)
     target = py3ddose.Target(
         np.array([args.target_z, args.target_y, args.target_x]),
         args.target_size)
     contours = {}
     conformity = {}
     skin_target = {}
-    for slug, path in paths.items():
+    for slug, path in combined_doses.items():
         contours[slug] = dose_contours.plot(args.phantom, path, target, args.output_dir, slug)
-        _dose = py3ddose.read_3ddose(path)
-        conformity[slug] = py3ddose.paddick(_dose, target)
-        skin_target[slug] = py3ddose.simplified_skin_to_target_ratio(_dose, target)
+        dose = py3ddose.read_3ddose(path)
+        conformity[slug] = py3ddose.paddick(dose, target)
+        skin_target[slug] = py3ddose.simplified_skin_to_target_ratio(dose, target)
+
+    # we take the plane
+    _contours = {}
+    for stage, planes in contours.items():
+        for contour in planes:
+            _contours.setdefault(contour['plane'], []).append(contour)
 
     photons = {}
     for stage in ['source', 'filter', 'collimator']:

@@ -84,25 +84,16 @@
 % contours['xy']
 % contours['yz']
 
-((* for plot in contour_plots *))
-	\subsection{Dose (((plot.name))) Plane}
+((* for plane, _contours in contours.items() *))
+	\subsection{Doses in (((plane.upper())))}
+	((* for plot in _contours *))
 	\begin{figure}[H]
 	\centering
 	\includegraphics{(((plot.path|strip_extension)))}
 	\caption{Dose (((plot.name))) Plane}
 	\label{fig:(((plot.slug)))}
 	\end{figure}
-((* endfor *))
-
-
-((* for plot in arc_contour_plots *))
-	\subsection{Arced Dose (((plot.name))) Plane}
-	\begin{figure}[H]
-	\centering
-	\includegraphics[]{(((plot.path|strip_extension)))}
-	\caption{Arced Dose (((plot.name))) Plane}
-	\label{fig:(((plot.slug)))}
-	\end{figure}
+	((* endfor *))
 ((* endfor *))
 
 \section{Results}

@@ -247,19 +247,20 @@ def combine_3ddose(paths, output_path):
 
 def weight_3ddose(paths, output_path, weights):
     doses = []
-    errors = []
+    # errors = []
     for path, weight in zip(paths, weights):
         print('Weighting {} at {}'.format(path, weight))
         dose = read_3ddose(path)
         boundaries = dose.boundaries
         doses.append(dose.doses)
-        errors.append(dose.errors)
+        errors = dose.errors
+        # errors.append(dose.errors)
     doses = (np.array(doses).T * weights).T.sum(axis=0)
     print('Doses calculated')
     print('Max is {}'.format(np.amax(doses)))
     # doses = np.tensordot(doses, weights, axes=1)
-    errors = np.array(errors)
-    errors = np.sqrt(np.square(errors).sum(axis=0))
+    # errors = np.array(errors)
+    # errors = np.sqrt(np.square(errors).sum(axis=0))
     write_3ddose(output_path, Dose(boundaries, doses, errors))
 
 
