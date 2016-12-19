@@ -71,10 +71,9 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
             plot['path'] = relpath
             plot, lines = plotter(input_path, output_path, **plot)
             extents = plots['extents'] if plot_type == 'scatter' else None
-            if overwrite:
-                os.remove(output_path)
-            generate(lines, output_path, extents=extents)
-            eps(output_path)
+            if overwrite or os.path.exists(output_path):
+                generate(lines, output_path, extents=extents)
+                eps(output_path)
             generated.setdefault(plot_type, []).append(plot)
     ordering = ['scatter', 'energy_fluence', 'spectral', 'angular']
     result = OrderedDict()

@@ -50,30 +50,6 @@ def get_env():
     return env
 
 
-"""
-
-
-
-def itemize_photons(beamlets):
-    lines = []
-    previous = args.simulation_properties['source']['histories']
-    lines.append('\t\item {}: {}'.format('Incident electrons', str(previous)))
-    for stage in ['source', 'filter', 'collimator']:
-        photons = sum([beamlet['stats']['total_photons'] for beamlet in beamlets[stage]])
-        if previous:
-            rate = previous / photons
-            text = '{} photons (reduced by a factor of {:.2f})'.format(photons, rate)
-        else:
-            text = '{} photons'.format(photons)
-        lines.append('\t\item {}: {}'.format(stage.capitalize(), text))
-        previous = photons
-    overall = args.simulation_properties['source']['histories'] / previous
-    lines.append('\t\item Efficiency: {:.2f} electrons generates one photon'.format(overall))
-    return '\n'.join(lines)
-
-"""
-
-
 def generate(data, args):
     context = data.copy()
     context['args'] = args
@@ -83,5 +59,3 @@ def generate(data, args):
     latex_args, rest = latexmake.arg_parser().parse_known_args()
     latexmake.LatexMaker('report', latex_args).run()
     os.chdir('..')
-
-
