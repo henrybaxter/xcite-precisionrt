@@ -70,7 +70,7 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
             output_path = os.path.join(output_dir, relpath)
             plot['path'] = relpath
             plot, lines = plotter(input_path, output_path, **plot)
-            extents = plots['extents'] if plot_type == 'scatter' else None
+            extents = plot['extents'] if plot_type == 'scatter' else None
             if overwrite or os.path.exists(output_path):
                 generate(lines, output_path, extents=extents)
                 eps(output_path)
