@@ -802,7 +802,7 @@ if __name__ == '__main__':
         'beamlets': beamlets,
         'phsp': phsp,
         'plots': grace.make_plots(args.output_dir, phsp, args.plot_config),
-        'contours': contours,
+        'contours': _contours,
         'skin_distance': args.target_distance - abs(args.target_z),
         'ci': conformity,
         'st': skin_target,
