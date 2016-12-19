@@ -697,7 +697,7 @@ def combine_fast_doses(doses):
             else:
                 py3ddose.combine_3ddose(paths, path)
             py3ddose.read_3ddose(path)
-        result[slug] = path
+        result[stage] = path
     return result
 
 
