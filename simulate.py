@@ -774,6 +774,7 @@ if __name__ == '__main__':
     shutil.copy(phsp['source'], os.path.join(args.output_dir, 'sampled_source.egsphsp1'))
 
     _filter = build_filter(args)
+    print('FILTER IS', _filter)
     beamlets['filter'] = beamlet_stats(filter_source(beamlets['source'], _filter, args))
     phsp['filter'] = sample_combine(beamlets['filter'])
     shutil.copy(phsp['filter'], os.path.join(args.output_dir, 'sampled_filter.egsphsp1'))
@@ -810,4 +811,4 @@ if __name__ == '__main__':
     report.generate(data, args)
 
     logger.info('Finished in {:.2f} seconds, output to {}'.format(
-        time.time() - start), args.output_dir)
+        time.time() - start, args.output_dir))

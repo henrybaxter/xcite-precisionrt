@@ -42,7 +42,7 @@ The X-ray source consisted of an xray tube with the following parameters.
 
 The generated X-rays were then filtered with the following materials.
 \begin{itemize}
-	((* for slab in _filter['cms']['slabs'] *))
+	((* for slab in _filter['cms'][0]['slabs'] *))
 	\item \SI{((( slab['zthick'] )))}{\cm} of ((( slab['medium']|medium )))
 	((* endfor *))
 \end{itemize}
@@ -72,7 +72,7 @@ After collimation a phantom was dosed.
 
 
 ((* for plot_type, plots in plots.items() *))
-	\section{((( plot_type.title() ))) Plots}
+	\section{((( plot_type.replace('_', ' ').title() ))) Plots}
 		((* for plot in plots *))
 			\subsection{(((plot.name)))}
 			\begin{figure}[H]
@@ -87,7 +87,7 @@ After collimation a phantom was dosed.
 \section{Dose contributions}
 
 ((* for plot in contour_plots *))
-	\susection{(((plot.name)))}
+	\subsection{(((plot.name)))}
 	\begin{figure}[H]
 	\centering
 	\includegraphics[]{(((plot.path|strip_extension)))}
@@ -98,7 +98,7 @@ After collimation a phantom was dosed.
 
 \section{Arced dose contributions}
 ((* for plot in arc_contour_plots *))
-	\susection{(((plot.name)))}
+	\subsection{(((plot.name)))}
 	\begin{figure}[H]
 	\centering
 	\includegraphics[]{(((plot.path|strip_extension)))}

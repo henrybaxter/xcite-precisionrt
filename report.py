@@ -1,7 +1,7 @@
 import re
 import os
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Markup
 
 import latexmake
 
@@ -23,12 +23,13 @@ def escape_tex(value):
 
 
 def translate_medium(medium):
-    return {
+    return Markup({
         'Air_516kV': 'Air',
-        'H20_516kV': '\ce{H20}',
+        'H2O_516kV': '\ce{H2O}',
         'VACUUM': 'Vacuum',
-        'steel304L_521kV': 'Steel (304)'
-    }
+        'steel304L_521kV': 'Steel (304)',
+        'Al_516kV': 'Aluminum'
+    }[medium])
 
 
 def strip_extension(path):
