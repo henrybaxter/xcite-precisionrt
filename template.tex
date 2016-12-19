@@ -108,23 +108,23 @@
 \section{Results}
 
 \subsection{Efficiency}
-The overall efficiency was ((( photons['collimator'] / electrons * 100 | f )))\%.
+The overall efficiency was ((( (photons['collimator'] / electrons * 100) | f )))\%.
 \begin{table}
 \begin{tabular}{l | l | l}
 	& Particles & Reduction factor \\
 	Electron gun & ((( electrons ))) & \\
-	Photons generated & ((( photons['source'] ))) & ((( electrons / photons['source'] | f ))) \\
-	Filtered X-rays & ((( photons['filter'] ))) & ((( photons['source'] / photons['filter'] | f ))) \\
-	Collimated X-rays & ((( photons['collimator'] ))) & ((( photons['filter'] / photons['collimator'] | f )))
+	Photons generated & ((( photons['source'] ))) & ((( (electrons / photons['source']) | f ))) \\
+	Filtered X-rays & ((( photons['filter'] ))) & ((( (photons['source'] / photons['filter']) | f ))) \\
+	Collimated X-rays & ((( photons['collimator'] ))) & ((( (photons['filter'] / photons['collimator']) | f )))
 \end{tabular}
 \end{table}
 
 \subsection{Conformity}
 \begin{table}[H]
-\begin{tabular}{l | l | l}
+\begin{tabular}{l | l | l | l | l}
 	& Stationary & Weighted & Arc & Weighted Arc \\
-	CI & ((( ci['stationary']|f ))) & ((( ci['weighted']|f ))) & ((( ci['arc']|f ))) & ((( ci['weighted_arc']|f )))
-	Skin-to-Target \\ ((( st['stationary'] ))) & ((( st['weighted'] ))) & ((( st['arc'] ))) & ((( st['weighted_arc']|f )))
+	CI & ((( ci['stationary']|f ))) & ((( ci['weighted'] ))) & ((( ci['arc']|f ))) & ((( ci['weighted_arc'] ))) \\
+	Skin-to-Target \\ ((( st['stationary']|f ))) & ((( st['weighted'] ))) & ((( st['arc']|f ))) & ((( st['weighted_arc'] )))
 \end{tabular}
 \end{table}
 

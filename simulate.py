@@ -799,6 +799,7 @@ if __name__ == '__main__':
         photons[stage] = sum([beamlet['stats']['total_photons'] for beamlet in beamlets[stage]])
 
     arc_dose = py3ddose.read_3ddose(arc_dose_path)
+    stationary_dose = py3ddose.read_3ddose(dose_path)
     data = {
         '_filter': _filter,
         'collimator': collimator,
@@ -810,15 +811,15 @@ if __name__ == '__main__':
         'arc_contour_plots': arc_contour_plots,
         'skin_distance': args.target_distance - abs(args.target_z),
         'ci': {
-            'stationary': py3ddose.paddick(dose, target),
+            'stationary': py3ddose.paddick(stationary_dose, target),
             'weighted': '',
-            'arc': py3ddose.paddick(dose, target),
+            'arc': py3ddose.paddick(arc_dose, target),
             'arc_weighted': ''
         },
         'st': {
-            'stationary': py3ddose.simplified_skin_to_target_ratio(dose, target),
+            'stationary': py3ddose.simplified_skin_to_target_ratio(stationary_dose, target),
             'weighted': '',
-            'arc': py3ddose.simplified_skin_to_target_ratio(dose, target),
+            'arc': py3ddose.simplified_skin_to_target_ratio(arc_dose, target),
             'arc_weighted': ''
         },
         'electrons': histories,
