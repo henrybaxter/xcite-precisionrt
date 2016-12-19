@@ -74,8 +74,6 @@ def itemize_photons(beamlets):
 """
 
 
-
-
 def generate(data, args):
     context = data.copy()
     context['args'] = args

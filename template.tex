@@ -14,7 +14,7 @@
 \usepackage{mhchem}
 \usepackage{subfig}
 
-\title{Simulation ((( name )))}
+\title{Simulation Report}
 \author{
         Henry Baxter \\
                 Department of Physics and Astronomy\\
@@ -28,8 +28,6 @@
 \maketitle
 
 \begin{abstract}
-An EGSnrc simulation was run on ((( name ))).
-
 The X-ray source consisted of an xray tube with the following parameters.
 \begin{itemize}
 	\item Tungsten target angle: \ang{((( args.target_angle )))}
@@ -46,15 +44,14 @@ The generated X-rays were then filtered with the following materials.
 	\item \SI{((( slab['zthick'] )))}{\cm} of ((( slab['medium']|medium )))
 	((* endfor *))
 \end{itemize}
-\end{abstract}
 
 The collimator had the following properties.
 \begin{itemize}
 	\item Distance from anode to exit: \SI{((( collimator_stats['length'] )))}{\cm}
 	\item Number of holes: ((( collimator_stats['blocks'][0]['regions'] )))
 	\item Number of interpolating BLOCK CMs: ((( collimator_stats['total_blocks'] )))
-	\item Total area of holes on anode side: ((( collimator_stats['anode_area'] )))
-	\item Total area of holes at exit: ((( collimator_stats['exit_area'] )))
+	\item Total area of holes on anode side: ((( '{:.2f}'.format(collimator_stats['anode_area']) )))
+	\item Total area of holes at exit: ((( '{:.2f}'.format(collimator_stats['exit_area']) )))
 \end{itemize}
 
 After collimation a phantom was dosed.
@@ -65,6 +62,17 @@ After collimation a phantom was dosed.
 	\item Paddick's conformity index: ((( paddicks )))
 	\item Mean skin dose over mean target dose: ((( skin_to_target )))
 \end{itemize}
+
+The overall efficiency was ((( '{.2f}'.format(photons['collimator'] / electrons * 100) )))\%.
+\begin{tabular}{l | l | l}
+	& Particles & Reduction factor \\
+	Electron gun & ((( electrons ))) & \\
+	Photons generated & ((( photons['source'] ))) & ((( '{:.2f}'.format(electrons / photons['source']) )))
+	Filtered X-rays & ((( photons['filter'] ))) & ((( '{:.2f}'.format(photons['source'] / photons['filter']) )))
+	Collimated X-rays & ((( photons['collimator'] ))) & ((( '{:.2f}'.format(photons['filter'] / photons['collimator']) )))
+\end{tabular}
+
+\end{abstract}
 
 \clearpage
 

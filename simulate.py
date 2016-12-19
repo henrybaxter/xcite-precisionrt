@@ -360,7 +360,7 @@ def generate_source(args):
     shutil.copy(_egsinp, os.path.join(args.output_dir, 'source{}.egsinp'.format(index)))
     if args.rotate:
         beamlets = beam_rotations(beamlets)
-    return beamlets
+    return beamlets, histories
 
 
 def build_filter(args):
@@ -769,7 +769,8 @@ if __name__ == '__main__':
 
     phsp = {}
     beamlets = {}
-    beamlets['source'] = beamlet_stats(generate_source(args))
+    source, histories = generate_source(args)
+    beamlets['source'] = beamlet_stats(source)
     phsp['source'] = sample_combine(beamlets['source'])
     shutil.copy(phsp['source'], os.path.join(args.output_dir, 'sampled_source.egsphsp1'))
 
@@ -793,6 +794,10 @@ if __name__ == '__main__':
     contour_plots = dose_contours.plot(args.phantom, dose_path, target, args.output_dir, 'dose')
     arc_contour_plots = dose_contours.plot(args.phantom, arc_dose_path, target, args.output_dir, 'arc_dose')
 
+    photons = {}
+    for stage in ['source', 'filter', 'collimator']:
+        photons[stage] = sum([beamlet['stats']['total_photons'] for beamlet in beamlets[stage]])
+
     arc_dose = py3ddose.read_3ddose(arc_dose_path)
     data = {
         '_filter': _filter,
@@ -805,7 +810,9 @@ if __name__ == '__main__':
         'arc_contour_plots': arc_contour_plots,
         'skin_distance': args.target_distance - abs(args.target_z),
         'paddicks': py3ddose.paddick(arc_dose, target),
-        'skin_to_target': py3ddose.simplified_skin_to_target_ratio(arc_dose, target)
+        'skin_to_target': py3ddose.simplified_skin_to_target_ratio(arc_dose, target),
+        'electrons': histories,
+        'photons': photons
     }
     report.generate(data, args)
 
