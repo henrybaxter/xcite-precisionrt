@@ -608,9 +608,9 @@ def fast_dose(beamlets, args):
             })
         dose_simulations(folder, args.pegs4, simulations[stage])
         index = len(simulations) // 2
-        egslst = os.path.join(folder, simulations[index]['egsinp'].replace('.egsinp', '.egslst'))
+        egslst = os.path.join(folder, simulations[stage][index]['egsinp'].replace('.egsinp', '.egslst'))
         shutil.copy(egslst, os.path.join(args.output_dir, '{}_dose{}.egslst'.format(stage, index)))
-        _egsinp = os.path.join(folder, simulations[index]['egsinp'])
+        _egsinp = os.path.join(folder, simulations[stage][index]['egsinp'])
         shutil.copy(_egsinp, os.path.join(args.output_dir, '{}_dose{}.egsinp'.format(stage, index)))
         for i, dose in enumerate(doses):
             ipath = dose['dose'] + '.npz'
