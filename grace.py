@@ -104,7 +104,7 @@ def generate(arguments, output_path, extents, overwrite):
         if line.startswith('@g0'):
             result.append(line.strip())
             result.append(world)
-        if line.startswith('@    s0 symbol color'):
+        elif line.startswith('@    s0 symbol color'):
             result.append(line.strip())
             result.append('@    s0 symbol size 0.040000')
         else:
