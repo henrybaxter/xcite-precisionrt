@@ -93,7 +93,7 @@ def parse_args():
     args.output_dir = args.name.replace(' ', '-')
     if os.path.exists(args.output_dir):
         logger.warning('{} already exists'.format(args.output_dir))
-    for subfolder in ['stationary_dose', 'arc_dose', 'weighted_dose', 'weighted_arc_dose']:
+    for subfolder in ['stationary_dose', 'arc_dose', 'weighted_dose', 'arc_weighted_dose']:
         os.makedirs(os.path.join(args.output_dir, subfolder), exist_ok=True)
 
     args.egs_home = os.path.abspath(os.path.join(
