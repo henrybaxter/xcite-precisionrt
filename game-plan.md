@@ -1,17 +1,5 @@
 ## Game Plan
 
-- understand meshgrid
-- understand countours
-- 2 hours on contour plot to match magdalena's
-	- correct boundaries
-	- average doses? whatever she does
-	- possibly comment her matlab code
-- no dice?
-	- run matlab from python remotely?
-	- run matlab from python locally?
-	- manually run matlab to 'finish' a report? (requires downloading?)
-
-
 - design 3 distinct collimators:
 	- current design (review motivations/style, possibly diagram it)
 	- half target with half beams, with focus on edges...?

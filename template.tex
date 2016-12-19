@@ -27,25 +27,29 @@
 \begin{document}
 \maketitle
 
-\begin{abstract}
-The X-ray source consisted of an xray tube with the following parameters.
+\tableofcontents
+
+\section{Parameters}
+
+\subsection{X-ray source}
 \begin{itemize}
-	\item Tungsten target angle: \ang{((( args.target_angle )))}
+	\item Tungsten target
+	\item Target angle: \ang{((( args.target_angle )))}
 	\item Distance from electron gun to target: \SI{((( args.beam_distance )))}{\cm}
 	\item Electron beam size: \SI{((( args.beam_width * 10 )))}{\mm} x \SI{((( args.beam_height * 10 )))}{\mm}
-	\item Incident electrons simulated (histories): ((( args.histories )))
+	\item Incident electrons simulated (histories): ((( electrons )))
 	\item Tungsten target length: \SI{((( args.target_length )))}{\cm}
 	\item Gap between simulated electron beams: \SI{((( args.beam_gap )))}{\cm}
 \end{itemize}
 
-The generated X-rays were then filtered with the following materials.
+\subsection{Filter}
 \begin{itemize}
 	((* for slab in _filter['cms'][0]['slabs'] *))
 	\item \SI{((( slab['zthick'] )))}{\cm} of ((( slab['medium']|medium )))
 	((* endfor *))
 \end{itemize}
 
-The collimator had the following properties.
+\subsection{Collimator}
 \begin{itemize}
 	\item Distance from anode to exit: \SI{((( collimator_stats['length'] )))}{\cm}
 	\item Number of holes: ((( collimator_stats['blocks'][0]['regions'] )))
@@ -54,7 +58,7 @@ The collimator had the following properties.
 	\item Total area of holes at exit: ((( '{:.2f}'.format(collimator_stats['exit_area']) )))
 \end{itemize}
 
-After collimation a phantom was dosed.
+\subsection{Dosing}
 \begin{itemize}
 	\item Target size: \SI{((( args.target_size )))}{\cm}
 	\item Target depth: \SI{((( args.target_z | abs )))}{\cm}
@@ -63,6 +67,7 @@ After collimation a phantom was dosed.
 	\item Mean skin dose over mean target dose: ((( skin_to_target )))
 \end{itemize}
 
+\subsection{Efficiency}
 The overall efficiency was ((( '{:.2f}'.format(photons['collimator'] / electrons * 100) )))\%.
 \begin{tabular}{l | l | l}
 	& Particles & Reduction factor \\
@@ -72,17 +77,11 @@ The overall efficiency was ((( '{:.2f}'.format(photons['collimator'] / electrons
 	Collimated X-rays & ((( photons['collimator'] ))) & ((( '{:.2f}'.format(photons['filter'] / photons['collimator']) )))
 \end{tabular}
 
-\end{abstract}
-
-\clearpage
-
-\tableofcontents
-
-
+\section{Pre-Dosing Plots}
 ((* for plot_type, plots in plots.items() *))
-	\section{((( plot_type.replace('_', ' ').title() ))) Plots}
+	\subsection{((( plot_type.replace('_', ' ').title() ))) Plots}
 		((* for plot in plots *))
-			\subsection{(((plot.name)))}
+			\subsubsection{(((plot.name)))}
 			\begin{figure}[H]
 			\centering
 			\includegraphics[scale=0.7,angle=270]{(((plot.path|strip_extension)))}
@@ -92,25 +91,25 @@ The overall efficiency was ((( '{:.2f}'.format(photons['collimator'] / electrons
 		((* endfor *))
 ((* endfor *))
 
-\section{Dose contributions}
+\section{Dosing Plots}
 
 ((* for plot in contour_plots *))
-	\subsection{(((plot.name)))}
+	\subsection{Dose (((plot.name))) Plane}
 	\begin{figure}[H]
 	\centering
-	\includegraphics[]{(((plot.path|strip_extension)))}
-	\caption{(((plot.name)))}
+	\includegraphics{(((plot.path|strip_extension)))}
+	\caption{Dose (((plot.name))) Plane}
 	\label{fig:(((plot.slug)))}
 	\end{figure}
 ((* endfor *))
 
-\section{Arced dose contributions}
+
 ((* for plot in arc_contour_plots *))
-	\subsection{(((plot.name)))}
+	\subsection{Arced Dose (((plot.name))) Plane}
 	\begin{figure}[H]
 	\centering
 	\includegraphics[]{(((plot.path|strip_extension)))}
-	\caption{(((plot.name)))}
+	\caption{Arced Dose (((plot.name))) Plane}
 	\label{fig:(((plot.slug)))}
 	\end{figure}
 ((* endfor *))
