@@ -809,8 +809,18 @@ if __name__ == '__main__':
         'contour_plots': contour_plots,
         'arc_contour_plots': arc_contour_plots,
         'skin_distance': args.target_distance - abs(args.target_z),
-        'paddicks': py3ddose.paddick(arc_dose, target),
-        'skin_to_target': py3ddose.simplified_skin_to_target_ratio(arc_dose, target),
+        'ci': {
+            'stationary': py3ddose.paddick(dose, target),
+            'weighted': '',
+            'arc': py3ddose.paddick(dose, target),
+            'arc_weighted': ''
+        },
+        'st': {
+            'stationary': py3ddose.simplified_skin_to_target_ratio(dose, target),
+            'weighted': '',
+            'arc': py3ddose.simplified_skin_to_target_ratio(dose, target),
+            'arc_weighted': ''
+        },
         'electrons': histories,
         'photons': photons
     }
