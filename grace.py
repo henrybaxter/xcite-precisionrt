@@ -70,7 +70,7 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
             output_path = os.path.join(output_dir, relpath)
             plot['path'] = relpath
             plot, lines = plotter(input_path, output_path, **plot)
-            generate(lines, output_path, overwrite)
+            generate(lines, output_path, plot['extents'], overwrite)
             eps(output_path)
             generated.setdefault(plot_type, []).append(plot)
     ordering = ['scatter', 'energy_fluence', 'spectral', 'angular']
@@ -80,7 +80,7 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
     return result
 
 
-def generate(arguments, output_path, overwrite):
+def generate(arguments, output_path, extents, overwrite):
     if not overwrite and os.path.exists(output_path):
         logger.info('Skipping plot {}, already exists'.format(output_path))
         return
@@ -95,9 +95,15 @@ def generate(arguments, output_path, overwrite):
         print(stdout.decode('utf-8'))
         print(stderr.decode('utf-8'))
     result = []
+    result.append('@ autoscale onread none')  # stop autoscaling
+    to_delete = ['legend', 'subtitle']
+    world = '@    world ' + ', '.join(str(extents[k]) for k in ['xmin', 'ymin', 'xmax', 'ymax'])
     for line in open(output_path):
-        if line.startswith('@    legend') or line.startswith('@    subtitle'):
+        if any(line.startswith('@    {}'.format(key)) for key in to_delete):
             continue
+        if line.startswith('@g0'):
+            result.append(line.strip())
+            result.append(world)
         if line.startswith('@    s0 symbol color'):
             result.append(line.strip())
             result.append('@    s0 symbol size 0.040000')
