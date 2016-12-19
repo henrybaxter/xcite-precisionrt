@@ -45,7 +45,8 @@ def analyze(collimator):
         'blocks': stats,
         'total_blocks': len(blocks),
         'anode_area': stats[0]['total_area'],
-        'exit_area': stats[-1]['total_area']
+        'exit_area': stats[-1]['total_area'],
+        'length': blocks[-1]['zmax'] - blocks[0]['zmin']
     }
 
 
