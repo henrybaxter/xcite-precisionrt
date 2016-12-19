@@ -101,8 +101,9 @@
 \subsection{Efficiency}
 The overall efficiency was ((( (photons['collimator'] / electrons * 100) | f )))\%.
 \begin{table}
-\begin{tabular}{l | l | l}
+\begin{tabular}{l l l}
 	& Particles & Reduction factor \\
+	\hline
 	Electron gun & ((( electrons ))) & \\
 	Photons generated & ((( photons['source'] ))) & ((( (electrons / photons['source']) | f ))) \\
 	Filtered X-rays & ((( photons['filter'] ))) & ((( (photons['source'] / photons['filter']) | f ))) \\
@@ -112,8 +113,9 @@ The overall efficiency was ((( (photons['collimator'] / electrons * 100) | f )))
 
 \subsection{Conformity}
 \begin{table}[H]
-\begin{tabular}{l | l | l | l | l}
+\begin{tabular}{l l l l l}
 	& Stationary & Weighted & Arc & Weighted Arc \\
+	\hline
 	CI & ((( ci['stationary']|f ))) & ((( ci['weighted'] ))) & ((( ci['arc']|f ))) & ((( ci['weighted_arc'] ))) \\
 	Skin-to-Target & ((( st['stationary']|f ))) & ((( st['weighted'] ))) & ((( st['arc']|f ))) & ((( st['weighted_arc'] )))
 \end{tabular}
