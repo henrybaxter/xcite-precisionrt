@@ -11,6 +11,7 @@ import hashlib
 import json
 import functools
 import logging
+from collections import OrderedDict
 
 from pathos.pools import ProcessPool as Pool
 from pathos.helpers import cpu_count
@@ -786,10 +787,10 @@ if __name__ == '__main__':
         skin_target[slug] = py3ddose.simplified_skin_to_target_ratio(dose, target)
 
     # we take the plane
-    _contours = {}
-    for stage, planes in contours.items():
-        for contour in planes:
-            _contours.setdefault(contour['plane'], []).append(contour)
+    contour_plots = OrderedDict()
+    for stage in ['stationary', 'weighted', 'arc', 'arc_weighted']:
+        for contour in contours[stage]:
+            contour_plots.setdefault(contour['plane'], []).append(contour)
 
     photons = {}
     for stage in ['source', 'filter', 'collimator']:
@@ -802,7 +803,7 @@ if __name__ == '__main__':
         'beamlets': beamlets,
         'phsp': phsp,
         'plots': grace.make_plots(args.output_dir, phsp, args.plot_config),
-        'contours': _contours,
+        'contour_plots': contour_plots,
         'skin_distance': args.target_distance - abs(args.target_z),
         'ci': conformity,
         'st': skin_target,
