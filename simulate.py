@@ -802,7 +802,7 @@ if __name__ == '__main__':
         'collimator_stats': collimator_analyzer.analyze(collimator),
         'beamlets': beamlets,
         'phsp': phsp,
-        'plots': grace.make_plots(args.output_dir, phsp, args.plot_config),
+        'grace_plots': grace.make_plots(args.output_dir, phsp, args.plot_config),
         'contour_plots': contour_plots,
         'skin_distance': args.target_distance - abs(args.target_z),
         'ci': conformity,
