@@ -5,10 +5,10 @@
 			"name": "Reflection Target Scatter Plot",
 			"phsp": "source",
 			"extents": {
-				"xmin": -1,
-				"xmax": 1,
-				"ymin": -37.5,
-				"ymax": 37.5
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
 			}
 		},
 		{
@@ -27,10 +27,10 @@
 			"name": "Filter Scatter Plot",
 			"phsp": "filter",
 			"extents": {
-				"xmin": -1,
-				"xmax": 1,
-				"ymin": -37.5,
-				"ymax": 37.5
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
 			}
 
 		},
@@ -39,10 +39,10 @@
 			"name": "Collimator Scatter Plot",
 			"phsp": "collimator",
 			"extents": {
-				"xmin": -1,
-				"xmax": 1,
-				"ymin": -37.5,
-				"ymax": 37.5
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
 			}
 
 		},
@@ -59,12 +59,108 @@
 		}
 	],
 	"energy_fluence": [
-
+		{
+			"slug": "source_fluence",
+			"name": "Reflection Target Energy Fluence",
+			"phsp": "source",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		},
+		{
+			"slug": "filter_fluence",
+			"name": "Filter Energy Fluence",
+			"phsp": "filter",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		},
+		{
+			"slug": "collimator_fluence",
+			"name": "Collimator Energy Fluence",
+			"phsp": "collimator",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		}
 	],
 	"angular": [
-		
+		{
+			"slug": "source_angular",
+			"name": "Reflection Target Angular Distribution",
+			"phsp": "source",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		},
+		{
+			"slug": "filter_angular",
+			"name": "Filter Angular Distribution",
+			"phsp": "filter",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		},
+		{
+			"slug": "collimator_angular",
+			"name": "Collimator Angular Distribution",
+			"phsp": "collimator",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		}
 	],
 	"spectral": [
-
+		{
+			"slug": "source_spectral",
+			"name": "Reflection Target Angular Distribution",
+			"phsp": "source",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		},
+		{
+			"slug": "filter_spectral",
+			"name": "Filter Angular Distribution",
+			"phsp": "filter",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		},
+		{
+			"slug": "collimator_spectral",
+			"name": "Collimator Angular Distribution",
+			"phsp": "collimator",
+			"extents": {
+				"xmin": -37.5,
+				"xmax": 37.5,
+				"ymin": -1,
+				"ymax": 1
+			}
+		}
 	]
 }
