@@ -42,6 +42,7 @@ def volumes(boundaries):
 
 
 def simplified_skin_to_target_ratio(dose, target):
+    # skin based on first medium density change?
     skin_indices = [[2] * 100, list(range(45, 55)) * 10, list(range(45, 55)) * 10]
     skin_mean = np.sum(dose.doses[skin_indices]) / 100
     print('skin mean', skin_mean)

@@ -699,6 +699,7 @@ def dose(beamlets, args):
 
 
 def combine_fast_doses(doses, arc_doses):
+    logger.info('Combining doses')
     paths = [dose['dose'] + '.npz' for dose in doses]
     opath1 = os.path.join(args.output_dir, 'dose.3ddose')
     if os.path.exists(opath1):
@@ -786,20 +787,24 @@ if __name__ == '__main__':
 
     # dose_contributions = dose(beamlets['collimator'], args)
     # combine_doses(dose_contributions)
-    doses, arc_doses = fast_dose(beamlets['collimator'], args)
-    dose_path, arc_dose_path = combine_fast_doses(doses, arc_doses)
+    doses = fast_dose(beamlets['collimator'], args)
+    paths = combine_fast_doses(doses)
     target = py3ddose.Target(
         np.array([args.target_z, args.target_y, args.target_x]),
         args.target_size)
-    contour_plots = dose_contours.plot(args.phantom, dose_path, target, args.output_dir, 'dose')
-    arc_contour_plots = dose_contours.plot(args.phantom, arc_dose_path, target, args.output_dir, 'arc_dose')
+    contours = {}
+    conformity = {}
+    skin_target = {}
+    for slug, path in paths.items():
+        contours[slug] = dose_contours.plot(args.phantom, path, target, args.output_dir, slug)
+        _dose = py3ddose.read_3ddose(path)
+        conformity[slug] = py3ddose.paddick(_dose, target)
+        skin_target[slug] = py3ddose.simplified_skin_to_target_ratio(_dose, target)
 
     photons = {}
     for stage in ['source', 'filter', 'collimator']:
         photons[stage] = sum([beamlet['stats']['total_photons'] for beamlet in beamlets[stage]])
 
-    arc_dose = py3ddose.read_3ddose(arc_dose_path)
-    stationary_dose = py3ddose.read_3ddose(dose_path)
     data = {
         '_filter': _filter,
         'collimator': collimator,
@@ -807,21 +812,10 @@ if __name__ == '__main__':
         'beamlets': beamlets,
         'phsp': phsp,
         'plots': grace.make_plots(args.output_dir, phsp, args.plot_config),
-        'contour_plots': contour_plots,
-        'arc_contour_plots': arc_contour_plots,
+        'contours': contours,
         'skin_distance': args.target_distance - abs(args.target_z),
-        'ci': {
-            'stationary': py3ddose.paddick(stationary_dose, target),
-            'weighted': '',
-            'arc': py3ddose.paddick(arc_dose, target),
-            'arc_weighted': ''
-        },
-        'st': {
-            'stationary': py3ddose.simplified_skin_to_target_ratio(stationary_dose, target),
-            'weighted': '',
-            'arc': py3ddose.simplified_skin_to_target_ratio(arc_dose, target),
-            'arc_weighted': ''
-        },
+        'ci': conformity,
+        'st': skin_target,
         'electrons': histories,
         'photons': photons
     }
