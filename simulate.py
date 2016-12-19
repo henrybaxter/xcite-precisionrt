@@ -780,7 +780,7 @@ if __name__ == '__main__':
     conformity = {}
     skin_target = {}
     for slug, path in combined_doses.items():
-        contours[slug] = dose_contours.plot(args.phantom, path, target, args.output_dir, slug)
+        contours[slug] = dose_contours.plot(args.phantom, path, target, args.output_dir, '{}_dose'.format(slug))
         dose = py3ddose.read_3ddose(path)
         conformity[slug] = py3ddose.paddick(dose, target)
         skin_target[slug] = py3ddose.simplified_skin_to_target_ratio(dose, target)
