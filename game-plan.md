@@ -1,21 +1,38 @@
 ## Game Plan
 
+horizontally show things getting better
+
+we show
+
+stationary
+weighted
+arc
+weighted arc
+
+just axial and sagittal views in column
+
+
+
+
+collimator figure from design
+most important right now?
+- beam weighting
+- isodose difference / beam profile
+- 
+
+- put results / efficiency / conformity at end of report
+- show x ray tube layer materials and sizes
+- embed collimator design diagrams
+- check target to skin ratio (does it change predictably?)
+- check paddicks conformity index (possibly describe what it means)
+- constructed weighted dose and weighted arc dose
+
 - design 3 distinct collimators:
-	- current design (review motivations/style, possibly diagram it)
-	- half target with half beams, with focus on edges...?
-	- ?
+	- current design
+	- half target with half beams
 
 
 PART I
-1) for each beamlet produce each angle of dose contribution IN PROGRESS
-2) produce summed 3ddose for basic beam
-	similar to sample_combine, create if necessary, what about error rate? forget it for now
-3) produce summed 3ddose for arc therapy
-	similar to sample_combine, create if necessary, what about error rate? forget it for now
-4) produce matplotlib contour plot like magdalena's from compressed 3ddose
-	it would help if we had the damn files, but guess_weights has them
-	so let's see what we can do :)
-5) automatically embed contour plots like magdalena's into report
 6) calculate and report target-to-skin ratio for non-arc and arc therapy respectively
 7) calculate and report Paddick's conformation number
 8) create 3 fundamentally different collimator designs with 3 variations each and the reports
@@ -24,7 +41,6 @@ PART I
 	- non negative least squares to increase paddick's conformation number
 	- non negative least squares to reduce target-to-skin ratio
 
-arc weighting? not sure. arc weighting we leave for now, but we produce the components necessary
 
 PART II
 1) edit this list based on feedback
@@ -40,7 +56,6 @@ PART III
 1) 
 
 NICE TO HAVES
-- beamlet rotation should use pathos.multiprocessing
 
 - calculate and report target-to-skin ratio
 - generate beam profiles a la magdalena's

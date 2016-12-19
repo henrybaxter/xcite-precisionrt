@@ -216,7 +216,6 @@ def energy_fluence_vs_position(input_path, output_path, **kwargs):
     args = {
         'field_shape': 'rectangular',
         'bins': 200,
-        'axis': 'y',
         'processing_type': 'energy_fluence',
         'charge': 0,
         'extents': {

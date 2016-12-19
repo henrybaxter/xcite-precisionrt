@@ -36,6 +36,10 @@ def strip_extension(path):
     return os.path.splitext(path)[0]
 
 
+def format_float(f):
+    return '{:.2f}'.format(f)
+
+
 def get_env():
     env = Environment(loader=FileSystemLoader('.'))
     env.block_start_string = '((*'
@@ -47,6 +51,7 @@ def get_env():
     env.filters['escape'] = escape_tex
     env.filters['medium'] = translate_medium
     env.filters['strip_extension'] = strip_extension
+    env.filters['f'] = format_float
     return env
 
 

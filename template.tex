@@ -38,7 +38,7 @@
 	\item Distance from electron gun to target: \SI{((( args.beam_distance )))}{\cm}
 	\item Electron beam size: \SI{((( args.beam_width * 10 )))}{\mm} x \SI{((( args.beam_height * 10 )))}{\mm}
 	\item Incident electrons simulated (histories): ((( electrons )))
-	\item Tungsten target length: \SI{((( args.target_length )))}{\cm}
+	\item Target length: \SI{((( args.target_length )))}{\cm}
 	\item Gap between simulated electron beams: \SI{((( args.beam_gap )))}{\cm}
 \end{itemize}
 
@@ -54,8 +54,8 @@
 	\item Distance from anode to exit: \SI{((( collimator_stats['length'] )))}{\cm}
 	\item Number of holes: ((( collimator_stats['blocks'][0]['regions'] )))
 	\item Number of interpolating BLOCK CMs: ((( collimator_stats['total_blocks'] )))
-	\item Total area of holes on anode side: ((( '{:.2f}'.format(collimator_stats['anode_area']) )))
-	\item Total area of holes at exit: ((( '{:.2f}'.format(collimator_stats['exit_area']) )))
+	\item Total area of holes on anode side: \SI{((( collimator_stats['anode_area'] | f)))}{\cm\squared}
+	\item Total area of holes at exit: \SI{((( collimator_stats['exit_area'] | f )))}{\cm\squared}
 \end{itemize}
 
 \subsection{Dosing}
@@ -63,20 +63,8 @@
 	\item Target size: \SI{((( args.target_size )))}{\cm}
 	\item Target depth: \SI{((( args.target_z | abs )))}{\cm}
 	\item Distance from collimator to skin: \SI{((( skin_distance )))}{\cm}
-	\item Paddick's conformity index: ((( paddicks )))
-	\item Mean skin dose over mean target dose: ((( skin_to_target )))
 \end{itemize}
-
-\subsection{Efficiency}
-The overall efficiency was ((( '{:.2f}'.format(photons['collimator'] / electrons * 100) )))\%.
-\begin{tabular}{l | l | l}
-	& Particles & Reduction factor \\
-	Electron gun & ((( electrons ))) & \\
-	Photons generated & ((( photons['source'] ))) & ((( '{:.2f}'.format(electrons / photons['source']) ))) \\
-	Filtered X-rays & ((( photons['filter'] ))) & ((( '{:.2f}'.format(photons['source'] / photons['filter']) ))) \\
-	Collimated X-rays & ((( photons['collimator'] ))) & ((( '{:.2f}'.format(photons['filter'] / photons['collimator']) )))
-\end{tabular}
-
+	
 \section{Pre-Dosing Plots}
 ((* for plot_type, plots in plots.items() *))
 	\subsection{((( plot_type.replace('_', ' ').title() ))) Plots}
@@ -92,6 +80,9 @@ The overall efficiency was ((( '{:.2f}'.format(photons['collimator'] / electrons
 ((* endfor *))
 
 \section{Dosing Plots}
+
+% contours['xy']
+% contours['yz']
 
 ((* for plot in contour_plots *))
 	\subsection{Dose (((plot.name))) Plane}
@@ -113,6 +104,25 @@ The overall efficiency was ((( '{:.2f}'.format(photons['collimator'] / electrons
 	\label{fig:(((plot.slug)))}
 	\end{figure}
 ((* endfor *))
+
+\section{Results}
+
+\subsection{Efficiency}
+The overall efficiency was ((( photons['collimator'] / electrons * 100 | f )))\%.
+\begin{tabular}{l | l | l}
+	& Particles & Reduction factor \\
+	Electron gun & ((( electrons ))) & \\
+	Photons generated & ((( photons['source'] ))) & ((( electrons / photons['source'] | f ))) \\
+	Filtered X-rays & ((( photons['filter'] ))) & ((( photons['source'] / photons['filter'] | f ))) \\
+	Collimated X-rays & ((( photons['collimator'] ))) & ((( photons['filter'] / photons['collimator'] | f )))
+\end{tabular}
+
+\subsection{Conformity}
+\begin{tabular}{l | l | l}
+	& Stationary & Weighted & Arc & Weighted Arc \\
+	CI & ((( ci['stationary']|f ))) & ((( ci['weighted']|f ))) & ((( ci['arc']|f ))) & ((( ci['weighted_arc']|f )))
+	Skin-to-Target \\ ((( st['stationary'] ))) & ((( st['weighted'] ))) & ((( st['arc'] ))) & ((( st['weighted_arc']|f )))
+\end{tabular}
 
 
 \end{document}
