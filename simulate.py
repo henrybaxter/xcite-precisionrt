@@ -169,7 +169,7 @@ def dose_simulations(folder, pegs4, simulations):
         elapsed = time.time() - start
         portion_complete = (i + 1) / len(to_simulate)
         estimated_remaining = elapsed / portion_complete
-        print('{} of {} simulations complete, {:.2f} mimnutes remaining'.format(
+        logger.info('{} of {} simulations complete, {:.2f} mimnutes remaining'.format(
             i + 1, len(to_simulate), estimated_remaining / 60))
 
 
@@ -774,7 +774,6 @@ if __name__ == '__main__':
     shutil.copy(phsp['source'], os.path.join(args.output_dir, 'sampled_source.egsphsp1'))
 
     _filter = build_filter(args)
-    print('FILTER IS', _filter)
     beamlets['filter'] = beamlet_stats(filter_source(beamlets['source'], _filter, args))
     phsp['filter'] = sample_combine(beamlets['filter'])
     shutil.copy(phsp['filter'], os.path.join(args.output_dir, 'sampled_filter.egsphsp1'))
