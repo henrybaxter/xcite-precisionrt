@@ -1,0 +1,14 @@
+{
+  "blocks": 10,
+  "hole_size": 0.2,
+  "length": 12,
+  "output": "henry-C.egsinp",
+  "revision": "b1ee098bda3033327d8ba16230095b322bcb2fd4",
+  "rmax": 40.0,
+  "rows": 5,
+  "septa_width": 0.02,
+  "target_distance": 50.0,
+  "target_width": 1.0,
+  "two_sided": false,
+  "width": 50
+}
