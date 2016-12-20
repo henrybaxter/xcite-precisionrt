@@ -676,9 +676,10 @@ def slow_dose(beamlets, args):
 def combine_fast_doses(doses):
     logger.info('Combining doses')
     result = {}
+    w = np.abs(np.arange(-len(doses['stationary'] // 2), len(doses['stationary'] // 2)))
     weights = {
-        'weighted': np.ones(len(doses['stationary'])),
-        'arc_weighted': np.ones(len(doses['arc']))
+        'weighted': w,
+        'arc_weighted': w
     }
     doses = {
         'stationary': doses['stationary'],

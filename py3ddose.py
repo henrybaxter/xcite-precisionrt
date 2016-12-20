@@ -2,6 +2,7 @@ import os
 import pickle
 import argparse
 import sys
+import logging
 import filecmp
 from itertools import islice, chain
 from collections import namedtuple
@@ -25,6 +26,8 @@ Dose = namedtuple('Dose', ['boundaries', 'doses', 'errors'])
 Phantom = namedtuple('Phantom', ['medium_types', 'boundaries', 'medium_indices', 'densities'])
 Target = namedtuple('Target', ['isocenter', 'radius'])
 
+logger = logging.getLogger(__name__)
+
 
 def volumes(boundaries):
     """Given a 3-tuple of x, y, z, returns an array of len(x) x len(y) x len(z)
@@ -45,7 +48,7 @@ def simplified_skin_to_target_ratio(dose, target):
     # skin based on first medium density change?
     skin_indices = [[2] * 100, list(range(45, 55)) * 10, list(range(45, 55)) * 10]
     skin_mean = np.sum(dose.doses[skin_indices]) / 100
-    print('skin mean', skin_mean)
+    logger.info('Found skin mean {}'.format(skin_mean))
 
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
     translated = centers - target.isocenter[:, np.newaxis]
@@ -53,7 +56,7 @@ def simplified_skin_to_target_ratio(dose, target):
     r2 = np.square(target.radius)
     target_indices = np.where(d2 < r2)
     target_mean = np.sum(dose.doses[target_indices]) / len(target_indices[0])
-    print('target mean', target_mean)
+    logger.info('Found target mean {}'.format(target_mean))
 
     return skin_mean / target_mean
 
@@ -84,8 +87,8 @@ def paddick(dose, target):
     underdosed = both_volume / target_volume
     overdosed = both_volume / dosed_volume
     # higher is better
-    print('target hit', underdosed)
-    print('tissue avoided', overdosed)
+    logger.info('Target hit {}'.format(underdosed))
+    logger.info('Tissue avoided {}'.format(overdosed))
     return underdosed * overdosed
 
 
