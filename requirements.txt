@@ -6,3 +6,4 @@ tensorflow
 matplotlib
 PyQt5
 Jinja2
+natsort
