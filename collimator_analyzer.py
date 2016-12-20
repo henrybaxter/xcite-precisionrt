@@ -60,5 +60,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input')
     args = parser.parse_args()
+    if not args.input.endswith('.egsinp'):
+        args.input += '.egsinp'
     stats = analyze(egsinp.parse_egsinp(open(args.input).read()))
     print(json.dumps(stats, sort_keys=True, indent=2))

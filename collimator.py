@@ -214,6 +214,8 @@ if __name__ == '__main__':
     parser.add_argument('--two-sided', action='store_true')
     parser.add_argument('output')
     args = parser.parse_args()
+    if not args.output.endswith('.egsinp'):
+        args.output += '.egsinp'
     template = egsinp.parse_egsinp(open('template.egsinp').read())
     add_collimator(template, args)
     print(len(template['cms'][1]['regions']))
