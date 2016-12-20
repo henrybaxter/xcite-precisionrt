@@ -1,0 +1,13 @@
+{
+  "blocks": 10,
+  "hole_size": 0.3,
+  "length": 12,
+  "output": "henry-A-large-hole.egsinp",
+  "revision": "58867aa38cfafcd14cd98ec1b961d915127fc80d",
+  "rmax": 40.0,
+  "septa_width": 0.02,
+  "target_distance": 50.0,
+  "target_width": 1.0,
+  "two_sided": false,
+  "width": 50
+}
