@@ -677,8 +677,8 @@ def combine_fast_doses(doses):
     logger.info('Combining doses')
     result = {}
     weights = {
-        'weighted': np.ones(len(doses)),
-        'arc_weighted': np.ones(len(doses))
+        'weighted': np.ones(len(doses['stationary'])),
+        'arc_weighted': np.ones(len(doses['arc']))
     }
     doses = {
         'stationary': doses['stationary'],

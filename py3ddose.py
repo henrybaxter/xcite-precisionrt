@@ -249,7 +249,7 @@ def weight_3ddose(paths, output_path, weights):
     doses = []
     # errors = []
     for path, weight in zip(paths, weights):
-        print('Weighting {} at {}'.format(path, weight))
+        # print('Weighting {} at {}'.format(path, weight))
         dose = read_3ddose(path)
         boundaries = dose.boundaries
         doses.append(dose.doses)
