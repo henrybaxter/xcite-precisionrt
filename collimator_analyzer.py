@@ -1,4 +1,7 @@
 import statistics
+
+import numpy as np
+
 import egsinp
 
 
@@ -39,14 +42,15 @@ def block_stats(block):
 
 
 def analyze(collimator):
-    blocks = collimator['cms']
+    blocks = [block for block in collimator['cms'] if block['type'] == 'BLOCK']
     stats = [block_stats(block) for block in blocks]
     return {
         'blocks': stats,
         'total_blocks': len(blocks),
         'anode_area': stats[0]['total_area'],
         'exit_area': stats[-1]['total_area'],
-        'length': blocks[-1]['zmax'] - blocks[0]['zmin']
+        'length': blocks[-1]['zmax'] - blocks[0]['zmin'],
+        'width': np.array([[b['max_x'], b['max_y']] for b in stats]).max() * 2
     }
 
 
@@ -56,7 +60,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input')
     args = parser.parse_args()
-    cms = egsinp.parse_egsinp(open(args.input).read())['cms']
-    blocks = [cm for cm in cms if cm['type'] == 'BLOCK']
-    stats = analyze(blocks)
+    stats = analyze(egsinp.parse_egsinp(open(args.input).read()))
     print(json.dumps(stats, sort_keys=True, indent=2))
