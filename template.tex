@@ -99,7 +99,7 @@
 
 \subsection{Efficiency}
 The overall efficiency was ((( (photons['collimator'] / electrons * 100) | f )))\%.
-\begin{table}
+\begin{table}[H]
 \begin{tabular}{l l l}
 	& Particles & Reduction factor \\
 	\hline
@@ -115,8 +115,8 @@ The overall efficiency was ((( (photons['collimator'] / electrons * 100) | f )))
 \begin{tabular}{l l l l l}
 	& Stationary & Weighted & Arc & Weighted Arc \\
 	\hline
-	CI & ((( ci['stationary']|f ))) & ((( ci['weighted'] ))) & ((( ci['arc']|f ))) & ((( ci['arc_weighted'] ))) \\
-	Skin-to-Target & ((( st['stationary']|f ))) & ((( st['weighted'] ))) & ((( st['arc']|f ))) & ((( st['arc_weighted'] )))
+	CI & ((( ci['stationary']|f ))) & ((( ci['weighted']|f ))) & ((( ci['arc']|f ))) & ((( ci['arc_weighted']|f ))) \\
+	Skin-to-Target & ((( st['stationary']|f ))) & ((( st['weighted']|f ))) & ((( st['arc']|f ))) & ((( st['arc_weighted']|f )))
 \end{tabular}
 \end{table}
 
