@@ -64,7 +64,7 @@ def parse_args():
     parser.add_argument('--beam-weighting', action='store_true',
                         help='Weight beams by r^2/r\'^2')
     #   given
-    parser.add_argument('--collimator',
+    parser.add_argument('--collimator', required=True,
                         help='Input egsinp path or use stamped values')
     #   preprocess filter phase space
     parser.add_argument('--rotate', action='store_true',
