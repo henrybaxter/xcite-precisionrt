@@ -785,7 +785,7 @@ if __name__ == '__main__':
         contours[slug] = dose_contours.plot(args.phantom, path, target, args.output_dir, '{}_dose'.format(slug))
         dose = py3ddose.read_3ddose(path)
         conformity[slug] = py3ddose.paddick(dose, target)
-        skin_target[slug] = py3ddose.simplified_skin_to_target_ratio(dose, target)
+        target_to_skin[slug] = py3ddose.target_to_skin(dose, target)
 
     # we take the plane
     contour_plots = OrderedDict()
@@ -807,7 +807,7 @@ if __name__ == '__main__':
         'contour_plots': contour_plots,
         'skin_distance': args.target_distance - abs(args.target_z),
         'ci': conformity,
-        'st': skin_target,
+        'ts': target_to_skin,
         'electrons': histories,
         'photons': photons
     }

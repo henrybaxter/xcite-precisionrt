@@ -1,14 +1,14 @@
 import os
-import pickle
 import argparse
-import sys
 import logging
 import filecmp
 from itertools import islice, chain
 from collections import namedtuple
-from functools import reduce
+from functools import reduce, partial
 
 import numpy as np
+import scipy.optimize as optimize
+from natsort import natsorted
 
 """
 http://nrc-cnrc.github.io/EGSnrc/doc/pirs794-dosxyznrc.pdf
@@ -44,10 +44,10 @@ def volumes(boundaries):
     return reduce(np.multiply.outer, [b[1:] - b[:-1] for b in boundaries])
 
 
-def simplified_skin_to_target_ratio(dose, target):
+def target_to_skin(dose, target):
     # skin based on first medium density change?
-    skin_indices = [[2] * 100, list(range(45, 55)) * 10, list(range(45, 55)) * 10]
-    skin_mean = np.sum(dose.doses[skin_indices]) / 100
+    skin_indices = [[2] * 25, list(range(48, 53)) * 5, list(range(48, 53)) * 5]
+    skin_mean = np.sum(dose.doses[skin_indices]) / 25
     logger.info('Found skin mean {}'.format(skin_mean))
 
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
@@ -58,7 +58,110 @@ def simplified_skin_to_target_ratio(dose, target):
     target_mean = np.sum(dose.doses[target_indices]) / len(target_indices[0])
     logger.info('Found target mean {}'.format(target_mean))
 
-    return skin_mean / target_mean
+    result = target_mean / skin_mean
+    logger.info('So target to skin dose is {}'.format(result))
+
+
+def optimize_stt(paths, target, output):
+    logger.info('Reading raw doses')
+    boundaries = read_3ddose(paths[0]).boundaries
+    fname = 'unweighted.npy'
+    if os.path.exists(fname):
+        logger.info('Found cached unweighted')
+        unweighted = np.load(fname)
+    else:
+        logger.info('No cached version found')
+        unweighted = np.array([read_3ddose(path).doses.ravel() for path in paths])
+        logger.info('Saving to cache')
+        np.save('unweighted.npy', unweighted)
+    print('unweighted shape is', unweighted.shape)
+    unweighted /= np.max(unweighted)
+    logger.info('Generating indices')
+    # ok what if we only grabbed those indices, and then weighted them?
+    skin_indices = np.vstack(map(np.ravel, np.mgrid[2:4, 40:60, 40:60]))
+    print('skin indices shape', skin_indices)
+    skin_indices = np.ravel_multi_index(skin_indices, dims=[100, 100, 100])
+    print('skin indices shape', skin_indices.shape)
+    
+    centers = [(b[1:] + b[:-1]) / 2 for b in boundaries]
+    translated = centers - target.isocenter[:, np.newaxis]
+    d2 = reduce(np.add.outer, np.square(translated))
+    r2 = np.square(target.radius)
+    target_indices = np.where(d2 < r2)
+    print('target indices', target_indices)
+    target_indices = np.ravel_multi_index(target_indices, dims=[100, 100, 100])
+    print('target indices shape', target_indices.shape)
+
+    # initial_weights = np.array(list(range(0, len(paths))))
+    logger.info('Starting tensorflow')
+    import tensorflow as tf
+    sess = tf.InteractiveSession()
+    skin_values = unweighted[:, skin_indices].T
+    target_values = unweighted[:, target_indices].T
+    coeffs = np.polyfit([0, len(paths) // 2, len(paths) - 1], [4, 1, 4], 2)
+    initial_weights = np.polyval(coeffs, np.arange(0, len(paths)))
+    X_skin = tf.constant(skin_values, name='skin_doses')
+    X_target = tf.constant(target_values, name='target_doses')
+    W = tf.Variable(initial_weights[:, np.newaxis], name='weights', dtype=tf.float32)
+    skin = tf.matmul(X_skin, W)
+    target = tf.matmul(X_target, W)
+    loss = s_to_t = tf.reduce_mean(skin) / tf.reduce_mean(target)
+    mean, variance = tf.nn.moments(skin, axes=[0])
+    no_neg = -tf.minimum(tf.reduce_min(W) - 1, 0) * 1000
+    no_big = tf.minimum(tf.reduce_max(W) - 15, 0) * 1000
+    reg = no_neg + no_big
+    train_step = tf.train.AdamOptimizer().minimize(loss + reg)
+    sess.run(tf.global_variables_initializer())
+    steps = 0
+    for i in range(steps):
+        _, w, st = sess.run([train_step, W, s_to_t])
+        print('Current skin to target is {}'.format(st))
+    w = sess.run(W)
+    final_weights = w.flatten()
+    # generate a weighted 3ddose file
+    weight_3ddose(paths, output, final_weights)
+
+
+    print(list(final_weights))
+    logger.info('Have final weights, now applying them')
+    
+    logger.info('Done')
+
+
+def optimize_stt_(paths, target):
+    # assumes doses is a lise of of dose.doses
+    # bounds at 1 to 50x weighting
+    logger.info("Loading {} dose files for weight optimization".format(len(paths)))
+    boundaries = read_3ddose(paths[0]).boundaries
+    doses = np.array([read_3ddose(path).doses for path in paths])
+    logger.info("Doses loaded")
+    bounds = [(1, 50)] * len(doses)
+    # i think 1 in the center to 15 on the outside
+    # following a parabola (3 constraints)
+    coeffs = np.polyfit([0, len(doses) // 2, len(doses)], [15, 1, 15], 2)
+    initial_weights = np.polyval(coeffs, np.arange(0, len(doses)))
+    logger.info('Initial guess weights are:\n{}'.format(initial_weights))
+
+    def objective(weights):
+        logger.info("Asked to score weights\n{}".format(initial_weights - weights))
+        dose = Dose(boundaries, (doses.T * weights).T.sum(axis=0), None)
+        score = stt(target, dose)
+        logger.info("Score is now {}".format(score))
+        return score
+
+    def in_bounds(**kwargs):
+        is_in = bool(np.all(kwargs['x_new'] >= 1))
+        logger.info('In bounds? {}'.format(is_in))
+        return is_in
+
+    def take_step(x):
+        print(x)
+        x += np.random.uniform(low=-0.5, high=.5, size=[len(doses)])
+        print(x)
+        return x
+    result = optimize.basinhopping(objective, initial_weights, take_step=take_step) # , bounds=bounds, options={'disp': True, 'eps': 1e0})
+    logger.info('Resulting weights are:\n{}'.format(result))
+
 
 # what about total dose to skin over total dose to target?
 # or what about maximum normalized skin dose to maximum target dose?
@@ -249,6 +352,8 @@ def combine_3ddose(paths, output_path):
 
 
 def weight_3ddose(paths, output_path, weights):
+    weights = np.array(weights)
+    assert list(weights.shape) == [len(paths)], '{} != {}'.format(list(weights.shape), [len(paths)])
     doses = []
     # errors = []
     for path, weight in zip(paths, weights):
@@ -274,6 +379,7 @@ def normalize_3ddose(path, output_path):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='+')
     parser.add_argument('--test-3ddose', action='store_true')
@@ -287,7 +393,9 @@ if __name__ == '__main__':
     parser.add_argument('--compress', action='store_true')
     parser.add_argument('--uncompress', action='store_true')
     parser.add_argument('--paddick', action='store_true')
+    parser.add_argument('--optimize-stt', action='store_true')
     args = parser.parse_args()
+    args.input = natsorted(args.input)
     if args.compress:
         read_3ddose(args.input[0])
         os.remove(args.input[0])
@@ -336,7 +444,12 @@ if __name__ == '__main__':
         target_radius = 2
         target = Target(target_origin, target_radius)
         print('paddick', paddick(dose, target))
-        print('skin to target ratio', simplified_skin_to_target_ratio(dose, target))
+        print('skin to target ratio', stt(dose, target))
+    elif args.optimize_stt:
+        target_origin = np.array([-10, 20, 0])
+        target_radius = 1
+        target = Target(target_origin, target_radius)
+        optimize_stt(args.input, target, args.optimize_stt)
     else:
         dose1 = read_3ddose(args.input)
         dose2 = read_3ddose(args.input)
