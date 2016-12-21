@@ -58,9 +58,12 @@ if __name__ == '__main__':
     import argparse
     import json
     parser = argparse.ArgumentParser()
-    parser.add_argument('input')
+    parser.add_argument('inputs', nargs='+')
     args = parser.parse_args()
-    if not args.input.endswith('.egsinp'):
-        args.input += '.egsinp'
-    stats = analyze(egsinp.parse_egsinp(open(args.input).read()))
+    for i, inp in enumerate(args.inputs):
+        if not inp.endswith('.egsinp'):
+            args.inputs[0] += '.egsinp'
+    stats = [analyze(egsinp.parse_egsinp(open(inp).read())) for inp in args.inputs]
     print(json.dumps(stats, sort_keys=True, indent=2))
+    for inp, stat in zip(args.inputs, stats):
+        print(inp, 'region area', stat['blocks'][0]['average_region_area'], 'total area', stat['anode_area'], 'width', stat['blocks'][0]['max_x'] * 2)

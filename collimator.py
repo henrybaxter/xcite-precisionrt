@@ -59,22 +59,24 @@ def make_blocks(**kwargs):
         (-dx, dy)
     ]
 
-    target_points = [(x / radius * target_radius, y / radius * target_radius) for x, y in phantom_points]
+    target_points = [(0, 0) for x, y in phantom_points]
 
+    # point them linearly at single points along, so there is no focal point?
     # ok now we're going to translate them
-    phantom_regions = [(phantom_points, target_points)]
+    phantom_regions = [] # [(phantom_points, target_points)]
     width_remaining = kwargs.pop('width') / 2
-    dx = radius * 2
-    dy = radius * 3 / 2
+    dx = radius * 2 + septa
+    dy = radius * 2 + septa
     i = 0
     while width_remaining >= dx:
         width_remaining -= dx
-        for j in range(rows):
+        for j in range(rows // 2 + 1):
             _dx = i * dx
             _dy = j * dy
             if j % 2 == 1:
                 _dx = _dx - radius
-            phantom_regions.append((translate(phantom_points, dx=_dx, dy=_dy), target_points))
+            points = translate(phantom_points, dx=_dx, dy=_dy)
+            phantom_regions.append((points, target_points))
         i += 1
     for phantom_points, target_points in phantom_regions[:]:
         phantom_regions.insert(0, (reflect_y(phantom_points), reflect_y(target_points)))
@@ -91,8 +93,8 @@ def make_blocks(**kwargs):
             # need to translate by the center of this region
             # so where is the center?
             for (x, y), (target_x, target_y) in zip(phantom_points, target_points):
-                x_ = find_x(target_x, target_z, x, length, current_z)
-                y_ = find_x(target_y, target_z, y, length, current_z)
+                x_ = find_x(target_x, target_z, x, length, current_z + block_length)
+                y_ = find_x(target_y, target_z, y, length, current_z + block_length)
                 region.append((x_, y_))
             regions.append(region)
         block = {
@@ -104,100 +106,11 @@ def make_blocks(**kwargs):
     return blocks
 
 
-def make_blocks__(**kwargs):
-    length = kwargs['length']
-    septa = kwargs['septa']
-    width = kwargs['width']  # phantom width TODO change to source max width
-    size = kwargs['size']
-    target_distance = kwargs['target_distance']  # focus from phantom side
-    target_width = kwargs['target_width']
-    n_blocks = kwargs['blocks']
-    two_sided = kwargs.get('two_sided', False)
-    # source is considered z = 0, positive 'down'
-
-    # first phantom hole on the right (to be copied, translated, and reflected)
-    # z of these is length
-    # center = ((septa / 2 + size, 0))
-    points = [
-        (-size, 0),
-        (-size / 2, -size / 2),
-        (size / 2, -size / 2),
-        (size, 0),
-        (size / 2, size / 2),
-        (-size / 2, size / 2)
-    ]
-    dx = size * 2 + septa
-    width_remaining = width / 2 - dx
-    regions = []
-
-    def translate(points, dx):
-        translated = []
-        for x, y in points:
-            translated.append((x + dx, y))
-        return translated
-    i = 0
-    while width_remaining >= 0:
-        translated = translate(points, i * dx)
-        regions.append(translated)
-        width_remaining -= dx
-        i += 1
-
-    # ok now we have all points on phantom side
-    # and we have the target points
-    # we need to choose our x2 value
-    def find_x(x0, z0, x1, z1, z2):
-        m = (z1 - z0) / ((x1 - x0) or 0.000001)
-        x2 = (z2 - z0) / m + x0
-        return x2
-    # so now we need to interpolate between these
-    # but for now, do we care? can't we just run it?
-    # no, we need them, and a lot of them probably
-    # so how do we interpolate?
-    # we have all the value, and also what z focus??
-    # z focus will be negative infty
-
-    block_length = length / n_blocks
-    target_x_left = -target_width / 2
-    if two_sided:
-        target_x_left = 0
-    target_x_right = target_width / 2
-    target_z = length + target_distance
-    blocks = []
-    for i in range(n_blocks):
-        current_z = i * block_length
-        block_regions = []
-        for region in regions:
-            phantom_x_left = region[0][0]
-            left_x = find_x(target_x_left, target_z, phantom_x_left, length, current_z)
-            phantom_x_right = region[3][0]
-            right_x = find_x(target_x_right, target_z, phantom_x_right, length, current_z)
-            size = (right_x - left_x) / 2
-            # scale that shit? no, we need to get the right values
-            # print(size)
-            block_regions.append([
-                (left_x, 0),
-                (left_x + size / 2, -size / 2),
-                (left_x + 3 * size / 2, -size / 2),
-                (left_x + 2 * size, 0),
-                (left_x + 3 * size / 2, size / 2),
-                (left_x + size / 2, size / 2)
-            ])
-        blocks.append({
-            'zmin': current_z,
-            'zmax': current_z + block_length,
-            'regions': block_regions
-        })
-    for block in blocks:
-        for region in block['regions'][1:]:
-            block['regions'].insert(0, reflect(region))
-    return blocks
-
-
 def add_collimator(template, args):
     kwargs = {
         'length': args.length,
         'septa': args.septa_width,
-        'size': args.hole_size,
+        'size': args.hole_radius,
         'width': args.width,
         'blocks': args.blocks,
         'target_distance': args.target_distance,
@@ -293,9 +206,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--length', type=float, default=12)
     parser.add_argument('--blocks', type=int, default=10)
-    parser.add_argument('--hole-size', type=float, default=0.2)
+    parser.add_argument('--hole-radius', type=float, default=0.2)
     parser.add_argument('--septa-width', type=float, default=0.02)
-    parser.add_argument('--width', type=float, default=50)
+    parser.add_argument('--width', type=float, default=55)
     parser.add_argument('--target-distance', type=float, default=40.0)
     parser.add_argument('--target-width', type=float, default=1.0)
     parser.add_argument('--rmax', type=float, default=40.0)
