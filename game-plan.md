@@ -1,15 +1,26 @@
 ## Game Plan
 
-horizontally show things getting better
+- questions for magdalena
+- collimator diagram
 
-we show
+1) RUN SIMULATION WITH MULTIPLE ROWS, 3 AND 5, on EGS1
+2) MULTIPLE TARGET SIZES
+3) AUTO-WEIGHT
+4) COLLIMATOR DIAGRAM
+5) QUESTIONS FOR MAG
 
-stationary
-weighted
-arc
-weighted arc
-
-just axial and sagittal views in column
+- keyed beamlet stats
+- keyed grace plots
+- don't read 3ddose files over and over again
+- multiple rows!
+- links to all reports
+- two-sided more ideas
+- multiple target sizes
+- beam profiles and dvh
+- grays in 30 minutes
+- check email of recap
+- automatically fit a poly to 'smooth' the skin curve
+- think hard about new collimator designs
 
 
 
