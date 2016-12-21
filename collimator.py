@@ -3,6 +3,7 @@ import json
 import argparse
 import statistics
 
+import numpy as np
 import egsinp
 
 
@@ -10,14 +11,100 @@ def get_revision():
     return subprocess.run(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
 
 
-def reflect(points):
+def reflect_x(points):
     reflected = []
     for x, y in points:
         reflected.append((-x, y))
     return reflected
 
 
+def reflect_y(points):
+    reflected = []
+    for x, y in points:
+        reflected.append((x, -y))
+    return reflected
+
+
+def find_x(x0, z0, x1, z1, z2):
+    m = (z1 - z0) / ((x1 - x0) or 0.000001)
+    x2 = (z2 - z0) / m + x0
+    return x2
+
+
+def translate(points, dx=0, dy=0):
+    translated = []
+    for x, y in points:
+        translated.append((x + dx, y + dy))
+    return translated
+
+
 def make_blocks(**kwargs):
+    radius = kwargs.pop('size')
+    rows = kwargs.pop('rows')
+    n_blocks = kwargs.pop('blocks')
+    length = kwargs.pop('length')
+    block_length = length / n_blocks
+    target_distance = kwargs.pop('target_distance')
+    target_radius = kwargs.pop('target_width') / 2
+    septa = kwargs.pop('septa')
+    target_z = length + target_distance
+    dy = np.sqrt(3) / 2 * radius
+    dx = radius / 2
+    phantom_points = [
+        (-radius, 0),
+        (-dx, -dy),
+        (dx, -dy),
+        (radius, 0),
+        (dx, dy),
+        (-dx, dy)
+    ]
+
+    target_points = [(x / radius * target_radius, y / radius * target_radius) for x, y in phantom_points]
+
+    # ok now we're going to translate them
+    phantom_regions = [(phantom_points, target_points)]
+    width_remaining = kwargs.pop('width') / 2
+    dx = radius * 2
+    dy = radius * 3 / 2
+    i = 0
+    while width_remaining >= dx:
+        width_remaining -= dx
+        for j in range(rows):
+            _dx = i * dx
+            _dy = j * dy
+            if j % 2 == 1:
+                _dx = _dx - radius
+            phantom_regions.append((translate(phantom_points, dx=_dx, dy=_dy), target_points))
+        i += 1
+    for phantom_points, target_points in phantom_regions[:]:
+        phantom_regions.insert(0, (reflect_y(phantom_points), reflect_y(target_points)))
+
+    for phantom_points, target_points in phantom_regions[:]:
+        phantom_regions.insert(0, (reflect_x(phantom_points), reflect_x(target_points)))
+
+    blocks = []
+    for i in range(n_blocks):
+        regions = []
+        current_z = i * block_length
+        for phantom_points, target_points in phantom_regions:
+            region = []
+            # need to translate by the center of this region
+            # so where is the center?
+            for (x, y), (target_x, target_y) in zip(phantom_points, target_points):
+                x_ = find_x(target_x, target_z, x, length, current_z)
+                y_ = find_x(target_y, target_z, y, length, current_z)
+                region.append((x_, y_))
+            regions.append(region)
+        block = {
+            'zmin': current_z,
+            'zmax': current_z + block_length,
+            'regions': regions
+        }
+        blocks.append(block)
+    return blocks
+
+
+def make_blocks__(**kwargs):
     length = kwargs['length']
     septa = kwargs['septa']
     width = kwargs['width']  # phantom width TODO change to source max width
@@ -116,7 +203,8 @@ def add_collimator(template, args):
         'target_distance': args.target_distance,
         'target_width': args.target_width,
         'rmax': args.rmax,
-        'two_sided': args.two_sided
+        'two_sided': args.two_sided,
+        'rows': args.rows
     }
     blocks = make_blocks(**kwargs)
     for i, block in enumerate(blocks):
@@ -212,14 +300,13 @@ if __name__ == '__main__':
     parser.add_argument('--target-width', type=float, default=1.0)
     parser.add_argument('--rmax', type=float, default=40.0)
     parser.add_argument('--two-sided', action='store_true')
+    parser.add_argument('--rows', type=int, default=1)
     parser.add_argument('output')
     args = parser.parse_args()
     if not args.output.endswith('.egsinp'):
         args.output += '.egsinp'
     template = egsinp.parse_egsinp(open('template.egsinp').read())
     add_collimator(template, args)
-    print(len(template['cms'][1]['regions']))
-    print(template['cms'][1]['regions'][30])
     open(args.output, 'w').write(egsinp.unparse_egsinp(template))
     print('Wrote to {}'.format(args.output))
     jout = open(args.output.replace('.egsinp', '.json'), 'w')
