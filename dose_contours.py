@@ -110,7 +110,7 @@ def get_manual2(possibles):
     return distances[max(distances.keys())]
 
 
-DEFAULT_LEVELS = [10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
+DEFAULT_LEVELS = [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
 
 
 def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels=DEFAULT_LEVELS):

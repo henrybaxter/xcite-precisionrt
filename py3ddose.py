@@ -60,6 +60,7 @@ def target_to_skin(dose, target):
 
     result = target_mean / skin_mean
     logger.info('So target to skin dose is {}'.format(result))
+    return result
 
 
 def optimize_stt(paths, target, output):

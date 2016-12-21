@@ -676,7 +676,9 @@ def slow_dose(beamlets, args):
 def combine_fast_doses(doses):
     logger.info('Combining doses')
     result = {}
-    w = np.abs(np.arange(-len(doses['stationary'] // 2), len(doses['stationary'] // 2)))
+    sz = len(doses['stationary'])
+    coeffs = np.polyfit([0, sz // 2, sz - 1], [4, 1, 4], 2)
+    w = np.polyval(coeffs, np.arange(0, sz))
     weights = {
         'weighted': w,
         'arc_weighted': w
@@ -780,7 +782,7 @@ if __name__ == '__main__':
         args.target_size)
     contours = {}
     conformity = {}
-    skin_target = {}
+    target_to_skin = {}
     for slug, path in combined_doses.items():
         contours[slug] = dose_contours.plot(args.phantom, path, target, args.output_dir, '{}_dose'.format(slug))
         dose = py3ddose.read_3ddose(path)
