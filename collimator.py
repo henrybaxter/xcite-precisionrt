@@ -296,7 +296,7 @@ if __name__ == '__main__':
     parser.add_argument('--hole-size', type=float, default=0.2)
     parser.add_argument('--septa-width', type=float, default=0.02)
     parser.add_argument('--width', type=float, default=50)
-    parser.add_argument('--target-distance', type=float, default=50.0)
+    parser.add_argument('--target-distance', type=float, default=40.0)
     parser.add_argument('--target-width', type=float, default=1.0)
     parser.add_argument('--rmax', type=float, default=40.0)
     parser.add_argument('--two-sided', action='store_true')
