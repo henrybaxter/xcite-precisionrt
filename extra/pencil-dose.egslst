@@ -1,0 +1,468 @@
+================================================================================
+EGSnrc version 4 for i386-apple-darwin15.4.0           Tue Nov 29 12:04:56 2016
+================================================================================
+configuration...............................................osx
+user code...................................................dosxyznrc
+pegs file...................................................allkV on HEN_HOUSE
+using host..................................................Henrys-Mac-Pro.local
+input file..................................................try-pencil
+output file(s)..............................................try-pencil
+================================================================================
+
+ Begin execution with large arrays being zeroed
+ Thisis only needed for Linux g77 compiler - comment
+ this code near the top of dosxyznrc.mortran if you are
+ not using a linux g77 compiler
+
+ *******************************************************************************
+ NRCC/UW EGSnrc user-code DOSXYZnrc ($Revision: 1.56 $ last edited $Date: 2014/10/08 15:12:01 $)
+ ON osx                                                    12:04:56 Nov 29 2016
+ *******************************************************************************
+ **                                                                           **
+ **                                  DOSXYZnrc                                **
+ **                              Z pronounced zed                             **
+ **                                                                           **
+ **      Code developed at the National Research Council of Canada and        **
+ **           University of Wisconsin aspart of the OMEGA project             **
+ **                                                                           **
+ **           This is $Revision: 1.56 $ last edited $Date: 2014/10/08 15:12:01**
+ **                                                                           **
+ *******************************************************************************
+
+     The following parameters may be adjusted in dosxyz_user_macros.mortran
+ $MXMED:    Max number of media:  7
+ $MXSTACK:  Max stack size:     10000
+ $IMAX,etc: Max dose scoring regions in x,y,z directions:  128  128  128
+ $MAXDOSE:  Max dose scoring regions consistent with above:2097153
+ $DOSEZERO(=1) 1=> all doses with uncert > 50% are zeroed in .3ddose file
+
+
+ The following parameters may be adjusted in srcxyz.macros
+ $INVDIM:   number of elements in inverse CPD for input energy spectra = 1000
+ $NENSRC:   number of bins in input energy spectrum =  200
+
+ ===============================================================================
+ -------------------------------------------------------------------------------
+
+ Title:  Cylinder                                                                        
+ -------------------------------------------------------------------------------
+ ===============================================================================
+
+
+ Number of media (min = 1, max =   7, 0 => CT data):                0
+ Input the full name of the file containing the CT phantom created 
+ using ctcreate 
+ : cylindricalp.egsphant
+
+ CT Phantom summary: 
+
+ NMED =  2
+
+ media:
+ Air_516kV               
+ ICRUTISSUE516           
+
+ Dummy values of (ESTEPM(i),i=1,NMED)
+ :      0.000     0.000
+
+ IMAX, JMAX, KMAX :  100 100 100
+
+ x range :    -20.00000 -     20.00000 cm
+ y range :      0.00000 -     40.00000 cm
+ z range :    -20.00000 -     20.00000 cm
+
+ Densities range from      0.00124 -      1.00000 g/cc
+
+ ECUTIN,PCUTIN,(SMAX--DUMMY INPUT): 
+              0.811     0.010     0.000
+
+ Input zeroairdose (1 to zero dose in air in .3ddosefile; 0[default]
+ to not zero this dose), doseprint (1 for full dose output in .egslst;
+ 0[default] otherwise), MAX20 (1 to print out summary of 20 highest
+ doses; 0[default] to not print this summary)
+ :     1    0    1
+
+
+ Source configuration
+
+      (0) Parallel, rectangular beam incident from the front
+          Requires 9 inputs:
+          charge (-1,0,1),
+          0 (mandatory, to identify source type),
+   lower x-coordinate of the beam (cm),
+          upper x-coordinate of the beam (cm),
+          lower y-coordinate of the beam (cm),
+          upper y-coordinate of the beam (cm),
+         angle of beam with respect to the positive x-axis (degrees),
+          angle of beam with respect to the positive y-axis (degrees),
+          angle of beam with respect to the negative z-axis (degrees) 
+            (angles default to 90,90,0--incident on front of phantom)
+
+   or (1) Parallel, rectangular beam incident from any direction
+          Requires 10 inputs:
+          charge (-1,0,1),
+          1 (mandatory, to identify source type),
+       x-coordinate of the isocenter (cm),
+          y-coordinate of the isocenter (cm),
+          z-coordinate of the isocenter (cm),
+          angle between +z direction and the line joining the   
+             center of the beam (collimator) to the isocenter
+             --called the polar angle(degrees),
+          angle between +x direction and the projection of the
+             line joining the center of the beam (collimator)
+             to the isocenter on the xy plane--called the azimuthal
+             angle (degrees),
+          total x-widthof the beam in the plane perpendicular
+             to the beam direction (cm),
+          total y-width of the beam in the plane perpendicular
+             to the beam direction (cm),
+          angle by which the collimator is rotated in the
+           collimator plane perpendicular to the beam
+     direction (degrees),                     
+             (+ve rotation is counterclockwise looking along
+              the beam direction
+
+  or  (2) Full phase-space of each particle
+Requires 9 inputs plus data stored in units 43 and 44:
+  charge (-1 electron,0 photon,1 positron, 2 all),
+          2 (mandatory, to identify source type),
+          x-coordinateof the isocenter (cm),
+          y-coordinate of the isocenter (cm),
+          z-coordinate of the isocenter (cm),
+     angle between +z direction and the line joining the   
+          origin in the phase space plane to the isocenter
+          --called the polar angle(degrees),
+          angle between +x direction and the projection of the
+             line joining the origin in the phase space plane
+             tothe isocenter on the xy plane--called the azimuthal
+  angle (degrees),
+          absolute distance from the isocenter to the origin
+             in the phase space plane               
+          angle by which the source is rotated in the
+             phase space plane perpendicular to the beam
+             direction (degrees),                     
+             (+ve rotation is counterclockwise looking down
+            from the origin in the phase space plane),
+   i_dbs--set to 1 if DBS was used in BEAM simulation used
+          to generate the phsp source and you want to reject fat
+             photons, 0 otherwise,
+          DBS splitting radius (cm),
+          SSD at which splitting radius defined (cm),
+          Z at which phsp source collected (cm),
+  No. of times to split charged particles.
+
+   or (3) Point, rectangular beam incident from the front
+          Requires 7 inputs:
+          charge (-1,0,1),
+          3 (mandatory, to identify source type),
+lower x-coordinate of the beam (cm),
+          upper x-coordinate of the beam (cm),
+          lower y-coordinate of the beam (cm),
+          upper y-coordinate of the beam (cm),
+      distance to the plane (cm),
+
+  or  (6) Uniform isotropically radiating parallelepiped within
+          the phantom
+          Requires 8 inputs:
+          charge (-1,0,1),
+          6 (mandatory, to identify source type),
+          lower x-coordinate of active volume (cm)
+          upper x-coordinate of active volume (cm),
+       lower y-coordinate of active volume (cm) 
+          upper y-coordinate of active volume (cm),
+          lower z-coordinate of active volume (cm)  
+          upper z-coordinate of active volume (cm) 
+
+  or  (7) Parallel beam incident from multiple, user-selected angles
+          Requires 9 inputs on this line:
+   charge (-1,0,1),
+          7 (mandatory, to identify source type),
+          x-coordinate of the isocenter (cm),
+      y-coordinate of the isocenter (cm),
+          z-coordinate of the isocenter (cm),
+          number of incident theta-phi pairs or -ve number of
+             groups of incident theta-phi pairs where, within a group
+             only theta or phi can vary, the varying angles are
+             evenly distributed and have equal probability,
+          total x-width of the beam in the plane perpendicular
+             to the beamdirection (cm),
+          total y-width of the beam in the plane perpendicular
+             to the beam direction (cm),
+          angle by which the collimator is rotated in the
+         collimator plane perpendicular to the beam
+   direction (degrees),                     
+             (+ve rotation is counterclockwise looking along
+              thebeam direction
+
+  or  (8) Full phase-space incident from multiple angles
+          Requires 8 inputs on this line and data stored in units 43,44:
+          charge (-1 electron,0 photon,1 positron, 2all),
+          2 (mandatory, to identify source type),
+        x-coordinate of the isocenter (cm),
+          y-coordinate of the isocenter (cm),
+          z-coordinate of the isocenter (cm),
+          number of incident theta-phi pairs or -ve number of
+             groups of incident theta-phi pairs where, within a group
+             only theta or phi can vary, the varying angles are
+             evenly distributed and have equal probability,
+          absolute distance from the isocenter to the origin
+             in the phase space plane                  
+          angle by which the source is rotated in the
+             phase space plane perpendicular to the beam
+             direction (degrees),                     
+             (+ve rotation is counterclockwise looking down
+              from the origin in the phase space plane),
+      i_dbs--set to 1 if DBS was used in BEAM simulation used
+             to generate the phsp source and you want to reject fat
+             photons, 0 otherwise,
+          DBS splitting radius (cm),
+          SSD at which splitting radius defined(cm),
+          Z at which phsp source collected (cm)
+     No. of times to split charged particles.
+
+  or  (9) BEAM simulation of treatment head
+Requires 11 inputs plus name of accelerator simulation,
+   input file used in accelerator simulation, and pegs4
+   data used in accelerator simulation:
+          charge (-1 electron,0 photon,1 positron, 2 all),
+          9 (mandatory, to identify source type),
+          x-coordinate of the isocenter (cm),
+          y-coordinate of the isocenter (cm),
+      z-coordinate of the isocenter (cm),
+          angle between beam central axis and +z axis in DOSXYZ
+             geometry--called the polar angle(degrees),
+          angle between +x direction in DOSXYZ geometry and
+             beam central axis projected on the DOSXYZ xy plane
+             --called the azimuthal angle (degrees),
+          absolute distance from the isocenter to centre of
+             scoring plane in BEAM simulation,
+          angle to rotate BEAM simulation about its central
+             axis (degrees) (+ve rotation is counterclockwise
+             looking down the axis),
+          i_dbs--set to 1 if DBS is being used in BEAM simulation
+    and you want to reject fat photons, 0 otherwise,
+No. of times to split charged particles.
+
+  or  (10) BEAM simulation source incident from multiple angles
+          Requires 10 inputs plus name of accelerator simulation,
+          input file used in accelerator simulation,and pegs4
+          data used in accelerator simulation:
+       charge (-1 electron,0 photon,1 positron, 2 all),
+    9 (mandatory, to identify source type),
+          x-coordinate of the isocenter (cm),
+          y-coordinate of the isocenter (cm),
+          z-coordinate of the isocenter (cm),
+          number of incident theta-phi pairs or -ve number of
+             groups of incident theta-phi pairs where, within a group
+             only theta or phi can vary, the varying angles are
+             evenly distributed and have equal probability,
+          absolute distance from the isocenter to centre of
+             scoring plane in BEAM simulation,
+   angle to rotate BEAM simulation about its central
+    axis (degrees) (+ve rotation is counterclockwise
+   looking down the axis),
+          i_dbs--set to 1 if DBS is being used in BEAM simulation
+             and you want to reject fat photons, 0 otherwise,
+          No. of times to splitcharged particles.
+
+  or  (20) Phase Space Incident from multiple settings 
+  optionally through an MLC or through a BEAM accel.
+ Requires 6 inputs plus name of the input file used
+       forBEAM/vcu SIM. and the BEAM/VCU code if used
+          data used in simulation:
+          charge (-1 electron,0 photon,1 positron, 2 all),
+          20 (mandatory, to identify source type),
+          number of control points, 
+          i_dbs: set to 1 if DBS is being used in simulation
+             and you want to reject fat photons, 0 otherwise,
+          r_dbs: radius of DBS splitting field in original
+             BEAM simulation,
+          ssd_dbs: SSD of DBS splitting field, 
+   z_dbs: Z position where phase space was scored 
+ in original BEAM simulation, 
+          No. of times to splitcharged particles,
+          i_muidx_out: Set to 1 to include fractional MU index
+             in output phase space (i_phsp_out=1 or 2)
+
+  or  (21) BEAM simulation of treatment head will multiple settings
+  optionally through a MLC
+          Requires  name of accelerator simulation,
+          input file used in accelerator simulation, and pegs4
+          data used in accelerator simulation, name of input file
+       for vcu SIM. and the VCU code (particleDmlc) if using MLC
+          charge (-1 electron,0 photon,1 positron, 2 all),
+          21 (mandatory, to identify source type),
+          number of control points 
+         i_dbs: set to 1 if DBS is being used in BEAM simulation
+             and you want to reject fat photons, 0 otherwise,
+          No. of times to split charged particles.
+i_muidx_out: Set to 1 to include fractional MU index
+   in output phase space (i_phsp_out=1 or 2)
+
+ All inputs on one line:
+ Full phase space from an arbitrary direction
+ x-coordinate of the isocenter:                           0.0000
+ y-coordinate of the isocenter:                          20.0000
+ z-coordinate of the isocenter:                         -10.0000
+ Polar angle of origin in source plane:                 180.0000
+ Azimuthal angle of origin in source plane:               0.0000
+ Distance from isocenter to origin in source plane:      40.0000
+ Source rotation angle:                                  90.0000
+ No. of times to split e+/e-:                                  0
+
+
+ Charge of incident particles to use:  0
+
+ Enflag(0=mono-E,1=spectr,2=phsp or full BEAM sim.,3=dosecomp,4=beam model),
+ Mode(0,2), medsur(0 = vacuum), dsurround(1), dflag(0=1 dsurround,
+ 1=4 dsurrounds), dsurround(2), dsurround(3), dsurround(4)
+ :           2           0           0 200.000           0
+
+ The material in the region outside the phantom is vacuum.
+ The thickness of this region (in x, y & z direction) is: 200.000 cm
+
+ Input name of phase space file (A80)
+  : 
+ Particles will be read from file: 
+/Users/henry/projects/xcite-precisionrt/sampled_collimator.egsphsp1             
+
+ Total number of particles in file      :      4928819
+ Total number of photons                :      4928819
+The rest are electrons/positrons.
+ 
+ Maximum kinetic energyof the particles:             0.199 MeV
+ Minimum kinetic energy ofthe electrons:             0.010 MeV
+ # of particles incident fromoriginal source:10000011264.0
+
+
+ NCASE,IWATCH,TIMMAX,INSEED1,INSEED2,BEAM_SIZE,ISMOOTH,IRESTART,IDAT,
+ IREJECT,ESAVE_GLOBAL,NRCYCL,IPARALLEL,PARNUM,n_split,ihowfarless,i_phsp_out
+ : 
+    49288190   0 500.00        33        97 100.00      0    0   0   0   0.00   9   0   0  20   0   0
+
+ ==> Using default EII data compilation ik
+
+
+ Bound Compton start region
+  Setting all to            1
+ Rayleigh start region
+  Setting all to            1
+ Relaxations start region
+  Setting all to            1
+ PE sampling start region
+  Setting all to            1
+
+
+ Call hatch
+ ----------
+
+ ===> Photonuclear flag:   0
+ RAYLEIGH OPTION REQUESTED FOR MEDIUM NUMBER  1
+
+ RAYLEIGH OPTION REQUESTED FOR MEDIUM NUMBER  2
+
+ Found medium with gas pressure
+ Rayleigh data available for medium  1 in PEGS4 data set.
+ Rayleigh data available for medium  2 in PEGS4 data set.
+
+(Re)-initializing photon cross section data
+Using data files from the series xcom
+
+Photon cross sections: xcom Compton cross sections: default
+Using Compton cross sections from /Users/henry/projects/EGSnrc/HEN_HOUSE/data/compton_sigma.data
+Working on medium   1 ...  \n  ->          100  atomic ff values computed!
+      preparing data for Rayleigh sampling ... done
+
+OK
+Working on medium   2 ...  \n  ->          100  atomic ff values computed!
+      preparing data for Rayleigh sampling ... done
+
+OK
+  old PRESTA calculates default min. step-size for BCA: 
+      minimum ECUT found:   0.81100000000000005     
+      default BLCMIN is:    6.2636543765175157     
+      this corresponds to    525.13447703107840       elastic MFPs 
+  Reading screened Rutherford MS data ...............  done 
+
+
+Reading spin data base from /Users/henry/projects/EGSnrc/HEN_HOUSE/data/spinms.data
+EGSnrc spin data, version 2.0   
+Data generated on a machine with 1234 endianess
+The endianess of this CPU is 1234
+Ranges:      1.00   100.00  0.30054  1.00000
+
+
+  medium    1 .....................  done
+  medium    2 .....................  done
+  
+  Medium            1  sige =    14.068178729127519        14.420419366197468       monotone =  T F
+  Medium            2  sige =    13.773766082408946        14.088870769674450       monotone =  T F
+  
+  Initializing tmxs for estepe =   0.25000000000000000       and ximax =   0.50000000000000000     
+  
+ Output from subroutine EDGSET:
+ ==============================
+ Atomic relaxations requested! 
+
+
+ Reading photo-absorption data ..... Done
+
+ Reading relaxation data ..... Done
+
+ Reading photo cross section data ..... Done
+
+ Bound Compton scattering requested, reading data ......  Done
+
+ Initializing Bound Compton scattering ......
+ Medium   1 has  18 shells: 
+  1  10  1  0.00004 0.210E+02     0.285
+  2  11  2  0.00004 0.110E+03     0.011
+  3  12  3  0.00004 0.669E+02     0.011
+  4  17  1  0.05804 0.155E+02     0.543
+  5  18  2  0.05804 0.793E+02     0.024
+  6  19  3  0.05804 0.479E+02     0.014
+  7  20  4  0.05804 0.479E+02     0.014
+  8  13  1  0.21604 0.178E+02     0.410
+  9  14  2  0.21604 0.921E+02     0.015
+ 10  15  3  0.21604 0.558E+02     0.014
+ 11  16  4  0.10802 0.558E+02     0.014
+ 12  72  1  0.00129 0.671E+01     3.206
+ 13  73  2  0.00129 0.271E+02     0.326
+ 14  74  3  0.00129 0.142E+02     0.251
+ 15  75  4  0.00257 0.142E+02     0.249
+ 16  76  5  0.00129 0.889E+02     0.029
+ 17  77  5  0.00129 0.606E+02     0.016
+ 18  78  5  0.00257 0.606E+02     0.016
+ Medium   2 has  12 shells: 
+  1   1  1  0.18230 0.116E+03     0.014
+  2  10  1  0.03363 0.210E+02     0.285
+  3  11  2  0.03363 0.110E+03     0.011
+  4  12  3  0.03363 0.669E+02     0.011
+  5  13  1  0.00675 0.178E+02     0.410
+  6  14  2  0.00675 0.921E+02     0.015
+  7  15  3  0.00675 0.558E+02     0.014
+  8  16  4  0.00338 0.558E+02     0.014
+  9  17  1  0.17330 0.155E+02     0.543
+ 10  18  2  0.17330 0.793E+02     0.024
+ 11  19  3  0.17330 0.479E+02     0.014
+ 12  20  4  0.17330 0.479E+02     0.014
+...... Done.
+
+  
+ eii_init: minimum threshold energy found:    4.9966249465942525E-003
+ *** EII requested but no shells with binding energies 
+     above the specified threshold found
+     => turning off EII
+ eii_init: number of shells to simulate EII:            0
+
+
+Opened EII data file /Users/henry/projects/EGSnrc/HEN_HOUSE/data/eii_ik.data
+ eii_init: reading EII data ...   OK 
+  
+ EGSnrc SUCCESSFULLY 'HATCHED' FOR     2 MEDIA.
+
+================================================================================
+
+                   Electron/Photon transport parameter
+
+================================================================================

@@ -1,0 +1,36 @@
+Cylinder                                                                         #!GUI1.0
+0
+/home/ubuntu/xcite-precisionrt/cylindricalp.egsphant
+0.811, 0.01, 0
+1, 0, 1,
+0, 2, 0, 0, 0, 180, 90, 75, 0, 0, 0, 0, 0, 0
+2, 0, 0, 200, 0, 0, 0, 0
+/home/ubuntu/EGSnrc/egs_home/BEAM_CLMTX/daad4860b96345a51d7a5a6da2d5c54f.egsphsp1
+801970, 0, 500, 33, 97, 100.0, 0, 0, 0, 0, , 9, 0, 0, 20, 0, 0
+ #########################
+ :Start MC Transport Parameter:
+
+ Global ECUT= 0.811
+ Global PCUT= 0.01
+ Global SMAX= 5
+ ESTEPE= 0.25
+ XIMAX= 0.5
+ Boundary crossing algorithm= PRESTA-I
+ Skin depth for BCA= 0
+ Electron-step algorithm= PRESTA-II
+ Spin effects= On
+ Brems angular sampling= Simple
+ Brems cross sections= BH
+ Bound Compton scattering= On
+ Compton cross sections= default
+ Pair angular sampling= Simple
+ Pair cross sections= BH
+ Photoelectron angular sampling= On
+ Rayleigh scattering= On
+ Atomic relaxations= On
+ Electron impact ionization= On
+ Photon cross sections= xcom
+ Photon cross-sections output= Off
+
+ :Stop MC Transport Parameter:
+ #########################
