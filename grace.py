@@ -64,7 +64,11 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
             raise ValueError('Unknown plot type {}'.format(plot_type))
         for plot in plots:
             logger.info("Processing {}".format(plot['slug']))
-            input_path = phsp_paths[plot['phsp']]
+            try:
+                input_path = phsp_paths[plot['phsp']]
+            except KeyError:
+                logger.info('Skipping')
+                continue
             filename = plot['slug'] + '.grace'
             relpath = os.path.join('grace', filename)
             output_path = os.path.join(output_dir, relpath)
@@ -343,7 +347,7 @@ if __name__ == '__main__':
     elif args.report:
         phsp_paths = {
             'source': os.path.join(args.input, 'sampled_source.egsphsp1'),
-            'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
-            'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
+        #    'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
+        #    'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
         }
         make_plots(args.input, phsp_paths, args.config, args.force)

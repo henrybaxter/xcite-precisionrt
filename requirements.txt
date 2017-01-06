@@ -2,8 +2,9 @@ pathos
 scipy
 numpy
 boto3
-tensorflow
+#tensorflow
 matplotlib
 PyQt5
 Jinja2
 natsort
+arrow

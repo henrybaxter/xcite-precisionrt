@@ -42,11 +42,11 @@ def parse_args():
                         help='Max extent of all component modules')
 
     # source arguments
-    parser.add_argument('--beam-width', type=float, default=0.2,
+    parser.add_argument('--beam-width', type=float, default=1,
                         help='Beam width (y) in cm')
     parser.add_argument('--beam-height', type=float, default=0.5,
                         help='Beam height (z) in cm')
-    parser.add_argument('--beam-distance', type=float, default=10.0,
+    parser.add_argument('--beam-distance', type=float, default=50.0,
                         help='Beam axis of rotation to target in cm')
     parser.add_argument('--target-length', type=float, default=75.0,
                         help='Length of target in cm')
@@ -54,7 +54,7 @@ def parse_args():
                         help='Angle of reflection target')
     parser.add_argument('--beam-gap', type=float, default=0.0,
                         help='Gap between incident beams')
-    parser.add_argument('--histories', type=int, default=int(1e9),
+    parser.add_argument('--histories', type=int, default=int(1e8),
                         help='Divided among source beamlets')
 
     # collimator
@@ -133,8 +133,8 @@ def beam_build(egs_home, name, cms):
             'install_name_tool',
             '-change',
             '../egs++/dso/osx/libiaea_phsp.dylib',
-            '/Users/henrybaxter/projects/EGSnrc/HEN_HOUSE/egs++/dso/osx/libiaea_phsp.dylib',
-            '/Users/henrybaxter/projects/EGSnrc/egs_home/bin/osx/BEAM_{}'.format(name)]
+            os.path.expanduser('~/projects/EGSnrc/HEN_HOUSE/egs++/dso/osx/libiaea_phsp.dylib'),
+            os.path.expanduser('~/projects/EGSnrc/egs_home/bin/osx/BEAM_{}'.format(name))]
         )
     elapsed = time.time() - start
     logger.info('{} built in {} seconds'.format(name, elapsed))
@@ -325,10 +325,13 @@ def generate_source(args):
     logger.info('Creating egsinp files')
     beamlets = []
     simulations = []
+    weights = [1 + (y * y) / (args.beam_distance * args.beam_distance) for y in y_values]
+    total_weight = sum(weights)
     histories = 0
     for i, y in enumerate(y_values):
         if args.beam_weighting:
-            weight = 1 + (y * y) / (args.target_distance * args.target_distance)
+            weight = weights[i] / (total_weight / len(y_values))
+            print(weight)
             template['ncase'] = int(args.histories / len(y_values) * weight)
             logger.info('Setting beam at {} to {} histories'.format(y, template['ncase']))
         histories += template['ncase']
