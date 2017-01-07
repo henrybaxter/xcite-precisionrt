@@ -182,7 +182,7 @@ async def simulate_dose(args, templates, beamlet, index):
     # generate npz file
     py3ddose.read_3ddose(dose['3ddose'])  # use side effect of generating npz
     os.remove(dose['3ddose'])
-    path = os.path.join(args.output_dir, 'dose/stationary{}.3ddose.npz'.format(index))
+    path = os.path.join(args.output_dir, 'dose/stationary/stationary{}.3ddose.npz'.format(index))
     shutil.copy(dose['npz'], path)
     return dose
 

@@ -92,7 +92,7 @@ def parse_args():
     args.output_dir = args.name.replace(' ', '-')
     if os.path.exists(args.output_dir):
         logger.warning('{} already exists'.format(args.output_dir))
-    for subfolder in ['stationary_dose', 'arc_dose', 'weighted_dose', 'arc_weighted_dose']:
+    for subfolder in ['dose/stationary', 'dose/arc']:
         os.makedirs(os.path.join(args.output_dir, subfolder), exist_ok=True)
 
     args.egs_home = os.path.abspath(os.path.join(
@@ -100,7 +100,6 @@ def parse_args():
     logger.info('egs_home is {}'.format(args.egs_home))
 
     return args
-
 
 
 def sample_combine(beamlets, desired=10000000):
