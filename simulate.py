@@ -48,6 +48,7 @@ async def simulate_source(args, template, y):
         'phsp': os.path.join(folder, '{}.egsphsp1'.format(base)),
         'hash': md5
     }
+    stats_path = os.path.join(folder, '{}.jsonstats'.format(base))
 
     if args.overwrite or not os.path.exists(beamlet['phsp']):
         # simulate
@@ -63,7 +64,9 @@ async def simulate_source(args, template, y):
 
     # stats
     command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    beamlet['stats'] = json.loads(await run_command(command))
+    json.dump(open(stats_path, 'w'), json.loads(await run_command(command)))
+
+    beamlet['stats'] = json.load(open(stats_path))
     return beamlet
 
 
@@ -85,6 +88,7 @@ async def filter_source(args, template, source_beamlet):
         'phsp': os.path.join(folder, '{}.egsphsp1'.format(base)),
         'hash': md5
     }
+    stats_path = os.path.join(folder, '{}.jsonstats'.format(base))
 
     if args.overwrite or not os.path.exists(beamlet['phsp']):
         # simulate
@@ -95,7 +99,9 @@ async def filter_source(args, template, source_beamlet):
 
     # stats
     command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    beamlet['stats'] = json.loads(await run_command(command))
+    json.dump(open(stats_path, 'w'), json.loads(await run_command(command)))
+
+    beamlet['stats'] = json.load(open(stats_path))
     return beamlet
 
 
@@ -119,6 +125,7 @@ async def collimate(args, template, source_beamlet):
         'phsp': os.path.join(folder, '{}.egsphsp1'.format(base)),
         'hash': md5
     }
+    stats_path = os.path.join(folder, '{}.jsonstats'.format(base))
 
     if args.overwrite or not os.path.exists(beamlet['phsp']):
         # simulate
@@ -129,7 +136,9 @@ async def collimate(args, template, source_beamlet):
 
     # stats
     command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    beamlet['stats'] = json.loads(await run_command(command))
+    json.dump(open(stats_path, 'w'), json.loads(await run_command(command)))
+
+    beamlet['stats'] = json.load(open(stats_path))
     return beamlet
 
 
