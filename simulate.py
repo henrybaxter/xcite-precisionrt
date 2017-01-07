@@ -1,5 +1,4 @@
 import asyncio
-import shutil
 import math
 import os
 import logging
@@ -50,31 +49,29 @@ async def simulate_source(args, template, y):
     # beamlet properties
     beamlet = {
         'egsinp': os.path.join(folder, '{}.egsinp'.format(base)),
-        'phsp': os.path.join(folder, '{}.egsphsp1'.format(base)),
+        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
         'hash': md5
     }
-    stats_path = os.path.join(folder, '{}.jsonstats'.format(base))
+    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
 
-    if args.overwrite or not os.path.exists(beamlet['phsp']):
+    if not os.path.exists(beamlet['phsp']):
         # simulate
-        remove(beamlet['phsp'])
+        remove(temp_phsp)
         with open(beamlet['egsinp'], 'w') as f:
             f.write(egsinp_str)
         command = ['BEAM_RFLCT', '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
         # translate
-        await run_command(['beamdpr', 'translate', '-i', beamlet['phsp'], '-y', '({})'.format(y)])
+        await run_command(['beamdpr', 'translate', '-i', temp_phsp, '-y', '({})'.format(y)])
         # rotate
         angle = str(math.pi / 2)
-        await run_command(['beamdpr', 'rotate', '-i', beamlet['phsp'], '-a', angle])
+        await run_command(['beamdpr', 'rotate', '-i', temp_phsp, '-a', angle])
+        os.rename(temp_phsp, beamlet['phsp'])
 
-        # stats
-        command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-        with open(stats_path, 'w') as f:
-            json.dump(json.loads(await run_command(command)), f)
+    # stats
+    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
+    beamlet['stats'] = json.loads(await run_command(command))
 
-    with open(stats_path) as f:
-        beamlet['stats'] = json.load(f)
     return beamlet
 
 
@@ -93,26 +90,24 @@ async def filter_source(args, template, source_beamlet):
     # beamlet properties
     beamlet = {
         'egsinp': os.path.join(folder, '{}.egsinp'.format(base)),
-        'phsp': os.path.join(folder, '{}.egsphsp1'.format(base)),
+        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
         'hash': md5
     }
-    stats_path = os.path.join(folder, '{}.jsonstats'.format(base))
+    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
 
-    if args.overwrite or not os.path.exists(beamlet['phsp']):
+    if not os.path.exists(beamlet['phsp']):
         # simulate
-        remove(beamlet['phsp'])
+        remove(temp_phsp)
         with open(beamlet['egsinp'], 'w') as f:
             f.write(egsinp_str)
         command = ['BEAM_FILTR', '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
+        os.rename(temp_phsp, beamlet['phsp'])
 
-        # stats
-        command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-        with open(stats_path, 'w') as f:
-            json.dump(json.loads(await run_command(command)), f)
+    # stats
+    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
+    beamlet['stats'] = json.loads(await run_command(command))
 
-    with open(stats_path) as f:
-        beamlet['stats'] = json.load(f)
     return beamlet
 
 
@@ -133,26 +128,24 @@ async def collimate(args, template, source_beamlet):
     # beamlet properties
     beamlet = {
         'egsinp': os.path.join(folder, '{}.egsinp'.format(base)),
-        'phsp': os.path.join(folder, '{}.egsphsp1'.format(base)),
+        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
         'hash': md5
     }
-    stats_path = os.path.join(folder, '{}.jsonstats'.format(base))
+    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
 
-    if args.overwrite or not os.path.exists(beamlet['phsp']):
+    if not os.path.exists(beamlet['phsp']):
         # simulate
         remove(beamlet['phsp'])
         with open(beamlet['egsinp'], 'w') as f:
             f.write(egsinp_str)
         command = [name, '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
+        os.rename(temp_phsp, beamlet['phsp'])
 
-        # stats
-        command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-        with open(stats_path, 'w') as f:
-            json.dump(json.loads(await run_command(command)), f)
+    # stats
+    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
+    beamlet['stats'] = json.loads(await run_command(command))
 
-    with open(stats_path) as f:
-        beamlet['stats'] = json.load(f)
     return beamlet
 
 
@@ -208,11 +201,10 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
         'egslst': os.path.join(folder, '{}.egslst'.format(base))
     }
 
-    if args.overwrite or not os.path.exists(path):
+    if not os.path.exists(path):
         # simulate
         remove(dose['3ddose'])
         remove(dose['npz'])
-        remove(path)
         with open(dose['egsinp'], 'w') as f:
             f.write(egsinp_str)
         command = ['dosxyznrc', '-p', args.pegs4, '-i', os.path.basename(dose['egsinp'])]
@@ -224,7 +216,7 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
 
         # generate npz file
         await read_3ddose(dose['3ddose'])  # use side effect of generating npz
-        remove(dose['3ddose'])
+        remove(dose['3ddose'])  # save some space now we have npz
         await copy(dose['npz'], path)
     return dose
 

@@ -18,9 +18,11 @@ counter = asyncio.Semaphore(MAX)
 
 executor = ProcessPoolExecutor()
 
+
 async def copy(src, dst):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, shutil.copy, src, dst)
+
 
 async def read_3ddose(path):
     loop = asyncio.get_event_loop()

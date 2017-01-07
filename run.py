@@ -1,25 +1,14 @@
 import datetime
 import time
-import shutil
-import platform
 import argparse
-import sys
 import os
 import math
 import hashlib
-import json
-import functools
 import logging
-from collections import OrderedDict
 import asyncio
 
 import numpy as np
 
-import report
-import egsinp
-import grace
-import collimator_analyzer
-import dose_contours
 import py3ddose
 import simulate
 
@@ -135,8 +124,8 @@ def generate_y(target_length, spacing):
         y = i * spacing + offset
     # could be removed and the beams reflected instead
     # this was written before beamdpr
-    for y in result[:]:
-        result.insert(0, -y)
+    # for y in result[:]:
+    #    result.insert(0, -y)
     return result
 
 
@@ -234,6 +223,7 @@ async def main():
     simulations = await asyncio.gather(*[
         simulate.simulate(args, templates, i, y) for i, y in enumerate(y_values)
     ])
+    logger.info('All simulations finished')
     asyncio.gather(*[
         # combine source, filter, collimator
         # combine stationary and arc doses

@@ -1,3 +1,4 @@
+import sys
 import logging
 import os
 import time
@@ -25,6 +26,7 @@ def write_specmodule(egs_home, name, cms):
     with open(path, 'w') as f:
         f.write('\n'.join([types_line, identifiers_line]))
     logger.info('Spec module written')
+
 
 def get_egsinp(path):
     logger.info('Reading template {}'.format(path))
