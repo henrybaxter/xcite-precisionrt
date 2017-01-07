@@ -7,8 +7,7 @@ import hashlib
 import json
 
 import egsinp
-import py3ddose
-from utils import run_command
+from utils import run_command, read_3ddose
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +196,7 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
         open(dose['egslst'], 'w').write(out)
 
     # generate npz file
-    py3ddose.read_3ddose(dose['3ddose'])  # use side effect of generating npz
+    await read_3ddose(dose['3ddose'])  # use side effect of generating npz
     remove(dose['3ddose'])
     shutil.copy(dose['npz'], path)
 

@@ -3,6 +3,8 @@ import asyncio
 import platform
 from multiprocessing import cpu_count
 
+import py3ddose
+
 logger = logging.getLogger(__name__)
 
 if platform.system() == 'Darwin':
@@ -11,6 +13,12 @@ else:
     MAX = cpu_count()
 
 counter = asyncio.Semaphore(MAX)
+
+
+async def read_3ddose(path):
+    await counter.acquire()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, py3ddose.read3ddose, path)
 
 
 async def run_command(command, **kwargs):
