@@ -18,7 +18,7 @@ counter = asyncio.Semaphore(MAX)
 async def read_3ddose(path):
     await counter.acquire()
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, py3ddose.read3ddose, path)
+    return await loop.run_in_executor(None, py3ddose.read_3ddose, path)
 
 
 async def run_command(command, **kwargs):
