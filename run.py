@@ -57,7 +57,7 @@ def parse_args():
                         help='Angle of reflection target')
     parser.add_argument('--beam-gap', type=float, default=0.0,
                         help='Gap between incident beams')
-    parser.add_argument('--histories', type=int, default=int(1e8),
+    parser.add_argument('--histories', type=int, default=int(1e9),
                         help='Divided among source beamlets')
 
     # collimator
