@@ -198,7 +198,7 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
 
     # generate npz file
     py3ddose.read_3ddose(dose['3ddose'])  # use side effect of generating npz
-    os.remove(dose['3ddose'])
+    remove(dose['3ddose'])
     shutil.copy(dose['npz'], path)
 
 
