@@ -6,7 +6,7 @@ import hashlib
 import json
 
 import egsinp
-from utils import run_command, read_3ddose, copy
+from utils import run_command, read_3ddose, copy, remove
 
 logger = logging.getLogger(__name__)
 
@@ -232,10 +232,3 @@ def dose_angles(args):
     for i in range(n_angles):
         angles.append((120 + i * angular_increment, 120 + (i + 1) * angular_increment))
     return angles
-
-
-def remove(path):
-    try:
-        os.remove(path)
-    except IOError:
-        pass

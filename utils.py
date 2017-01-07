@@ -1,3 +1,4 @@
+import os
 import shutil
 import logging
 import asyncio
@@ -19,6 +20,13 @@ counter = asyncio.Semaphore(MAX)
 executor = ProcessPoolExecutor()
 
 
+def remove(path):
+    try:
+        os.remove(path)
+    except IOError:
+        pass
+
+
 async def copy(src, dst):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, shutil.copy, src, dst)
@@ -29,7 +37,7 @@ async def read_3ddose(path):
     return await loop.run_in_executor(executor, py3ddose.read_3ddose, path)
 
 
-async def run_command(command, **kwargs):
+async def run_command(command, stdin=None, **kwargs):
     await counter.acquire()
     logger.info('Running "{}"'.format(' '.join(command)))
     process = await asyncio.create_subprocess_exec(
@@ -37,7 +45,7 @@ async def run_command(command, **kwargs):
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         **kwargs)
-    stdout, stderr = await process.communicate(None)
+    stdout, stderr = await process.communicate(stdin)
     stdout = stdout.decode('utf-8')
     if process.returncode != 0 or 'ERROR' in stdout or 'Warning' in stdout:
         message = 'Command failed: "{}"'.format(' '.join(command))

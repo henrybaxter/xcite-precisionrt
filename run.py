@@ -6,14 +6,16 @@ import math
 import hashlib
 import logging
 import asyncio
+from collections import OrderedDict
 
 import numpy as np
 
 import py3ddose
+import grace
 import simulate
-
+import dose_contours
 import build
-from utils import run_command
+from utils import run_command, copy
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,6 @@ def parse_args():
     parser.add_argument('--pegs4', default='allkV')
     parser.add_argument('--rmax', type=float, default=50.0,
                         help='Max extent of all component modules')
-    parser.add_argument('--overwrite', action='store_true')
 
     # source arguments
     parser.add_argument('--beam-width', type=float, default=1,
@@ -91,7 +92,7 @@ def parse_args():
     return args
 
 
-def sample_combine(beamlets, desired=10000000):
+async def sample_combine(beamlets, desired=int(1e7)):
     logger.info('Sampling and combining {} beamlets'.format(len(beamlets)))
     paths = [beamlet['phsp'] for beamlet in beamlets]
     particles = sum([beamlet['stats']['total_particles'] for beamlet in beamlets])
@@ -100,14 +101,14 @@ def sample_combine(beamlets, desired=10000000):
     s = 'rate={}'.format(rate) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
     md5 = hashlib.md5(s.encode('utf-8'))
     os.makedirs('combined', exist_ok=True)
-    combined_path = 'combined/{}.egsphsp1'.format(md5.hexdigest())
-    if os.path.exists(combined_path):
-        logger.info('Combined beamlets file {} already exists'.format(combined_path))
-        return combined_path
-    logger.info('Combining {} beamlets into {}'.format(len(beamlets), combined_path))
-    run_command(['beamdpr', 'sample-combine', '--rate', str(rate), '-o', combined_path] + paths)
-    logger.info('Randomizing')
-    run_command(['beamdpr', 'randomize', combined_path])
+    temp_path = 'combined/{}.egsphsp1'.format(md5.hexdigest())
+    combined_path = 'combined/{}.egsphsp'.format(md5.hexdigest())
+    if not os.path.exists(combined_path):
+        logger.info('Combining {} beamlets into {}'.format(len(beamlets), temp_path))
+        await run_command(['beamdpr', 'sample-combine', '--rate', str(rate), '-o', temp_path] + paths)
+        logger.info('Randomizing {}'.format(temp_path))
+        await run_command(['beamdpr', 'randomize', temp_path])
+        os.rename(temp_path, combined_path)
     return combined_path
 
 
@@ -129,7 +130,7 @@ def generate_y(target_length, spacing):
     return result
 
 
-def combine_fast_doses(doses):
+def combine_doses(doses):
     logger.info('Combining doses')
     result = {}
     sz = len(doses['stationary'])
@@ -161,28 +162,6 @@ def combine_fast_doses(doses):
     return result
 
 
-def combine_slow_doses(contributions):
-    """Assumes contributions is a list of dictionaries, each containing entries like
-    (theta, phi): { 'dose': path, 'hash': object }
-    """
-    center_paths = []  # beamlet contributions without arc
-    arced_paths = []  # beamlet contributions with arc
-    for i, beamlet_contribution in enumerate(contributions):
-        beamlet_paths = []
-        for (theta, phi), contribution in beamlet_contribution.items():
-            if theta == 180 and phi == 0:
-                center_paths.append(contribution['dose'])
-            beamlet_paths.append(contribution['dose'])
-        logger.info('Combining arced doses for beamlet {}'.format(i))
-        arced_path = os.path.join(args.output_dir, 'dose/arc.dose{}.3ddose.npz'.format(i))
-        py3ddose.combine_3ddose(beamlet_paths, arced_path)
-        arced_paths.append(arced_path)
-    logger.info('Combining center doses')
-    py3ddose.combine_3ddose(center_paths, os.path.join(args.output_dir, 'center.3ddose.npz'))
-    logger.info('Combining arced doses')
-    py3ddose.combine_3ddose(arced_paths, os.path.join(args.output_dir, 'arced.3ddose.npz'))
-
-
 async def configure_logging(args):
     revision = (await run_command(['git', 'rev-parse', '--short', 'HEAD'])).strip()
     formatter = logging.Formatter('%(levelname)s {name} {revision} %(asctime)s %(message)s'.format(
@@ -212,7 +191,7 @@ async def main():
     log_args(args)
     y_values = generate_y(args.target_length, args.beam_width + args.beam_gap)
     histories = args.histories // len(y_values)
-    stages = ['source', 'filter', 'collimator', 'stationary_dose', 'arc_dose']
+    stages = ['source', 'filter', 'collimator', 'dose']
     templates = {stage: template for stage, template in zip(stages, await asyncio.gather(*[
         build.build_source(args, histories),
         build.build_filter(args),
@@ -223,85 +202,38 @@ async def main():
     simulations = await asyncio.gather(*[
         simulate.simulate(args, templates, i, y) for i, y in enumerate(y_values)
     ])
-    logger.info('All simulations finished')
-    asyncio.gather(*[
-        # combine source, filter, collimator
-        # combine stationary and arc doses
-        # guess weights/apply weights and combine stationary weighted and arc weighted
-        # generate contour plots
-        # generate grace plots
+    logger.info('All simulations finished, combining')
+    combined = {stage: result for stage, result in zip(stages, await asyncio.gather(*[
+        sample_combine([sim['source'] for sim in simulations]),
+        sample_combine([sim['filter'] for sim in simulations]),
+        sample_combine([sim['collimator'] for sim in simulations]),
+        combine_doses({
+            'stationary': [sim['dose']['stationary'] for sim in simulations],
+            'arc': [sim['dose']['arc'] for sim in simulations],
+        })
+    ]))}
+
+    logger.info('Saving combined phase space files')
+    await asyncio.gather(*[
+        copy(combined[key], os.path.join(args.output_dir, 'sampled_{}.egsphsp'.format(key)))
+        for key in ['source', 'filter', 'collimator']
     ])
-    # post process some stats
-    # generate tex file
-    # generate report
 
-
-    """
-    result = {
-        'source': {
-            'egsinp': full path,
-            'in_phsp': full path,
-            'out_phsp': full path,
-            'in_stats': stats of in_phsp,
-            'out_stats': stats of out_phsp,
-            'egslst': full path to egslst output of simulation,
-        },
-        'filter'...,
-        'collimator'...,
-        'stationary_dose': {
-            'egsinp'...,
-            'in_phsp',
-            'in_stats'...,
-            'out_3ddose',
-            'egslst'...
-        }
-        'arced_dose': {
-            'in_phsp':
-            'in_stats',
-            'doses': [{ # these are unordered
-                'index':...
-                'egsinp',
-                '3ddose',
-                'egslst'
-            }]
-        }
-    }
-
-    combined_result = {
-        'source': {
-            'phsp',
-            'stats'
-        },
-        'filter': {
-        ...
-        }
-    }
-    """
-    """"
-    # now what about this sampling and combining stuff
-    # we do that at the end, based on this datastructure?
-    # 
-    # now, we need to eventually order these, so...
-    phsp['source'] = sample_combine(beamlets['source'])
-    shutil.copy(phsp['source'], os.path.join(args.output_dir, 'sampled_source.egsphsp1'))
-
-    _filter = build_filter(args)
-    beamlets['filter'] = beamlet_stats(filter_source(beamlets['source'], _filter, args))
-    phsp['filter'] = sample_combine(beamlets['filter'])
-    shutil.copy(phsp['filter'], os.path.join(args.output_dir, 'sampled_filter.egsphsp1'))
-
-    collimator = build_collimator(args)
-    beamlets['collimator'] = beamlet_stats(collimate(beamlets['filter'], collimator, args))
-    phsp['collimator'] = sample_combine(beamlets['collimator'], desired=100000000)
-    shutil.copy(phsp['collimator'], os.path.join(args.output_dir, 'sampled_collimator.egsphsp1'))
-
-    # dose_contributions = dose(beamlets['collimator'], args)
-    # combine_doses(dose_contributions)
-    doses = fast_dose(beamlets['collimator'], args)  # stationary, arc
-    combined_doses = combine_fast_doses(doses)
+    # plots
+    plot_futures = [
+        grace.make_plots(args.output_dir, combined, args.plot_config),
+    ]
     target = py3ddose.Target(
         np.array([args.target_z, args.target_y, args.target_x]),
         args.target_size)
+    for slug, path in combined['dose'].items():
+        plot_futures.append(dose_contours.plot(args.phantom, path, target, args.putput_dir, '{}_dose'.format(slug)))
+    grace_plots, *contours = await asyncio.gather(*plot_futures)
+    contour_plots = OrderedDict()
+    for stage in ['stationary', 'weighted', 'arc', 'arc_weighted']:
+        for contour in contours[stage]:
+            contour_plots.setdefault(contour['plane'], []).append(contour)
+    """"
     contours = {}
     conformity = {}
     target_to_skin = {}
@@ -310,17 +242,12 @@ async def main():
         dose = py3ddose.read_3ddose(path)
         conformity[slug] = py3ddose.paddick(dose, target)
         target_to_skin[slug] = py3ddose.target_to_skin(dose, target)
-
     # we take the plane
-    contour_plots = OrderedDict()
-    for stage in ['stationary', 'weighted', 'arc', 'arc_weighted']:
-        for contour in contours[stage]:
-            contour_plots.setdefault(contour['plane'], []).append(contour)
+
 
     photons = {}
     for stage in ['source', 'filter', 'collimator']:
-        photons[stage] = sum([beamlet['stats']['total_photons'] for beamlet in beamlets[stage]])
-
+        photons[stage] = sum([beamlet['stats']['total_photons'] for beamlet in simulations[stage]])
     data = {
         '_filter': _filter,
         'collimator': collimator,
@@ -343,10 +270,10 @@ async def main():
 if __name__ == '__main__':
     start = time.time()
     loop = asyncio.get_event_loop()
-    #import warnings
-    #loop.set_debug(True)
-    #loop.slow_callback_duration = 0.001
-    #warnings.simplefilter('always', ResourceWarning)
+    # import warnings
+    # loop.set_debug(True)
+    # loop.slow_callback_duration = 0.001
+    # warnings.simplefilter('always', ResourceWarning)
     loop.run_until_complete(main())
     loop.close()
     logger.info('Finished in {:.2f} seconds'.format(time.time() - start))

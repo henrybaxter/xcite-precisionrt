@@ -1,12 +1,14 @@
+import asyncio
 import logging
 import json
 import os
 import platform
-from subprocess import Popen, PIPE
+from subprocess import Popen
 from collections import OrderedDict
 
-logger = logging.getLogger(__name__)
+from utils import run_command
 
+logger = logging.getLogger(__name__)
 
 GRACE = 'grace'
 if platform.system() == 'Darwin':
@@ -43,14 +45,15 @@ files, json configurations, etc.
 """
 
 
-def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
+async def make_plots(output_dir, phsp_paths, config_paths):
     # each config is a dictionary with one element, plots
     # plots is a list of plots, we just merge them together
     plots = {}
     for path in config_paths:
         plots.update(json.load(open(path)))
-    os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
-    generated = {}
+    output_dir = os.path.join(output_dir, 'grace')
+    os.makedirs(output_dir, exist_ok=True)
+    future_plots = []
     for plot_type, plots in plots.items():
         if plot_type == 'scatter':
             plotter = scatter
@@ -63,40 +66,43 @@ def make_plots(output_dir, phsp_paths, config_paths, overwrite=False):
         else:
             raise ValueError('Unknown plot type {}'.format(plot_type))
         for plot in plots:
-            logger.info("Processing {}".format(plot['slug']))
-            try:
-                input_path = phsp_paths[plot['phsp']]
-            except KeyError:
-                logger.info('Skipping')
-                continue
-            filename = plot['slug'] + '.grace'
-            relpath = os.path.join('grace', filename)
-            output_path = os.path.join(output_dir, relpath)
-            plot['path'] = relpath
-            plot, lines = plotter(input_path, output_path, **plot)
-            extents = plot['extents'] if plot_type == 'scatter' else None
-            if overwrite or not os.path.exists(output_path):
-                generate(lines, output_path, extents=extents)
-                eps(output_path)
-            generated.setdefault(plot_type, []).append(plot)
-    ordering = ['scatter', 'energy_fluence', 'spectral', 'angular']
-    result = OrderedDict()
-    for key in ordering:
-        result[key] = generated.get(key, [])
-    return result
+            phsp = phsp_paths[plot['phsp']]
+            plot['type'] = plot_type
+            future_plots.append(make_plot(plotter, plot, phsp, output_dir))
+    generated = {}
+    for plot in asyncio.gather(*[future_plots]):
+        generated.setdefault(plot['type'], []).append(plot)
+    return OrderedDict([
+        (key, generated.get(key, []))
+        for key in ['scatter', 'energy_fluence', 'spectral', 'angular']
+    ])
 
 
-def generate(arguments, output_path, extents=None):
+async def make_plot(plotter, plot, phsp, output_dir):
+    logger.info("Processing {}".format(plot['slug']))
+    try:
+        input_path = phsp_paths[plot['phsp']]
+    except KeyError:
+        logger.info('Skipping {}'.format(plot['phsp']))
+        return
+    filename = plot['slug'] + '.grace'
+    relpath = os.path.join('grace', filename)
+    output_path = os.path.join(output_dir, relpath)
+    eps_path = output_path.replace('.grace', '.eps')
+    temp_path = output_path + '.temp'
+    plot['path'] = relpath
+    plot, lines = plotter(input_path, output_path, **plot)
+    extents = plot['extents'] if plot['type'] == 'scatter' else None
+    if not os.path.exists(output_path):
+        await generate(lines, temp_path, extents=extents)
+        await run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', eps_path, temp_path])
+    os.rename(temp_path, output_path)
+    return plot
+
+
+async def generate(arguments, output_path, extents=None):
     logger.info('Generating grace plot:\n{}'.format('\n'.join(arguments)))
-    p = Popen(['beamdp'], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-    (stdout, stderr) = p.communicate("\n".join(arguments).encode('utf-8'))
-    if p.returncode != 0:
-        print('Could not generate grace with arguments:')
-        print(arguments)
-        print(output_path)
-        print()
-        print(stdout.decode('utf-8'))
-        print(stderr.decode('utf-8'))
+    result = await run_command(['beamdp'], stdin="\n".join(arguments).encode('utf-8'))
     result = []
     if extents:
         result.append('@ autoscale onread none')  # stop autoscaling
@@ -113,16 +119,12 @@ def generate(arguments, output_path, extents=None):
             result.append('@    s0 symbol size 0.040000')
         else:
             result.append(line.strip())
-    open(output_path, 'w').write("\n".join(result))
+    with open(output_path, 'w') as f:
+        f.write("\n".join(result))
 
 
 def view(path):
     Popen([GRACE, path])
-
-
-def eps(path):
-    output = path.replace('.grace', '.eps')
-    Popen([GRACE, '-hardcopy', '-nosafe', '-printfile', output, path])
 
 
 def scatter(input_path, output_path, **kwargs):
@@ -155,7 +157,7 @@ def scatter(input_path, output_path, **kwargs):
         input_path,  # egsphsp input
         output_path,  # grace output
         # maximum number of particles to output (defaults to all apparently)
-        str(args['max_particles']),  
+        str(args['max_particles']),
         "",  # create another?
         "",  # grace?
         ""  # eof
@@ -343,11 +345,10 @@ if __name__ == '__main__':
             if path.endswith('.grace'):
                 path = os.path.join(args.eps, path)
                 print('generating eps for {}'.format(path))
-                eps(path)
     elif args.report:
         phsp_paths = {
             'source': os.path.join(args.input, 'sampled_source.egsphsp1'),
-        #    'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
-        #    'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
+            'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
+            'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
         }
         make_plots(args.input, phsp_paths, args.config, args.force)
