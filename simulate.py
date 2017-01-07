@@ -1,3 +1,4 @@
+import asyncio
 import shutil
 import math
 import os
@@ -22,7 +23,7 @@ async def simulate(args, templates, i, y):
         'source': source_beamlet,
         'filter': filtered_beamlet,
         'collimator': collimated_beamlet,
-        'dose': await simulate_dose(args, templates, collimated_beamlet, i)
+        'dose': await simulate_doses(args, templates, collimated_beamlet, i)
     }
 
 
@@ -133,10 +134,7 @@ async def collimate(args, template, source_beamlet):
     return beamlet
 
 
-async def simulate_dose(args, templates, beamlet, index):
-    folder = os.path.join(args.egs_home, 'dosxyznrc')
-
-    # prepare template
+async def simulate_doses(args, templates, beamlet, index):
     context = {
         'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
         'phsp_path': beamlet['phsp'],
@@ -150,12 +148,31 @@ async def simulate_dose(args, templates, beamlet, index):
         'z': args.target_z,
         'idat': 1,
         'theta': 180,
-        # only for stationary
-        'phi': 0
     }
 
-    # hash
+    doses = {'arc': []}
+
+    # stationary
+    context['phi'] = 0
     egsinp_str = templates['stationary_dose'].format(**context)
+    path = os.path.join(args.output_dir, 'dose/stationary/stationary{}.3ddose.npz'.format(index))
+    doses['stationary'] = simulate_dose(args, beamlet, egsinp_str, path)
+
+    # arc
+    for phimin, phimax in dose_angles(args):
+        context['nang'] = 1
+        context['phimin'] = phimin
+        context['phimax'] = phimax
+        egsinp_str = templates['arc_dose'].format(**context)
+        path = os.path.join(args.output_dir, 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
+        doses['arc'].append(simulate_dose(args, beamlet, egsinp_str, path))
+    doses['stationary'], *doses['arc'] = await asyncio.gather(*[doses['stationary']] + doses['arc'])
+    return doses
+
+
+async def simulate_dose(args, beamlet, egsinp_str, path):
+    folder = os.path.join(args.egs_home, 'dosxyznrc')
+    # hash
     md5 = beamlet['hash'].copy()
     md5.update(egsinp_str.encode('utf-8'))
     base = md5.hexdigest()
@@ -182,20 +199,7 @@ async def simulate_dose(args, templates, beamlet, index):
     # generate npz file
     py3ddose.read_3ddose(dose['3ddose'])  # use side effect of generating npz
     os.remove(dose['3ddose'])
-    path = os.path.join(args.output_dir, 'dose/stationary/stationary{}.3ddose.npz'.format(index))
     shutil.copy(dose['npz'], path)
-    return dose
-
-    """
-        egslst = os.path.join(folder, simulations[stage][index]['egsinp'].replace('.egsinp', '.egslst'))
-        shutil.copy(egslst, os.path.join(args.output_dir, '{}_dose{}.egslst'.format(stage, index)))
-        _egsinp = os.path.join(folder, simulations[stage][index]['egsinp'])
-        shutil.copy(_egsinp, os.path.join(args.output_dir, '{}_dose{}.egsinp'.format(stage, index)))
-        for i, dose in enumerate(doses[stage]):
-            ipath = dose['dose'] + '.npz'
-            opath = os.path.join(args.output_dir, '{}_dose/{}_dose{}.3ddose.npz'.format(stage, stage, i))
-            shutil.copy(ipath, opath)
-    """
 
 
 def dose_angles(args):
