@@ -3,6 +3,7 @@ import logging
 import asyncio
 import platform
 from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor
 
 import py3ddose
 
@@ -15,15 +16,15 @@ else:
 
 counter = asyncio.Semaphore(MAX)
 
+executor = ProcessPoolExecutor()
+
 async def copy(src, dst):
-    with await counter:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, shutil.copy, src, dst)
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, shutil.copy, src, dst)
 
 async def read_3ddose(path):
-    with await counter:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, py3ddose.read_3ddose, path)
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(executor, py3ddose.read_3ddose, path)
 
 
 async def run_command(command, **kwargs):

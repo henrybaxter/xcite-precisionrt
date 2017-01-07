@@ -16,14 +16,19 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 async def simulate(args, templates, i, y):
     source_beamlet = await simulate_source(args, templates['source'], y)
+    logger.info('{} - simulated source'.format(i))
     filtered_beamlet = await filter_source(args, templates['filter'], source_beamlet)
+    logger.info('{} - simulated filter'.format(i))
     collimated_beamlet = await collimate(args, templates['collimator'], filtered_beamlet)
-    return {
+    logger.info('{} - simulated collimator'.format(i))
+    result = {
         'source': source_beamlet,
         'filter': filtered_beamlet,
         'collimator': collimated_beamlet,
         'dose': await simulate_doses(args, templates, collimated_beamlet, i)
     }
+    logger.info('{} - simulated doses'.format(i))
+    return result
 
 
 async def simulate_source(args, template, y):
@@ -173,7 +178,6 @@ async def simulate_doses(args, templates, beamlet, index):
     context['phi'] = 0
     egsinp_str = templates['stationary_dose'].format(**context)
     path = os.path.join(args.output_dir, 'dose/stationary/stationary{}.3ddose.npz'.format(index))
-    logger.info('{} - Created stationary dose task'.format(index))
     doses['stationary'] = simulate_dose(args, beamlet, egsinp_str, path)
 
     # arc
@@ -184,11 +188,8 @@ async def simulate_doses(args, templates, beamlet, index):
         egsinp_str = templates['arc_dose'].format(**context)
         path = os.path.join(args.output_dir, 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
         doses['arc'].append(simulate_dose(args, beamlet, egsinp_str, path))
-    logger.info('{} - Created arc dose tasks'.format(index))
     futures = [doses['stationary']] + doses['arc']
-    logger.info('{} - Awaiting all dose tasks'.format(index))
     doses['stationary'], *doses['arc'] = await asyncio.gather(*futures)
-    logger.info('{} - All dose tasks finished'.format(index))
     return doses
 
 
@@ -222,12 +223,9 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
             f.write(out)
 
         # generate npz file
-        logger.info('Reading {}'.format(os.path.basename(path)))
         await read_3ddose(dose['3ddose'])  # use side effect of generating npz
-        logger.info('Finished reading {}'.format(os.path.basename(path)))
         remove(dose['3ddose'])
         await copy(dose['npz'], path)
-        logger.info('Copied {}, returning'.format(os.path.basename(path)))
     return dose
 
 
@@ -247,6 +245,5 @@ def dose_angles(args):
 def remove(path):
     try:
         os.remove(path)
-        logger.info('Removed output {}'.format(path))
     except IOError:
         pass
