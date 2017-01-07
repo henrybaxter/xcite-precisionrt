@@ -7,7 +7,7 @@ import hashlib
 import json
 
 import egsinp
-from utils import run_command, read_3ddose
+from utils import run_command, read_3ddose, copy
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,8 @@ async def simulate_source(args, template, y):
     if args.overwrite or not os.path.exists(beamlet['phsp']):
         # simulate
         remove(beamlet['phsp'])
-        open(beamlet['egsinp'], 'w').write(egsinp_str)
+        with open(beamlet['egsinp'], 'w') as f:
+            f.write(egsinp_str)
         command = ['BEAM_RFLCT', '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
         # translate
@@ -64,9 +65,11 @@ async def simulate_source(args, template, y):
 
         # stats
         command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-        json.dump(json.loads(await run_command(command)), open(stats_path, 'w'))
+        with open(stats_path, 'w') as f:
+            json.dump(json.loads(await run_command(command)), f)
 
-    beamlet['stats'] = json.load(open(stats_path))
+    with open(stats_path) as f:
+        beamlet['stats'] = json.load(f)
     return beamlet
 
 
@@ -93,15 +96,18 @@ async def filter_source(args, template, source_beamlet):
     if args.overwrite or not os.path.exists(beamlet['phsp']):
         # simulate
         remove(beamlet['phsp'])
-        open(beamlet['egsinp'], 'w').write(egsinp_str)
+        with open(beamlet['egsinp'], 'w') as f:
+            f.write(egsinp_str)
         command = ['BEAM_FILTR', '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
 
         # stats
         command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-        json.dump(json.loads(await run_command(command)), open(stats_path, 'w'))
+        with open(stats_path, 'w') as f:
+            json.dump(json.loads(await run_command(command)), f)
 
-    beamlet['stats'] = json.load(open(stats_path))
+    with open(stats_path) as f:
+        beamlet['stats'] = json.load(f)
     return beamlet
 
 
@@ -130,15 +136,18 @@ async def collimate(args, template, source_beamlet):
     if args.overwrite or not os.path.exists(beamlet['phsp']):
         # simulate
         remove(beamlet['phsp'])
-        open(beamlet['egsinp'], 'w').write(egsinp_str)
+        with open(beamlet['egsinp'], 'w') as f:
+            f.write(egsinp_str)
         command = [name, '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
 
         # stats
         command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-        json.dump(json.loads(await run_command(command)), open(stats_path, 'w'))
+        with open(stats_path, 'w') as f:
+            json.dump(json.loads(await run_command(command)), f)
 
-    beamlet['stats'] = json.load(open(stats_path))
+    with open(stats_path) as f:
+        beamlet['stats'] = json.load(f)
     return beamlet
 
 
@@ -198,24 +207,27 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
         'egslst': os.path.join(folder, '{}.egslst'.format(base))
     }
 
-    if args.overwrite or not os.path.exists(dose['npz']):
+    if args.overwrite or not os.path.exists(path):
         # simulate
         remove(dose['3ddose'])
         remove(dose['npz'])
-        open(dose['egsinp'], 'w').write(egsinp_str)
+        remove(path)
+        with open(dose['egsinp'], 'w') as f:
+            f.write(egsinp_str)
         command = ['dosxyznrc', '-p', args.pegs4, '-i', os.path.basename(dose['egsinp'])]
         out = await run_command(command, cwd=folder)
         if 'Warning' in out:
             logger.info('Warning in {}'.format(dose['egslst']))
-        open(dose['egslst'], 'w').write(out)
+        with open(dose['egslst'], 'w') as f:
+            f.write(out)
 
-    # generate npz file
-    logger.info('Reading {}'.format(os.path.basename(path)))
-    await read_3ddose(dose['3ddose'])  # use side effect of generating npz
-    logger.info('Finished reading {}'.format(os.path.basename(path)))
-    remove(dose['3ddose'])
-    shutil.copy(dose['npz'], path)
-    logger.info('Copied {}, returning'.format(os.path.basename(path)))
+        # generate npz file
+        logger.info('Reading {}'.format(os.path.basename(path)))
+        await read_3ddose(dose['3ddose'])  # use side effect of generating npz
+        logger.info('Finished reading {}'.format(os.path.basename(path)))
+        remove(dose['3ddose'])
+        await copy(dose['npz'], path)
+        logger.info('Copied {}, returning'.format(os.path.basename(path)))
     return dose
 
 

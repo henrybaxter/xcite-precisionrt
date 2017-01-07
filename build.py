@@ -22,13 +22,15 @@ def write_specmodule(egs_home, name, cms):
     path = os.path.join(egs_home,
                         'beamnrc/spec_modules',
                         '{}.module'.format(name))
-    open(path, 'w').write('\n'.join([types_line, identifiers_line]))
+    with open(path, 'w') as f:
+        f.write('\n'.join([types_line, identifiers_line]))
     logger.info('Spec module written')
 
 def get_egsinp(path):
     logger.info('Reading template {}'.format(path))
     try:
-        text = open(path).read()
+        with open(path) as f:
+            text = f.read()
     except IOError:
         logger.error('Could not open template {}'.format(path))
         sys.exit(1)

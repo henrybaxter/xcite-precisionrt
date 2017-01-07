@@ -1,3 +1,4 @@
+import shutil
 import logging
 import asyncio
 import platform
@@ -14,11 +15,15 @@ else:
 
 counter = asyncio.Semaphore(MAX)
 
+async def copy(src, dst):
+    with await counter:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, shutil.copy, src, dst)
 
 async def read_3ddose(path):
-    await counter.acquire()
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, py3ddose.read_3ddose, path)
+    with await counter:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, py3ddose.read_3ddose, path)
 
 
 async def run_command(command, **kwargs):
