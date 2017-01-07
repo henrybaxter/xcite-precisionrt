@@ -141,7 +141,6 @@ def generate_y(target_length, spacing):
     return result
 
 
-
 def combine_fast_doses(doses):
     logger.info('Combining doses')
     result = {}
@@ -218,20 +217,21 @@ def log_args(args):
     pretty_args = '\n'.join(['\t{}: {}'.format(k, v) for k, v in printable_args])
     logger.info('Arguments: \n{}'.format(pretty_args))
 
+
 async def main():
     args = parse_args()
     await configure_logging(args)
     log_args(args)
     y_values = generate_y(args.target_length, args.beam_width + args.beam_gap)
     histories = args.histories // len(y_values)
-    stages = ['source', 'filter', 'collimator']
-    builds = [
+    stages = ['source', 'filter', 'collimator', 'stationary_dose', 'arc_dose']
+    templates = {stage: template for stage, template in zip(stages, await asyncio.gather(*[
         build.build_source(args, histories),
         build.build_filter(args),
         build.build_collimator(args)
-    ]
-    templates = await asyncio.gather(*builds)
-    templates = {n: t for n, t in zip(stages, templates)}
+    ]))}
+    templates['stationary_dose'] = open(args.dose_egsinp).read()
+    templates['arc_dose'] = open(args.arc_dose_egsinp).read()
     simulations = await asyncio.gather(*[
         simulate.simulate(args, templates, i, y) for i, y in enumerate(y_values)
     ])
@@ -349,7 +349,7 @@ async def main():
     report.generate(data, args)
     """
     logger.info('Output in {}'.format(args.output_dir))
-    
+
 
 if __name__ == '__main__':
     start = time.time()

@@ -12,6 +12,7 @@ else:
 
 counter = asyncio.Semaphore(MAX)
 
+
 async def run_command(command, **kwargs):
     await counter.acquire()
     logger.info('Running "{}"'.format(' '.join(command)))
@@ -20,13 +21,21 @@ async def run_command(command, **kwargs):
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         **kwargs)
-    await process.wait()
-    out = (await process.stdout.read()).decode('utf-8')
-    if process.returncode != 0 or 'ERROR' in out:
+    stdout, stderr = await process.communicate(None)
+    stdout = stdout.decode('utf-8')
+    if process.returncode != 0 or 'ERROR' in stdout or 'Warning' in stdout:
         message = 'Command failed: "{}"'.format(' '.join(command))
         logger.error(message)
-        logger.error(out)
+        logger.error(stdout)
         raise RuntimeError(message)
     counter.release()
-    return out
+    return stdout
 
+
+async def main():
+    await run_command(['BEAM_CLMT10', '-p', 'allkV', '-i', '7e14c3496a36b37ed9fe369f7222136b.egsinp'], cwd='/Users/henry/projects/EGSnrc/egs_home/BEAM_CLMT10')
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.close()
