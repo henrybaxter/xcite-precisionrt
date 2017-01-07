@@ -212,7 +212,7 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
     # generate npz file
     logger.info('Reading {}'.format(os.path.basename(path)))
     await read_3ddose(dose['3ddose'])  # use side effect of generating npz
-    logger.info('Finished readin g{}'.format(os.path.basename(path)))
+    logger.info('Finished reading {}'.format(os.path.basename(path)))
     remove(dose['3ddose'])
     shutil.copy(dose['npz'], path)
     logger.info('Copied {}, returning'.format(os.path.basename(path)))
