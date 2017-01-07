@@ -164,6 +164,7 @@ async def simulate_doses(args, templates, beamlet, index):
     context['phi'] = 0
     egsinp_str = templates['stationary_dose'].format(**context)
     path = os.path.join(args.output_dir, 'dose/stationary/stationary{}.3ddose.npz'.format(index))
+    logger.info('{} - Created stationary dose task'.format(index))
     doses['stationary'] = simulate_dose(args, beamlet, egsinp_str, path)
 
     # arc
@@ -174,7 +175,11 @@ async def simulate_doses(args, templates, beamlet, index):
         egsinp_str = templates['arc_dose'].format(**context)
         path = os.path.join(args.output_dir, 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
         doses['arc'].append(simulate_dose(args, beamlet, egsinp_str, path))
-    doses['stationary'], *doses['arc'] = await asyncio.gather(*[doses['stationary']] + doses['arc'])
+    logger.info('{} - Created arc dose tasks'.format(index))
+    futures = [doses['stationary']] + doses['arc']
+    logger.info('{} - Awaiting all dose tasks'.format(index))
+    doses['stationary'], *doses['arc'] = await asyncio.gather(*futures)
+    logger.info('{} - All dose tasks finished'.format(index))
     return doses
 
 
@@ -205,9 +210,13 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
         open(dose['egslst'], 'w').write(out)
 
     # generate npz file
+    logger.info('Reading {}'.format(os.path.basename(path)))
     await read_3ddose(dose['3ddose'])  # use side effect of generating npz
+    logger.info('Finished readin g{}'.format(os.path.basename(path)))
     remove(dose['3ddose'])
     shutil.copy(dose['npz'], path)
+    logger.info('Copied {}, returning'.format(os.path.basename(path)))
+    return dose
 
 
 def dose_angles(args):
