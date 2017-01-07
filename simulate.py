@@ -62,9 +62,9 @@ async def simulate_source(args, template, y):
         angle = str(math.pi / 2)
         await run_command(['beamdpr', 'rotate', '-i', beamlet['phsp'], '-a', angle])
 
-    # stats
-    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    json.dump(open(stats_path, 'w'), json.loads(await run_command(command)))
+        # stats
+        command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
+        json.dump(json.loads(await run_command(command)), open(stats_path, 'w'))
 
     beamlet['stats'] = json.load(open(stats_path))
     return beamlet
@@ -97,9 +97,9 @@ async def filter_source(args, template, source_beamlet):
         command = ['BEAM_FILTR', '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
 
-    # stats
-    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    json.dump(open(stats_path, 'w'), json.loads(await run_command(command)))
+        # stats
+        command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
+        json.dump(json.loads(await run_command(command)), open(stats_path, 'w'))
 
     beamlet['stats'] = json.load(open(stats_path))
     return beamlet
@@ -134,9 +134,9 @@ async def collimate(args, template, source_beamlet):
         command = [name, '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
 
-    # stats
-    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    json.dump(open(stats_path, 'w'), json.loads(await run_command(command)))
+        # stats
+        command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
+        json.dump(json.loads(await run_command(command)), open(stats_path, 'w'))
 
     beamlet['stats'] = json.load(open(stats_path))
     return beamlet
