@@ -15,7 +15,7 @@ import grace
 import simulate
 import dose_contours
 import build
-from utils import run_command, copy
+from utils import run_command, copy, read_3ddose
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ def generate_y(target_length, spacing):
     return result
 
 
-def combine_doses(doses):
+async def combine_doses(args, doses):
     logger.info('Combining doses')
     result = {}
     sz = len(doses['stationary'])
@@ -147,7 +147,8 @@ def combine_doses(doses):
         'arc_weighted': doses['arc']
     }
     for stage, beamlet_doses in doses.items():
-        paths = [dose['dose'] + '.npz' for dose in beamlet_doses]
+        print(beamlet_doses)
+        paths = [dose['npz'] for dose in beamlet_doses]
         path = os.path.join(args.output_dir, '{}.3ddose'.format(stage))
         if os.path.exists(path):
             logger.warning('Combined dose {} already exists'.format(path))
@@ -157,7 +158,7 @@ def combine_doses(doses):
                 py3ddose.weight_3ddose(paths, path, weights[stage])
             else:
                 py3ddose.combine_3ddose(paths, path)
-            py3ddose.read_3ddose(path)
+            await read_3ddose(path)
         result[stage] = path
     return result
 
@@ -207,7 +208,7 @@ async def main():
         sample_combine([sim['source'] for sim in simulations]),
         sample_combine([sim['filter'] for sim in simulations]),
         sample_combine([sim['collimator'] for sim in simulations]),
-        combine_doses({
+        combine_doses(args, {
             'stationary': [sim['dose']['stationary'] for sim in simulations],
             'arc': [sim['dose']['arc'] for sim in simulations],
         })
