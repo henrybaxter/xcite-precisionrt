@@ -127,8 +127,8 @@ def generate_y(target_length, spacing):
         y = i * spacing + offset
     # could be removed and the beams reflected instead
     # this was written before beamdpr
-    # for y in result[:]:
-    #    result.insert(0, -y)
+    for y in result[:]:
+       result.insert(0, -y)
     return result
 
 
@@ -150,7 +150,7 @@ async def combine_doses(args, doses):
     }
     doses = {
         'stationary': doses['stationary'],
-        'weighted': doses['stationary'],
+        'stationary_weighted': doses['stationary'],
         'arc': doses['arc'],
         'arc_weighted': doses['arc']
     }
@@ -240,9 +240,9 @@ async def main():
         plot_futures.append(dose_contours.plot(args.phantom, path, target, args.output_dir, slug))
     grace_plots, *contours = await asyncio.gather(*plot_futures)
     contour_plots = OrderedDict()
-    for stage in ['stationary', 'weighted', 'arc', 'arc_weighted']:
+    for stage in ['stationary', 'stationary_weighted', 'arc', 'arc_weighted']:
         for contour in [c for cs in contours for c in cs]:
-            if contour['slug'] == stage:
+            if contour['output_slug'] == stage:
                 contour_plots.setdefault(contour['plane'], []).append(contour)
     logger.info('Generating conformity and target to skin ratios')
     conformity = {}
@@ -265,7 +265,7 @@ async def main():
         'skin_distance': args.target_distance - abs(args.target_z),
         'ci': conformity,
         'ts': target_to_skin,
-        'electrons': histories,
+        'electrons': histories * len(y_values),
         'photons': photons
     }
     report.generate(data, args)

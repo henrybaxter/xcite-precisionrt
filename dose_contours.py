@@ -185,7 +185,7 @@ async def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels
         plt.clabel(cs, fontsize=8, fmt='%2.0f')
         slug = 'contour_{}_{}'.format(x_name, y_name)
         filename = slug + '.pdf'
-        relfolder = os.path.join('dose', slug)
+        relfolder = os.path.join('dose', output_slug)
         folder = os.path.join(output_dir, relfolder)
         os.makedirs(folder, exist_ok=True)
         relpath = os.path.join(relfolder, filename)
@@ -193,6 +193,7 @@ async def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels
         plt.savefig(path)
         plane = x_name + y_name
         plots.append({
+            'output_slug': output_slug,
             'plane': plane,
             'slug': slug,
             'path': relpath,
