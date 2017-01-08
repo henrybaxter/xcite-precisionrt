@@ -51,8 +51,7 @@ async def make_plots(output_dir, phsp_paths, config_paths):
     plots = {}
     for path in config_paths:
         plots.update(json.load(open(path)))
-    output_dir = os.path.join(output_dir, 'grace')
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
     future_plots = []
     for plot_type, plots in plots.items():
         if plot_type == 'scatter':
@@ -86,7 +85,7 @@ async def make_plot(plotter, plot, phsp, output_dir):
     eps_path = output_path.replace('.grace', '.eps')
     temp_path = output_path + '.temp'
     plot['path'] = relpath
-    plot, lines = plotter(phsp, output_path, **plot)
+    plot, lines = plotter(phsp, temp_path, **plot)
     extents = plot['extents'] if plot['type'] == 'scatter' else None
     if not os.path.exists(output_path):
         await generate(lines, temp_path, extents=extents)

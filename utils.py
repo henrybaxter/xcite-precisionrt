@@ -44,6 +44,7 @@ async def run_command(command, stdin=None, **kwargs):
         *command,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
+        stdin=asyncio.subprocess.PIPE if stdin else None,
         **kwargs)
     stdout, stderr = await process.communicate(stdin)
     stdout = stdout.decode('utf-8')
