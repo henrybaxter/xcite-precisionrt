@@ -131,6 +131,11 @@ def generate_y(target_length, spacing):
 
 
 async def combine_doses(args, doses):
+    """
+    what is the purpose here? how do we weight the arcs?
+    the problem is the arc dose seems different
+    but we can just flatten it out
+    """
     logger.info('Combining doses')
     result = {}
     sz = len(doses['stationary'])
@@ -147,7 +152,8 @@ async def combine_doses(args, doses):
         'arc_weighted': doses['arc']
     }
     for stage, beamlet_doses in doses.items():
-        print(beamlet_doses)
+        if stage == 'arc':
+            beamlet_doses = [d for ds in beamlet_doses for d in ds]
         paths = [dose['npz'] for dose in beamlet_doses]
         path = os.path.join(args.output_dir, '{}.3ddose'.format(stage))
         if os.path.exists(path):
