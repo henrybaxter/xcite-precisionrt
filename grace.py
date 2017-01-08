@@ -96,7 +96,7 @@ async def make_plot(plotter, plot, phsp, output_dir):
 
 
 async def generate(arguments, output_path, extents=None):
-    logger.info('Generating grace plot:\n{}'.format('\n'.join(arguments)))
+    # logger.info('Generating grace plot:\n{}'.format('\n'.join(arguments)))
     result = await run_command(['beamdp'], stdin="\n".join(arguments).encode('utf-8'))
     result = []
     if extents:
