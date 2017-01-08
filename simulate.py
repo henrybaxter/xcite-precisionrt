@@ -27,7 +27,7 @@ async def simulate(args, templates, index, y):
             simulate_doses(args, templates, collimated_beamlet, index[1])
         ])
     else:
-        dose = await simulate_doses(args, templates, collimated_beamlet, i)
+        dose = await simulate_doses(args, templates, collimated_beamlet, index)
     result = {
         'source': source_beamlet,
         'filter': filtered_beamlet,
@@ -232,10 +232,9 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
         'egslst': os.path.join(folder, '{}.egslst'.format(base))
     }
 
-    if not os.path.exists(path):
+    if not os.path.exists(dose['npz']):
         # simulate
         remove(dose['3ddose'])
-        remove(dose['npz'])
         with open(dose['egsinp'], 'w') as f:
             f.write(egsinp_str)
         command = ['dosxyznrc', '-p', args.pegs4, '-i', os.path.basename(dose['egsinp'])]
@@ -248,7 +247,7 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
         # generate npz file
         await read_3ddose(dose['3ddose'])  # use side effect of generating npz
         remove(dose['3ddose'])  # save some space now we have npz
-        await copy(dose['npz'], path)
+    await copy(dose['npz'], path)
     return dose
 
 
