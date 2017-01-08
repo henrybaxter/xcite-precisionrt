@@ -22,6 +22,17 @@
 				"ymax": 1
 			}
 		},
+    {
+      "slug": "source_scatter_contextual",
+      "name": "Reflection Target Scatter Plot (Contextual)",
+      "phsp": "source",
+      "extents": {
+        "xmin": -40,
+        "xmax": 40,
+        "ymin": -5,
+        "ymax": 5
+      }
+    },
 		{
 			"slug": "filter_scatter",
 			"name": "Filter Scatter Plot",
@@ -32,7 +43,6 @@
 				"ymin": -1,
 				"ymax": 1
 			}
-
 		},
 		{
 			"slug": "collimator_scatter",
