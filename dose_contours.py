@@ -113,7 +113,7 @@ def get_manual2(possibles):
 DEFAULT_LEVELS = [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
 
 
-def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels=DEFAULT_LEVELS):
+async def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels=DEFAULT_LEVELS):
     dose = py3ddose.read_3ddose(dose_path)
     phantom = py3ddose.read_egsphant(egsphant_path)
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
@@ -185,7 +185,10 @@ def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels=DEFAU
         plt.clabel(cs, fontsize=8, fmt='%2.0f')
         slug = 'contour_{}_{}'.format(x_name, y_name)
         filename = slug + '.pdf'
-        relpath = os.path.join(output_slug, filename)
+        relfolder = os.path.join('dose', slug)
+        folder = os.path.join(output_dir, relfolder)
+        os.makedirs(folder, exist_ok=True)
+        relpath = os.path.join(relfolder, filename)
         path = os.path.join(output_dir, relpath)
         plt.savefig(path)
         plane = x_name + y_name

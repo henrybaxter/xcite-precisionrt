@@ -234,7 +234,7 @@ async def main():
         np.array([args.target_z, args.target_y, args.target_x]),
         args.target_size)
     for slug, path in combined['dose'].items():
-        plot_futures.append(dose_contours.plot(args.phantom, path, target, args.output_dir, '{}_dose'.format(slug)))
+        plot_futures.append(dose_contours.plot(args.phantom, path, target, args.output_dir, slug))
     grace_plots, *contours = await asyncio.gather(*plot_futures)
     contour_plots = OrderedDict()
     for stage in ['stationary', 'weighted', 'arc', 'arc_weighted']:
