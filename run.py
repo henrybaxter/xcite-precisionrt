@@ -10,12 +10,14 @@ from collections import OrderedDict
 
 import numpy as np
 
+import collimator_analyzer
 import py3ddose
 import grace
 import simulate
 import dose_contours
 import build
 from utils import run_command, copy, read_3ddose
+import report
 
 logger = logging.getLogger(__name__)
 
@@ -150,9 +152,10 @@ async def combine_doses(args, doses):
         'stationary': doses['stationary'],
         'weighted': doses['stationary'],
         'arc': doses['arc'],
+        'arc_weighted': doses['arc']
     }
     for stage, beamlet_doses in doses.items():
-        if stage == 'arc':
+        if 'arc' in stage:  # flatten
             beamlet_doses = [d for ds in beamlet_doses for d in ds]
         paths = [dose['npz'] for dose in beamlet_doses]
         path = os.path.join(args.output_dir, '{}.3ddose'.format(stage))
@@ -237,32 +240,27 @@ async def main():
         plot_futures.append(dose_contours.plot(args.phantom, path, target, args.output_dir, slug))
     grace_plots, *contours = await asyncio.gather(*plot_futures)
     contour_plots = OrderedDict()
-    for stage in ['stationary', 'weighted', 'arc']: #, 'arc_weighted']:
+    for stage in ['stationary', 'weighted', 'arc', 'arc_weighted']:
         for contour in [c for cs in contours for c in cs]:
             if contour['slug'] == stage:
                 contour_plots.setdefault(contour['plane'], []).append(contour)
-    """"
-    contours = {}
+    logger.info('Generating conformity and target to skin ratios')
     conformity = {}
     target_to_skin = {}
-    for slug, path in combined_doses.items():
-        contours[slug] = dose_contours.plot(args.phantom, path, target, args.output_dir, '{}_dose'.format(slug))
+    for slug, path in combined['dose'].items():
         dose = py3ddose.read_3ddose(path)
         conformity[slug] = py3ddose.paddick(dose, target)
         target_to_skin[slug] = py3ddose.target_to_skin(dose, target)
-    # we take the plane
 
-
+    logger.info('Getting photons')
     photons = {}
     for stage in ['source', 'filter', 'collimator']:
-        photons[stage] = sum([beamlet['stats']['total_photons'] for beamlet in simulations[stage]])
+        photons[stage] = sum([sim[stage]['stats']['total_photons'] for sim in simulations])
     data = {
-        '_filter': _filter,
-        'collimator': collimator,
-        'collimator_stats': collimator_analyzer.analyze(collimator),
-        'beamlets': beamlets,
-        'phsp': phsp,
-        'grace_plots': grace.make_plots(args.output_dir, phsp, args.plot_config),
+        '_filter': templates['filter'],
+        'collimator': templates['collimator'],
+        'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
+        'grace_plots': grace_plots,
         'contour_plots': contour_plots,
         'skin_distance': args.target_distance - abs(args.target_z),
         'ci': conformity,
@@ -271,7 +269,6 @@ async def main():
         'photons': photons
     }
     report.generate(data, args)
-    """
     logger.info('Output in {}'.format(args.output_dir))
 
 
