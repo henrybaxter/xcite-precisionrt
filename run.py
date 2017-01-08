@@ -142,14 +142,12 @@ async def combine_doses(args, doses):
     coeffs = np.polyfit([0, sz // 2, sz - 1], [4, 1, 4], 2)
     w = np.polyval(coeffs, np.arange(0, sz))
     weights = {
-        'weighted': w,
-        'arc_weighted': w
+        'stationary_weighted': w,
     }
     doses = {
         'stationary': doses['stationary'],
         'weighted': doses['stationary'],
         'arc': doses['arc'],
-        'arc_weighted': doses['arc']
     }
     for stage, beamlet_doses in doses.items():
         if stage == 'arc':
