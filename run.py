@@ -237,9 +237,10 @@ async def main():
         plot_futures.append(dose_contours.plot(args.phantom, path, target, args.output_dir, slug))
     grace_plots, *contours = await asyncio.gather(*plot_futures)
     contour_plots = OrderedDict()
-    for stage in ['stationary', 'weighted', 'arc', 'arc_weighted']:
-        for contour in contours[stage]:
-            contour_plots.setdefault(contour['plane'], []).append(contour)
+    for stage in ['stationary', 'weighted', 'arc']: #, 'arc_weighted']:
+        for contour in [c for cs in contours for c in cs]:
+            if contour['slug'] == stage:
+                contour_plots.setdefault(contour['plane'], []).append(contour)
     """"
     contours = {}
     conformity = {}

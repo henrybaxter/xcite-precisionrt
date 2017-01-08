@@ -90,7 +90,7 @@ async def make_plot(plotter, plot, phsp, output_dir):
     if not os.path.exists(output_path):
         await generate(lines, temp_path, extents=extents)
         await run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', eps_path, temp_path])
-    os.rename(temp_path, output_path)
+        os.rename(temp_path, output_path)
     return plot
 
 
