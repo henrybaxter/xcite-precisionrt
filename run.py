@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument('--pegs4', default='allkV')
     parser.add_argument('--rmax', type=float, default=50.0,
                         help='Max extent of all component modules')
+    parser.add_argument('--reflect', action='store_true')
 
     # source arguments
     parser.add_argument('--beam-width', type=float, default=1,
@@ -94,13 +95,15 @@ def parse_args():
     return args
 
 
-async def sample_combine(beamlets, desired=int(1e7)):
+async def sample_combine(beamlets, reflect, desired=int(1e7)):
     logger.info('Sampling and combining {} beamlets'.format(len(beamlets)))
     paths = [beamlet['phsp'] for beamlet in beamlets]
     particles = sum([beamlet['stats']['total_particles'] for beamlet in beamlets])
+    if reflect:
+        desired // 2
     rate = math.ceil(particles / desired)
     logger.info('Found {} particles, want {}, sample rate is {}'.format(particles, desired, rate))
-    s = 'rate={}'.format(rate) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
+    s = 'rate={}&reflect={}'.format(rate, reflect) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
     md5 = hashlib.md5(s.encode('utf-8'))
     os.makedirs('combined', exist_ok=True)
     temp_path = 'combined/{}.egsphsp1'.format(md5.hexdigest())
@@ -108,13 +111,19 @@ async def sample_combine(beamlets, desired=int(1e7)):
     if not os.path.exists(combined_path):
         logger.info('Combining {} beamlets into {}'.format(len(beamlets), temp_path))
         await run_command(['beamdpr', 'sample-combine', '--rate', str(rate), '-o', temp_path] + paths)
+        if reflect:
+            original_path = temp_path.replace('.egsphsp1', '.original.egsphsp1')
+            reflected_path = temp_path.replace('.egsphsp1', '.reflected.egsphsp1')
+            os.rename(temp_path, original_path)
+            await run_command(['beamdpr', 'reflect', '-x', '1', original_path, reflected_path])
+            await run_command(['beamdpr', 'combine', original_path, reflected_path, '-o', temp_path])
         logger.info('Randomizing {}'.format(temp_path))
         await run_command(['beamdpr', 'randomize', temp_path])
         os.rename(temp_path, combined_path)
     return combined_path
 
 
-def generate_y(target_length, spacing):
+def generate_y(target_length, spacing, reflect):
     logger.info('Generating beam positions')
     offset = spacing / 2
     y = offset
@@ -125,10 +134,10 @@ def generate_y(target_length, spacing):
         result.append(y)
         i += 1
         y = i * spacing + offset
-    # could be removed and the beams reflected instead
-    # this was written before beamdpr
-    for y in result[:]:
-       result.insert(0, -y)
+    if not reflect:
+        # need to reflect y values if not using reflection optimization
+        for y in result[:]:
+            result.insert(0, -y)
     return result
 
 
@@ -199,8 +208,10 @@ async def main():
     args = parse_args()
     await configure_logging(args)
     log_args(args)
-    y_values = generate_y(args.target_length, args.beam_width + args.beam_gap)
+    y_values = generate_y(args.target_length, args.beam_width + args.beam_gap, args.reflect)
     histories = args.histories // len(y_values)
+    if args.reflect:
+        histories //= 2
     stages = ['source', 'filter', 'collimator', 'dose']
     templates = {stage: template for stage, template in zip(stages, await asyncio.gather(*[
         build.build_source(args, histories),
@@ -213,14 +224,29 @@ async def main():
         simulate.simulate(args, templates, i, y) for i, y in enumerate(y_values)
     ])
     logger.info('All simulations finished, combining')
+    beamlets = {
+        'source': [sim['source'] for sim in simulations],
+        'filter': [sim['filter'] for sim in simulations],
+        'collimator': [sim['collimator'] for sim in simulations],
+    }
+    doses = {
+        'stationary': [sim['dose']['stationary'] for sim in simulations],
+        'arc': [sim['dose']['arc'] for sim in simulations]
+    }
+    if args.reflect:
+        # dose calculations were put into tuples
+        for key, ds in doses.items():
+            full = []
+            for from_reflected, from_original in ds:
+                full.insert(0, from_reflected)
+                full.append(from_original)
+            doses[key] = full
+
     combined = {stage: result for stage, result in zip(stages, await asyncio.gather(*[
-        sample_combine([sim['source'] for sim in simulations]),
-        sample_combine([sim['filter'] for sim in simulations]),
-        sample_combine([sim['collimator'] for sim in simulations]),
-        combine_doses(args, {
-            'stationary': [sim['dose']['stationary'] for sim in simulations],
-            'arc': [sim['dose']['arc'] for sim in simulations],
-        })
+        sample_combine(beamlets['source'], args.reflect),
+        sample_combine(beamlets['filter'], args.reflect),
+        sample_combine(beamlets['collimator'], args.reflect),
+        combine_doses(args, doses)
     ]))}
 
     logger.info('Saving combined phase space files')

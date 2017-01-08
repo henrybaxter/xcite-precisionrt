@@ -20,14 +20,44 @@ async def simulate(args, templates, i, y):
     logger.info('{} - simulated filter'.format(i))
     collimated_beamlet = await collimate(args, templates['collimator'], filtered_beamlet)
     logger.info('{} - simulated collimator'.format(i))
+    if args.reflect:
+        reflected_beamlet = await reflect(collimated_beamlet)
+        dose = await asyncio.gather(*[
+            simulate_doses(args, templates, reflected_beamlet, i),
+            simulate_doses(args, templates, collimated_beamlet, i)
+        ])
+    else:
+        dose = await simulate_doses(args, templates, collimated_beamlet, i)
     result = {
         'source': source_beamlet,
         'filter': filtered_beamlet,
         'collimator': collimated_beamlet,
-        'dose': await simulate_doses(args, templates, collimated_beamlet, i)
+        'dose': dose,
     }
     logger.info('{} - simulated doses'.format(i))
     return result
+
+
+async def reflect(original):
+    folder = os.path.dirname(original['phsp'])
+
+    md5 = original['hash'].copy()
+    md5.update('reflect')
+    base = md5.hexdigest()
+
+    beamlet = {
+        'egsinp': original['egsinp'],  # note that this is NOT reflected
+        'phsp': os.path.join(folder, '{}.egsphsp'),
+        'hash': md5
+    }
+    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
+
+    if not os.path.exists(beamlet['phsp']):
+        remove(temp_phsp)
+        await run_command(['beamdpr', 'reflect', '-x', '1', original['phsp'], temp_phsp])
+        os.rename(temp_phsp, beamlet['phsp'])
+
+    return beamlet
 
 
 async def simulate_source(args, template, y):
