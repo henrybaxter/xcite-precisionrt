@@ -59,7 +59,8 @@ def generate(data, args):
     context = data.copy()
     context['args'] = args
     report = get_env().get_template('template.tex').render(context)
-    open(os.path.join(args.output_dir, 'report.tex'), 'w').write(report)
+    with open(os.path.join(args.output_dir, 'report.tex'), 'w') as f:
+        f.write(report)
     os.chdir(args.output_dir)
     latex_args, rest = latexmake.arg_parser().parse_known_args()
     latexmake.LatexMaker('report', latex_args).run()

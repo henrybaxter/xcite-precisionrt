@@ -50,7 +50,8 @@ async def make_plots(output_dir, phsp_paths, config_paths):
     # plots is a list of plots, we just merge them together
     plots = {}
     for path in config_paths:
-        plots.update(json.load(open(path)))
+        with open(path) as f:
+            plots.update(json.load(f))
     os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
     future_plots = []
     for plot_type, plots in plots.items():

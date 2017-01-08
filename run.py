@@ -218,13 +218,14 @@ async def main():
         build.build_filter(args),
         build.build_collimator(args)
     ]))}
-    templates['stationary_dose'] = open(args.dose_egsinp).read()
-    templates['arc_dose'] = open(args.arc_dose_egsinp).read()
+    with open(args.dose_egsinp) as f:
+        templates['stationary_dose'] = f.read()
+    with open(args.arc_dose_egsinp) as f:
+        templates['arc_dose'] = f.read()
     simulations = []
     for i, y in enumerate(y_values):
         if args.reflect:
             index = (len(y_values) - i - 1, i + len(y_values))
-            print('index', index)
         else:
             index = i
         simulations.append(simulate.simulate(args, templates, index, y))
@@ -311,10 +312,10 @@ async def main():
 if __name__ == '__main__':
     start = time.time()
     loop = asyncio.get_event_loop()
-    # import warnings
-    # loop.set_debug(True)
-    # loop.slow_callback_duration = 0.001
-    # warnings.simplefilter('always', ResourceWarning)
+    #import warnings
+    #loop.set_debug(True)
+    #loop.slow_callback_duration = 0.001
+    #warnings.simplefilter('always', ResourceWarning)
     loop.run_until_complete(main())
     loop.close()
     logger.info('Finished in {:.2f} seconds'.format(time.time() - start))

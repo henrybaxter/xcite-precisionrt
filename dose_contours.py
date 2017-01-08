@@ -70,7 +70,6 @@ def get_manual2(possibles):
     for i, possible in enumerate(possibles):
         points = np.concatenate([possible, possible[:1]])
         length = np.sqrt(np.sum(np.square(np.diff(points, axis=0))))
-        print(length)
         n_points = int(length) // 5
         if n_points == 0:
             specials.append(possible)
@@ -88,7 +87,6 @@ def get_manual2(possibles):
     import itertools
     distances = {}
     prod = list(itertools.product(*specials))
-    print(len(prod))
     import random
     for ps in random.sample(prod, 1000):
         d = np.sum(pdist(ps))
@@ -152,8 +150,8 @@ async def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels
 
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
-        print(x_axis, y_axis, z_axis)
-        print('Generating Figure {} ({}-{} plane)'.format(i + 1, x_name, y_name))
+        #print(x_axis, y_axis, z_axis)
+        #print('Generating Figure {} ({}-{} plane)'.format(i + 1, x_name, y_name))
 
         # bottom axis is Y
         X = centers[x_axis]
