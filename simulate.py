@@ -42,19 +42,20 @@ async def reflect(original):
     folder = os.path.dirname(original['phsp'])
 
     md5 = original['hash'].copy()
-    md5.update('reflect')
+    md5.update('reflect=y'.encode('utf-8'))
     base = md5.hexdigest()
 
     beamlet = {
         'egsinp': original['egsinp'],  # note that this is NOT reflected
         'phsp': os.path.join(folder, '{}.egsphsp'),
-        'hash': md5
+        'hash': md5,
+        'stats': original['stats']
     }
     temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
 
     if not os.path.exists(beamlet['phsp']):
         remove(temp_phsp)
-        await run_command(['beamdpr', 'reflect', '-x', '1', original['phsp'], temp_phsp])
+        await run_command(['beamdpr', 'reflect', '-y', '1', original['phsp'], temp_phsp])
         os.rename(temp_phsp, beamlet['phsp'])
 
     return beamlet

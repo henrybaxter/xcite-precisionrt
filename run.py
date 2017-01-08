@@ -103,7 +103,7 @@ async def sample_combine(beamlets, reflect, desired=int(1e7)):
         desired // 2
     rate = math.ceil(particles / desired)
     logger.info('Found {} particles, want {}, sample rate is {}'.format(particles, desired, rate))
-    s = 'rate={}&reflect={}'.format(rate, reflect) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
+    s = 'rate={}&reflecty={}'.format(rate, reflect) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
     md5 = hashlib.md5(s.encode('utf-8'))
     os.makedirs('combined', exist_ok=True)
     temp_path = 'combined/{}.egsphsp1'.format(md5.hexdigest())
@@ -115,7 +115,7 @@ async def sample_combine(beamlets, reflect, desired=int(1e7)):
             original_path = temp_path.replace('.egsphsp1', '.original.egsphsp1')
             reflected_path = temp_path.replace('.egsphsp1', '.reflected.egsphsp1')
             os.rename(temp_path, original_path)
-            await run_command(['beamdpr', 'reflect', '-x', '1', original_path, reflected_path])
+            await run_command(['beamdpr', 'reflect', '-y', '1', original_path, reflected_path])
             await run_command(['beamdpr', 'combine', original_path, reflected_path, '-o', temp_path])
         logger.info('Randomizing {}'.format(temp_path))
         await run_command(['beamdpr', 'randomize', temp_path])
