@@ -13,18 +13,18 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-async def simulate(args, templates, i, y):
+async def simulate(args, templates, index, y):
     source_beamlet = await simulate_source(args, templates['source'], y)
-    logger.info('{} - simulated source'.format(i))
+    logger.info('{} - simulated source'.format(index))
     filtered_beamlet = await filter_source(args, templates['filter'], source_beamlet)
-    logger.info('{} - simulated filter'.format(i))
+    logger.info('{} - simulated filter'.format(index))
     collimated_beamlet = await collimate(args, templates['collimator'], filtered_beamlet)
-    logger.info('{} - simulated collimator'.format(i))
+    logger.info('{} - simulated collimator'.format(index))
     if args.reflect:
         reflected_beamlet = await reflect(collimated_beamlet)
         dose = await asyncio.gather(*[
-            simulate_doses(args, templates, reflected_beamlet, i),
-            simulate_doses(args, templates, collimated_beamlet, i)
+            simulate_doses(args, templates, reflected_beamlet, index[0]),
+            simulate_doses(args, templates, collimated_beamlet, index[1])
         ])
     else:
         dose = await simulate_doses(args, templates, collimated_beamlet, i)
@@ -34,7 +34,7 @@ async def simulate(args, templates, i, y):
         'collimator': collimated_beamlet,
         'dose': dose,
     }
-    logger.info('{} - simulated doses'.format(i))
+    logger.info('{} - simulated doses'.format(index))
     return result
 
 
@@ -47,7 +47,7 @@ async def reflect(original):
 
     beamlet = {
         'egsinp': original['egsinp'],  # note that this is NOT reflected
-        'phsp': os.path.join(folder, '{}.egsphsp'),
+        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
         'hash': md5,
         'stats': original['stats']
     }

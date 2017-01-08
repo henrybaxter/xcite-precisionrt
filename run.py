@@ -220,26 +220,36 @@ async def main():
     ]))}
     templates['stationary_dose'] = open(args.dose_egsinp).read()
     templates['arc_dose'] = open(args.arc_dose_egsinp).read()
-    simulations = await asyncio.gather(*[
-        simulate.simulate(args, templates, i, y) for i, y in enumerate(y_values)
-    ])
+    simulations = []
+    for i, y in enumerate(y_values):
+        if args.reflect:
+            index = (len(y_values) - i - 1, i + len(y_values))
+            print('index', index)
+        else:
+            index = i
+        simulations.append(simulate.simulate(args, templates, index, y))
+    simulations = await asyncio.gather(*simulations)
     logger.info('All simulations finished, combining')
     beamlets = {
         'source': [sim['source'] for sim in simulations],
         'filter': [sim['filter'] for sim in simulations],
         'collimator': [sim['collimator'] for sim in simulations],
     }
-    doses = {
-        'stationary': [sim['dose']['stationary'] for sim in simulations],
-        'arc': [sim['dose']['arc'] for sim in simulations]
-    }
+    doses = {}
     if args.reflect:
         # dose calculations were put into tuples
-        for key, ds in doses.items():
+        for key in ['stationary', 'arc']:
             full = []
-            for from_reflected, from_original in ds:
-                full.insert(0, from_reflected)
-                full.append(from_original)
+            for simulation in simulations:
+                from_reflected, from_original = simulation['dose']
+                full.insert(0, from_reflected[key])
+                full.append(from_original[key])
+                doses[key] = full
+    else:
+        for key in ['stationary', 'arc']:
+            full = []
+            for simulation in simulations:
+                full.append(simulation['dose'][key])
             doses[key] = full
 
     combined = {stage: result for stage, result in zip(stages, await asyncio.gather(*[
