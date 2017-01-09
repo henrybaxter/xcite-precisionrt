@@ -1,3 +1,4 @@
+import sys
 import datetime
 import time
 import argparse
@@ -84,7 +85,8 @@ def parse_args():
     args = parser.parse_args()
     args.output_dir = args.name.replace(' ', '-')
     if os.path.exists(args.output_dir):
-        logger.warning('{} already exists'.format(args.output_dir))
+        logger.error('{} already exists'.format(args.output_dir))
+        sys.exit(1)
     for subfolder in ['dose/stationary', 'dose/arc']:
         os.makedirs(os.path.join(args.output_dir, subfolder), exist_ok=True)
 
