@@ -2,7 +2,7 @@ import statistics
 
 import numpy as np
 
-import egsinp
+from . import egsinp
 
 
 def polygon_area(corners):

@@ -16,7 +16,6 @@
 from os import path
 from io import open
 from collections import defaultdict
-from itertools import chain
 from subprocess import Popen, call
 from textwrap import dedent
 from hashlib import sha256
@@ -33,7 +32,6 @@ import shutil
 import sys
 import time
 import copy
-import errno
 
 try:
     from inotify.watcher import Watcher
@@ -56,8 +54,10 @@ __license__ = 'GPL3+'
 
 WATCH_FILETYPES = 'tex eps jpg png pdf'.split()
 
+
 def rejoin(*args):
-  return '|'.join('(?:'+r+')' for r in args)
+    return '|'.join('(?:' + r + ')' for r in args)
+
 
 BIB_PATTERN = re.compile(r'\\bibdata\{(.*)\}')
 CITE_PATTERN = re.compile(r'\\citation\{(.*)\}')

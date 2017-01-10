@@ -1,11 +1,15 @@
+"""
+Builds the egsinp for the source (reflection target), filter, and collimator,
+and compiles the appropriate modules.
+"""
 import sys
 import logging
 import os
 import time
 import platform
 
-import egsinp
-from utils import run_command
+from . import egsinp
+from .utils import run_command
 
 
 logger = logging.getLogger(__name__)

@@ -6,7 +6,7 @@ import platform
 from subprocess import Popen
 from collections import OrderedDict
 
-from utils import run_command
+from .utils import run_command
 
 logger = logging.getLogger(__name__)
 

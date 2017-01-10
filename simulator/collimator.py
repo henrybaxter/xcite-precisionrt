@@ -1,14 +1,15 @@
+import sys
+import os
+import toml
 import subprocess
-import json
 import argparse
-import statistics
+import copy
 
 import numpy as np
-import egsinp
+from beamviz import visualize
 
-
-def get_revision():
-    return subprocess.run(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
+from . import egsinp
+from .utils import XCITE_DIR
 
 
 def reflect_x(points):
@@ -38,23 +39,63 @@ def translate(points, dx=0, dy=0):
     return translated
 
 
-def make_blocks(**kwargs):
-    radius = kwargs.pop('size')
-    rows = kwargs.pop('rows')
-    n_blocks = kwargs.pop('blocks')
-    length = kwargs.pop('length')
-    block_length = length / n_blocks
-    target_distance = kwargs.pop('target_distance')
-    target_radius = kwargs.pop('target_width') / 2
-    septa = kwargs.pop('septa')
-    target_z = length + target_distance
-    dy = np.sqrt(3) / 2 * radius
-    dx = radius / 2
+def make_target_distribution(conf, X):
+    if conf['target']['distribution']:
+        return [0.0] * len(X)
+    elif conf['target']['distribution'] == 'left-right':
+        assert len(X) % 2 == 0
+        radius = conf['lesion']['diameter'] / 2
+        midpoint = radius / 2
+        return [-midpoint] * len(X) // 2 + [midpoint] * len(X) // 2
+    elif conf['target']['distribution'] == 'polynomial':
+        collimator_radius = conf['collimator']['diameter'] / 2
+        lesion_radius = conf['lesion']['diameter'] / 2
+        normalized = np.array(X) * collimator_radius / lesion_radius
+        return list(np.polyval(conf['target']['coefficients'], normalized))
+
+
+def make_anode_points(conf):
+    x_radius = conf['holes']['width'] / 2
+    if 'height' in conf['holes']:
+        y_radius = conf['holes']['height'] / 2
+    else:
+        y_radius = x_radius * 2 / np.sqrt(3)
+    return [
+        (-x_radius, y_radius / 2),
+        (-x_radius, -y_radius / 2),
+        (0, -y_radius),
+        (x_radius, -y_radius / 2),
+        (x_radius, ),
+        (0, y_radius)
+    ]
+
+
+def make_regions(conf):
+    points = make_anode_points(conf)
+    # ok now we need to 
+
+    # just construct one row
+    # start at 
+    x = 0
+
+
+def make_blocks_new(conf):
+    block_length = conf['collimator']['length'] / conf['beamnrc']['blocks']
+
+
+def make_blocks(conf):
+    block_length = conf['collimator']['length'] / conf['beamnrc']['blocks']
+    lesion_radius = conf['lesion']['diameter'] / 2
+    target_z = conf['collimator']['length'] + conf['lesion']['distance']
+    assert conf['septa']['x'] == conf['septa']['y']
+    septa = conf['septa']['x']
+    dy = np.sqrt(3) / 2 * lesion_radius
+    dx = lesion_radius / 2
     phantom_points = [
-        (-radius, 0),
+        (-lesion_radius, 0),
         (-dx, -dy),
         (dx, -dy),
-        (radius, 0),
+        (lesion_radius, 0),
         (dx, dy),
         (-dx, dy)
     ]
@@ -63,18 +104,18 @@ def make_blocks(**kwargs):
 
     # point them linearly at single points along, so there is no focal point?
     # ok now we're going to translate them
-    phantom_regions = [] # [(phantom_points, target_points)]
-    width_remaining = kwargs.pop('width') / 2
-    dx = radius * 2 + septa
-    dy = radius * 2 + septa
+    phantom_regions = []  # [(phantom_points, target_points)]
+    width_remaining = conf['collimator']['diameter'] / 2
+    dx = lesion_radius * 2 + septa
+    dy = lesion_radius * 2 + septa
     i = 0
     while width_remaining >= dx:
         width_remaining -= dx
-        for j in range(rows // 2 + 1):
+        for j in range(conf['collimator']['rows'] // 2 + 1):
             _dx = i * dx
             _dy = j * dy
             if j % 2 == 1:
-                _dx = _dx - radius
+                _dx = _dx - lesion_radius
             points = translate(phantom_points, dx=_dx, dy=_dy)
             phantom_regions.append((points, target_points))
         i += 1
@@ -85,7 +126,7 @@ def make_blocks(**kwargs):
         phantom_regions.insert(0, (reflect_x(phantom_points), reflect_x(target_points)))
 
     blocks = []
-    for i in range(n_blocks):
+    for i in range(conf['beamnrc']['blocks']):
         regions = []
         current_z = i * block_length
         for phantom_points, target_points in phantom_regions:
@@ -93,8 +134,8 @@ def make_blocks(**kwargs):
             # need to translate by the center of this region
             # so where is the center?
             for (x, y), (target_x, target_y) in zip(phantom_points, target_points):
-                x_ = find_x(target_x, target_z, x, length, current_z + block_length)
-                y_ = find_x(target_y, target_z, y, length, current_z + block_length)
+                x_ = find_x(target_x, target_z, x, conf['collimator']['length'], current_z + block_length)
+                y_ = find_x(target_y, target_z, y, conf['collimator']['length'], current_z + block_length)
                 region.append((x_, y_))
             regions.append(region)
         block = {
@@ -106,33 +147,22 @@ def make_blocks(**kwargs):
     return blocks
 
 
-def add_collimator(template, args):
-    kwargs = {
-        'length': args.length,
-        'septa': args.septa_width,
-        'size': args.hole_radius,
-        'width': args.width,
-        'blocks': args.blocks,
-        'target_distance': args.target_distance,
-        'target_width': args.target_width,
-        'rmax': args.rmax,
-        'two_sided': args.two_sided,
-        'rows': args.rows
-    }
-    blocks = make_blocks(**kwargs)
+def build_collimator(template, config):
+    collimator = copy.deepcopy(template)
+    blocks = make_blocks(config)
     for i, block in enumerate(blocks):
         cm = {
             'type': 'BLOCK',
             'identifier': 'BLCK{}'.format(i),
-            'rmax_cm': kwargs['rmax'],
+            'rmax_cm': config['beamnrc']['rmax'],
             'title': 'BLCK{}'.format(i),
             'zmin': block['zmin'],
             'zmax': block['zmax'],
-            'zfocus': kwargs['length'] + kwargs['target_distance'],
-            'xpmax': kwargs['rmax'],
-            'ypmax': kwargs['rmax'],
-            'xnmax': -kwargs['rmax'],
-            'ynmax': -kwargs['rmax'],
+            'zfocus': config['collimator']['length'] + config['lesion']['distance'],
+            'xpmax': config['beamnrc']['rmax'],
+            'ypmax': config['beamnrc']['rmax'],
+            'xnmax': -config['beamnrc']['rmax'],
+            'ynmax': -config['beamnrc']['rmax'],
             'air_gap': {
                 'ecut': 0.811,
                 'pcut': 0.01,
@@ -159,70 +189,69 @@ def add_collimator(template, args):
             cm['regions'].append({
                 'points': [{'x': x, 'y': y} for x, y in region]
             })
-        template['cms'].append(cm)
+        collimator['cms'].append(cm)
+    return collimator
 
 
-def polygon_area(corners):
-    n = len(corners)
-    area = 0.0
-    for i in range(n):
-        j = (i + 1) % n
-        area += corners[i][0] * corners[j][1]
-        area -= corners[j][0] * corners[i][1]
-    area = abs(area) / 2.0
-    return area
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config', default='collimator.toml')
+    parser.add_argument('output', nargs='?')
+    parser.add_argument('--template')
+    args = parser.parse_args()
+    if not args.output:
+        args.output = os.path.splitext(args.config)[0] + '.generated.egsinp'
+    if not args.template:
+        args.template = os.path.join(XCITE_DIR, 'templates/template.egsinp')
+    return args
 
 
-def block_stats(block):
-    max_x = 0
-    max_y = 0
-    min_x = 0
-    min_y = 0
-    areas = []
-    for region in block['regions']:
-        area = polygon_area([(p['x'], p['y']) for p in region['points']])
-        max_x = max(max_x, max(p['x'] for p in region['points']))
-        max_y = max(max_y, max(p['y'] for p in region['points']))
-        min_x = min(min_x, min(p['x'] for p in region['points']))
-        min_y = min(min_y, min(p['y'] for p in region['points']))
-        areas.append(area)
-    print('\tNumber of regions: {}'.format(len(areas)))
-    print('\tAverage region area: {:.2f} cm^2'.format(statistics.mean(areas)))
-    print('\tTotal area: {:.2f} cm^2'.format(sum(areas)))
-    print('\tX extents: [{:.2f}, {:.2f}]'.format(min_x, max_x))
-    print('\tY extents: [{:.2f}, {:.2f}]'.format(min_y, max_y))
-    print('\tZ focus:', block['zfocus'])
+def load_template(path):
+    with open(path) as f:
+        return egsinp.parse_egsinp(f.read())
 
 
-def collimator_stats(blocks):
-    print('First block:')
-    block_stats(blocks[0])
-    print('Last block:')
-    block_stats(blocks[-1])
-    print('Total blocks: {}'.format(len(blocks)))
+def load_config(path):
+    with open(path) as f:
+        return toml.load(f)
+
+
+def save_collimator(collimator, path):
+    with open(path, 'w') as f:
+        f.write(egsinp.unparse_egsinp(collimator))
+
+
+def save_config(config, path):
+    config['revision'] = get_revision()
+    lines = []
+    for line in toml.dumps(config).splitlines():
+        if line.startswith('['):
+            lines.append('')
+        lines.append(line)
+    with open(path, 'w') as f:
+        f.write('\n'.join(lines))
+
+
+def get_revision():
+    return subprocess.run(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
+
+
+def main():
+    args = parse_args()
+    config = load_config(args.config)
+    template = load_template(args.template)
+    collimator = build_collimator(template, config)
+    save_collimator(collimator, args.output)
+    save_config(config, os.path.splitext(args.output)[0] + '.toml')
+    visualize.render(args.output, config['lesion']['diameter'])
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--length', type=float, default=12)
-    parser.add_argument('--blocks', type=int, default=10)
-    parser.add_argument('--hole-radius', type=float, default=0.2)
-    parser.add_argument('--septa-width', type=float, default=0.02)
-    parser.add_argument('--width', type=float, default=55)
-    parser.add_argument('--target-distance', type=float, default=40.0)
-    parser.add_argument('--target-width', type=float, default=1.0)
-    parser.add_argument('--rmax', type=float, default=40.0)
-    parser.add_argument('--two-sided', action='store_true')
-    parser.add_argument('--rows', type=int, default=1)
-    parser.add_argument('output')
-    args = parser.parse_args()
-    if not args.output.endswith('.egsinp'):
-        args.output += '.egsinp'
-    template = egsinp.parse_egsinp(open('template.egsinp').read())
-    add_collimator(template, args)
-    open(args.output, 'w').write(egsinp.unparse_egsinp(template))
-    print('Wrote to {}'.format(args.output))
+    sys.exit(main())
+
+    """
     jout = open(args.output.replace('.egsinp', '.json'), 'w')
     data = vars(args)
     data['revision'] = get_revision()
     json.dump(data, jout, sort_keys=True, indent=2)
+    """

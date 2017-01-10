@@ -1,0 +1,29 @@
+foo = "bar"
+[2mm-50cm-magdalena]
+
+beam-width = 0.2
+collimator = "magdalena-collimator-1.egsinp"
+beam-height = 0.2
+histories = 10000000000
+dose-recycle = 99
+
+[5mm-50cm-magdalena]
+
+collimator = "magdalena-collimator-1.egsinp"
+beam-height = 0.5
+histories = 10000000000
+dose-recycle = 99
+
+[10mm-50cm-magdalena]
+
+collimator = "magdalena-collimator-1.egsinp"
+beam-height = 0.5
+histories = 10000000000
+dose-recycle = 99
+description = """
+This is a long description
+with multiple
+
+
+lines
+"""

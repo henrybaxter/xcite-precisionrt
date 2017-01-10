@@ -11,14 +11,14 @@ from collections import OrderedDict
 
 import numpy as np
 
-import collimator_analyzer
-import py3ddose
-import grace
-import simulate
-import dose_contours
-import build
-from utils import run_command, copy, read_3ddose
-import report
+from . import collimator_analyzer
+from . import py3ddose
+from . import grace
+from . import simulate
+from . import dose_contours
+from . import build
+from .utils import run_command, copy, read_3ddose
+from . import report
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument('--pegs4', default='allkV')
     parser.add_argument('--rmax', type=float, default=50.0,
                         help='Max extent of all component modules')
-    parser.add_argument('--reflect', action='store_true')
+    parser.add_argument('--reflect', action='store_true', default=True)
 
     # source arguments
     parser.add_argument('--beam-width', type=float, default=1,
@@ -207,6 +207,7 @@ def log_args(args):
 
 
 async def main():
+    start = time.time()
     args = parse_args()
     await configure_logging(args)
     log_args(args)
@@ -308,16 +309,5 @@ async def main():
         'photons': photons
     }
     report.generate(data, args)
-    logger.info('Output in {}'.format(args.output_dir))
-
-
-if __name__ == '__main__':
-    start = time.time()
-    loop = asyncio.get_event_loop()
-    #import warnings
-    #loop.set_debug(True)
-    #loop.slow_callback_duration = 0.001
-    #warnings.simplefilter('always', ResourceWarning)
-    loop.run_until_complete(main())
-    loop.close()
     logger.info('Finished in {:.2f} seconds'.format(time.time() - start))
+    logger.info('Output in {}'.format(args.output_dir))

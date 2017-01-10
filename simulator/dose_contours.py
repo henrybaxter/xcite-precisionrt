@@ -11,7 +11,7 @@ import matplotlib.cm as cm
 import numpy as np
 from scipy.spatial.distance import pdist
 
-import py3ddose
+from . import py3ddose
 
 
 def dose_paths():
@@ -64,7 +64,7 @@ def get_manual(possibles):
 
 def get_manual2(possibles):
     # how do we get the length of the path?
-    # distance between each 
+    # distance between each
     result = []
     specials = []
     for i, possible in enumerate(possibles):
@@ -150,8 +150,8 @@ async def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels
 
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
-        #print(x_axis, y_axis, z_axis)
-        #print('Generating Figure {} ({}-{} plane)'.format(i + 1, x_name, y_name))
+        # print(x_axis, y_axis, z_axis)
+        # print('Generating Figure {} ({}-{} plane)'.format(i + 1, x_name, y_name))
 
         # bottom axis is Y
         X = centers[x_axis]

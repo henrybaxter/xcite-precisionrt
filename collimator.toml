@@ -1,0 +1,25 @@
+[lesion]
+distance = 40.0
+diameter = 1.0
+
+[target]
+distribution = "polynomial"
+coefficients = [1.0]
+x = "point"
+
+[septa]
+y = 0.1
+x = 0.1
+
+[holes]
+width = 0.2  # apothem/inradius
+height = 0.2  # radius/circumradius
+
+[collimator]
+length = 12.0
+rows = 1
+diameter = 75.0
+
+[beamnrc]
+rmax = 50.0
+blocks = 5

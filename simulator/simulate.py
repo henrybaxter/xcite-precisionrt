@@ -5,8 +5,8 @@ import logging
 import hashlib
 import json
 
-import egsinp
-from utils import run_command, read_3ddose, copy, remove
+from . import egsinp
+from .utils import run_command, read_3ddose, copy, remove
 
 logger = logging.getLogger(__name__)
 

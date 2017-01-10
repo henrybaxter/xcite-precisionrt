@@ -3,7 +3,7 @@ import os
 
 from jinja2 import Environment, FileSystemLoader, Markup
 
-import latexmake
+from . import latexmake
 
 LATEX_SUBS = (
     (re.compile(r'\\'), r'\\textbackslash'),

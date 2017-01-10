@@ -6,7 +6,7 @@ import platform
 from multiprocessing import cpu_count
 from concurrent.futures import ProcessPoolExecutor
 
-import py3ddose
+from . import py3ddose
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,8 @@ else:
 counter = asyncio.Semaphore(MAX)
 
 executor = ProcessPoolExecutor()
+
+XCITE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
 def remove(path):
