@@ -1,10 +1,5 @@
 .DS_Store
 __pycache__
-*.log
-*.grace
-*.pdf
-*.eps
-*.egsphsp1
-*.3ddose
-*.scad
-*.npz
+reports/
+combined/
+grace/
