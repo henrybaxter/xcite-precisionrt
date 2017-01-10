@@ -1,20 +1,22 @@
 {
-	"scatter": [
+	"plots": [
 		{
 			"slug": "source_scatter",
 			"name": "Reflection Target Scatter Plot",
 			"phsp": "source",
+			"type": "scatter",
 			"extents": {
-				"xmin": -37.5,
-				"xmax": 37.5,
-				"ymin": -1,
-				"ymax": 1
+				"xmin": -50,
+				"xmax": 50,
+				"ymin": -2,
+				"ymax": 2
 			}
 		},
 		{
 			"slug": "source_scatter_section",
 			"name": "Reflection Target Scatter Plot (Small Section)",
 			"phsp": "source",
+			"type": "scatter",
 			"extents": {
 				"xmin": -1,
 				"xmax": 1,
@@ -22,21 +24,23 @@
 				"ymax": 1
 			}
 		},
-    {
-      "slug": "source_scatter_contextual",
-      "name": "Reflection Target Scatter Plot (Contextual)",
-      "phsp": "source",
-      "extents": {
-        "xmin": -40,
-        "xmax": 40,
-        "ymin": -5,
-        "ymax": 5
-      }
-    },
+	    {
+	      "slug": "source_scatter_contextual",
+	      "name": "Reflection Target Scatter Plot (Contextual)",
+	      "phsp": "source",
+	      "type": "scatter",
+	      "extents": {
+	        "xmin": -40,
+	        "xmax": 40,
+	        "ymin": -5,
+	        "ymax": 5
+	      },
+	    },
 		{
 			"slug": "filter_scatter",
 			"name": "Filter Scatter Plot",
 			"phsp": "filter",
+			"type": "scatter",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,
@@ -48,6 +52,7 @@
 			"slug": "collimator_scatter",
 			"name": "Collimator Scatter Plot",
 			"phsp": "collimator",
+			"type": "scatter",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,
@@ -60,19 +65,19 @@
 			"slug": "collimator_scatter_section",
 			"name": "Collimator Scatter Plot (Small Section)",
 			"phsp": "collimator",
+			"type": "scatter",
 			"extents": {
 				"xmin": -1,
 				"xmax": 1,
 				"ymin": -1,
 				"ymax": 1
 			}
-		}
-	],
-	"energy_fluence": [
+		},
 		{
 			"slug": "source_fluence_x",
 			"name": "Reflection Target Energy Fluence along X",
 			"phsp": "source",
+			"type": "energy_fluence",
 			"axis": "x",
 			"extents": {
 				"xmin": -37.5,
@@ -85,6 +90,7 @@
 			"slug": "source_fluence_y",
 			"name": "Reflection Target Energy Fluence along Y",
 			"phsp": "source",
+			"type": "energy_fluence",
 			"axis": "y",
 			"extents": {
 				"xmin": -37.5,
@@ -97,6 +103,7 @@
 			"slug": "filter_fluence_x",
 			"name": "Filter Energy Fluence along X",
 			"phsp": "filter",
+			"type": "energy_fluence",
 			"axis": "x",
 			"extents": {
 				"xmin": -37.5,
@@ -109,6 +116,7 @@
 			"slug": "filter_fluence_y",
 			"name": "Filter Energy Fluence along Y",
 			"phsp": "filter",
+			"type": "energy_fluence",
 			"axis": "y",
 			"extents": {
 				"xmin": -37.5,
@@ -121,6 +129,7 @@
 			"slug": "collimator_fluence_x",
 			"name": "Collimator Energy Fluence along X",
 			"phsp": "collimator",
+			"type": "energy_fluence",
 			"axis": "x",
 			"extents": {
 				"xmin": -37.5,
@@ -133,6 +142,7 @@
 			"slug": "collimator_fluence_y",
 			"name": "Collimator Energy Fluence along Y",
 			"phsp": "collimator",
+			"type": "energy_fluence",
 			"axis": "y",
 			"extents": {
 				"xmin": -37.5,
@@ -140,13 +150,12 @@
 				"ymin": -1,
 				"ymax": 1
 			}
-		}		
-	],
-	"angular": [
+		},
 		{
 			"slug": "source_angular",
 			"name": "Reflection Target Angular Distribution",
 			"phsp": "source",
+			"type": "angular",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,
@@ -158,6 +167,7 @@
 			"slug": "filter_angular",
 			"name": "Filter Angular Distribution",
 			"phsp": "filter",
+			"type": "angular",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,
@@ -169,19 +179,19 @@
 			"slug": "collimator_angular",
 			"name": "Collimator Angular Distribution",
 			"phsp": "collimator",
+			"type": "angular",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,
 				"ymin": -1,
 				"ymax": 1
 			}
-		}
-	],
-	"spectral": [
+		},
 		{
 			"slug": "source_spectral",
 			"name": "Reflection Target Spectral Distribution",
 			"phsp": "source",
+			"type": "spectral",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,
@@ -193,6 +203,7 @@
 			"slug": "filter_spectral",
 			"name": "Filter Spectral Distribution",
 			"phsp": "filter",
+			"type": "spectral",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,
@@ -204,6 +215,7 @@
 			"slug": "collimator_spectral",
 			"name": "Collimator Spectral Distribution",
 			"phsp": "collimator",
+			"type": "spectral",
 			"extents": {
 				"xmin": -37.5,
 				"xmax": 37.5,

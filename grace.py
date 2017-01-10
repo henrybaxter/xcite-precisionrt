@@ -38,47 +38,37 @@ GRACE = ['fluence_vs_position', 'energy_fluence_vs_position', 'spectral_distribu
 
 """
 Grace operates on a json file that describes all of the options.
-In fact, it operates on a set of json files. And it can run
-totally independently of the report. It needs the phase space
-files, json configurations, etc.
+It can run totally independently of the report. It needs the phase space
+files, and json configuration, and then it's all set.
 
 """
 
 
-async def make_plots(output_dir, phsp_paths, config_paths):
+async def make_plots(output_dir, phsp_paths, config):
     # each config is a dictionary with one element, plots
     # plots is a list of plots, we just merge them together
-    plots = {}
-    for path in config_paths:
-        with open(path) as f:
-            plots.update(json.load(f))
     os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
-    future_plots = []
-    for plot_type, plots in plots.items():
-        if plot_type == 'scatter':
-            plotter = scatter
-        elif plot_type == 'energy_fluence':
-            plotter = energy_fluence_vs_position
-        elif plot_type == 'spectral':
-            plotter = spectral_distribution
-        elif plot_type == 'angular':
-            plotter = angular_distribution
-        else:
-            raise ValueError('Unknown plot type {}'.format(plot_type))
-        for plot in plots:
-            phsp = phsp_paths[plot['phsp']]
-            plot['type'] = plot_type
-            future_plots.append(make_plot(plotter, plot, phsp, output_dir))
-    generated = {}
-    for plot in await asyncio.gather(*future_plots):
-        generated.setdefault(plot['type'], []).append(plot)
-    return OrderedDict([
-        (key, generated.get(key, []))
-        for key in ['scatter', 'energy_fluence', 'spectral', 'angular']
+    plots = await asyncio.gather(*[
+        make_plot(plot, phsp_paths[plot['phsp'], output_dir]) for plot in config['plots']
     ])
+    # they are in order, now group them by plot['type']
+    grouped = OrderedDict()
+    for plot in plots:
+        grouped.setdefault(plot['type'], []).append(plot)
+    return grouped
 
 
-async def make_plot(plotter, plot, phsp, output_dir):
+async def make_plot(plot, phsp, output_dir):
+    if plot['type'] == 'scatter':
+        plotter = scatter
+    elif plot['type'] == 'energy_fluence':
+        plotter = energy_fluence_vs_position
+    elif plot['type'] == 'spectral':
+        plotter = spectral_distribution
+    elif plot['type'] == 'angular':
+        plotter = angular_distribution
+    else:
+        raise ValueError('Unknown plot type {}'.format(plot['type']))
     logger.info("Processing {}".format(plot['slug']))
     filename = plot['slug'] + '.grace'
     relpath = os.path.join('grace', filename)
@@ -87,33 +77,25 @@ async def make_plot(plotter, plot, phsp, output_dir):
     temp_path = output_path + '.temp'
     plot['path'] = relpath
     plot, lines = plotter(phsp, temp_path, **plot)
-    extents = plot['extents'] if plot['type'] == 'scatter' else None
     if not os.path.exists(output_path):
-        await generate(lines, temp_path, extents=extents)
+        await generate(lines, temp_path, plot['grace'])
         await run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', eps_path, temp_path])
         os.rename(temp_path, output_path)
     return plot
 
 
-async def generate(arguments, output_path, extents=None):
+async def generate(arguments, output_path):
     # logger.info('Generating grace plot:\n{}'.format('\n'.join(arguments)))
-    result = await run_command(['beamdp'], stdin="\n".join(arguments).encode('utf-8'))
+    await run_command(['beamdp'], stdin="\n".join(arguments).encode('utf-8'))
     result = []
-    if extents:
-        result.append('@ autoscale onread none')  # stop autoscaling
     to_delete = ['legend', 'subtitle']
+    prefix = '@    '
     for line in open(output_path):
-        if any(line.startswith('@    {}'.format(key)) for key in to_delete):
+        if any(line.startswith(prefix + key) for key in to_delete):
             continue
-        if extents and line.startswith('@g0'):
-            result.append(line.strip())
-            world = '@    world ' + ', '.join(str(extents[k]) for k in ['xmin', 'ymin', 'xmax', 'ymax'])
-            result.append(world)
-        elif line.startswith('@    s0 symbol color'):
-            result.append(line.strip())
-            result.append('@    s0 symbol size 0.040000')
-        else:
-            result.append(line.strip())
+        result.append(line.strip())
+        if line.startswith(prefix + 's0 symbol color'):
+            result.append(prefix + 's0 symbol size 0.040000')
     with open(output_path, 'w') as f:
         f.write("\n".join(result))
 
@@ -310,8 +292,10 @@ def spectral_distribution(input_path, output_path, **kwargs):
     lines = [
         "y",  # show more detailed information
         "3",  # type of processing (3 = spectral distribution)
-        "{}, {}".format(args['charge'], extents),  # iq (-1 = electron, 0 = photon, 1 = positron, ...), xmin, xmax, ymin, ymax (or rmin, rmax)
-        "{}, {}, {}".format(args['bins'], args['min_ke'], args['max_ke']),  # nbins < 200, emin, emax
+        # iq (-1 = electron, 0 = photon, 1 = positron, ...), xmin, xmax, ymin, ymax (or rmin, rmax)
+        "{}, {}".format(args['charge'], extents),
+        # nbins < 200, emin, emax
+        "{}, {}, {}".format(args['bins'], args['min_ke'], args['max_ke']),
         "",  # I_IN_EX, Nbit1, Nbit2
         input_path,  # input file
         output_path,   # place to save grace file
@@ -324,6 +308,20 @@ def spectral_distribution(input_path, output_path, **kwargs):
     return args, lines
 
 
+def eps_convert(directory):
+    loop = asyncio.get_event_loop()
+    operations = []
+    for path in os.listdir(directory):
+        if not path.endswith('.grace'):
+            continue
+        path = os.path.join(args.eps, path)
+        print('generating eps for {}'.format(path))
+        output = path.replace('.grace', '.eps')
+        operations.append(run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', path, output]))
+    loop.run_until_complete(asyncio.gather(*operations))
+    loop.close()
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('grace')
@@ -331,19 +329,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input')
     parser.add_argument('--eps')
-    parser.add_argument('--report', action='store_true')
     parser.add_argument('--config', action='append', default=['grace.json'])
-    parser.add_argument('--force', '-f', action='store_true')
     args = parser.parse_args()
+    with open(args.config) as f:
+        config = json.load(f)
     if args.eps:
-        for path in os.listdir(args.eps):
-            if path.endswith('.grace'):
-                path = os.path.join(args.eps, path)
-                print('generating eps for {}'.format(path))
-    elif args.report:
+        eps_convert(args.eps)
+    else:
         phsp_paths = {
             'source': os.path.join(args.input, 'sampled_source.egsphsp1'),
             'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
             'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
         }
-        make_plots(args.input, phsp_paths, args.config, args.force)
+        make_plots(args.input, phsp_paths, config)
