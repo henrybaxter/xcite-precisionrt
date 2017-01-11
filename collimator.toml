@@ -3,17 +3,19 @@ distance = 40.0
 diameter = 1.0
 
 [target]
-distribution = "polynomial"
-coefficients = [1.0]
-x = "point"
+distribution = "center"
+#coefficients = [1.0, 0.0]
+mapto ="circle"
+radius = 0.5
+#height = 0
 
 [septa]
-y = 0.1
+y = 0.0
 x = 0.1
 
 [holes]
-width = 0.2  # apothem/inradius
-height = 0.2  # radius/circumradius
+width = 0.8  # apothem/inradius
+#height = 0.4  # radius/circumradius
 
 [collimator]
 length = 12.0

@@ -50,8 +50,8 @@ diameter = 1.0
 
 i had:
 [target.mapto.rectangle]
-y = 0.0
-x = 1.0
+height = 0.0
+width = 1.0
 [target.distribution.center]
 
 they had:
@@ -79,4 +79,4 @@ or possibly:
 [target.mapto.chords]
 x = 0.1
 [target.distribution.polynomial]
-x = [0.0, 1.0]
+x = [0.5, 0.0, 1.0]

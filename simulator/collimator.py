@@ -1,9 +1,12 @@
+import math
 import sys
 import os
 import toml
 import subprocess
 import argparse
+import logging
 import copy
+from operator import itemgetter
 
 import numpy as np
 from beamviz import visualize
@@ -11,6 +14,7 @@ from beamviz import visualize
 from . import egsinp
 from .utils import XCITE_DIR
 
+logger = logging.getLogger(__name__)
 
 def reflect_x(points):
     reflected = []
@@ -39,51 +43,167 @@ def translate(points, dx=0, dy=0):
     return translated
 
 
-def make_target_distribution(conf, X):
-    if conf['target']['distribution']:
-        return [0.0] * len(X)
+def make_target_x(conf, x):
+    logger.info('Making target with ingress_x {}'.format(x))
+    collimator_radius = conf['collimator']['diameter'] / 2
+    lesion_radius = conf['lesion']['diameter'] / 2
+    normalized = x / collimator_radius * lesion_radius
+    logger.info('Normalized is {}'.format(normalized))
+    if conf['target']['distribution'] == 'center':
+        coefficients = [0]
     elif conf['target']['distribution'] == 'left-right':
-        assert len(X) % 2 == 0
-        radius = conf['lesion']['diameter'] / 2
-        midpoint = radius / 2
-        return [-midpoint] * len(X) // 2 + [midpoint] * len(X) // 2
-    elif conf['target']['distribution'] == 'polynomial':
-        collimator_radius = conf['collimator']['diameter'] / 2
         lesion_radius = conf['lesion']['diameter'] / 2
-        normalized = np.array(X) * collimator_radius / lesion_radius
-        return list(np.polyval(conf['target']['coefficients'], normalized))
+        midpoint = lesion_radius / 2
+        coefficients = [math.copysign(midpoint, x)]
+    elif conf['target']['distribution'] == 'polynomial':
+        coefficients = conf['target']['coefficients']
+    else:
+        raise ValueError('Unknown distribution {}'.format(conf['target']['distribution']))
+    logger.info('coefficients = {}, normalized = {}'.format(coefficients, normalized))
+    result = np.polyval(coefficients, normalized)
+    logger.info('result = {}'.format(result))
+    return result
 
 
-def make_anode_points(conf):
+def make_target(conf, ingress, center):
+    logger.info('Making target of ingress {} and center {}'.format(ingress, center))
+    centers = np.repeat(center, ingress.shape[0]).reshape(ingress.shape)
+    if conf['target']['mapto'] == 'point':
+        return centers
+    elif conf['target']['mapto'] == 'rectangle':
+        # rectangle is relative to center
+        size = np.array([conf['target']['width'], conf['target']['height']])
+        print('size', size)
+        result = centers + np.copysign(size / 2, ingress - centers)
+        print('result', result)
+        return result
+    elif conf['target']['mapto'] == 'circle':
+        norms = np.sqrt(np.sum(np.square(ingress), axis=1))
+        return (ingress - center) / norms[:, np.newaxis] * conf['target']['radius']
+    elif conf['target']['mapto'] == 'chords':
+        # here we map to a circle, but clamp the x
+        # so the chord is of width conf['target']['width']
+        # and the height of the chord is dictated by the radius
+        norms = np.sqrt(np.sum(np.square(ingress), axis=1))
+        circle = (ingress - center) / norms[:, np.newaxis] * conf['target']['radius']
+        half_width = conf['target']['width'] / 2
+        return np.array([
+            np.clip(circle[:, 0], center[0] - half_width, center[0] + half_width),
+            circle[:, 1]
+        ]).T
+
+
+def make_egress(ingress, target, z, zmax):
+    z0 = 0
+    z1 = z
+    z2 = zmax
+    return ingress + (target - ingress) / (z2 - z0) * z1
+
+
+def make_ingress(egress, target, z, zmax):
+    z0 = 0
+    z1 = z
+    z2 = zmax
+    return target + (egress - target) / (z2 - z1) * (z2 - z0)
+
+
+def make_blocks(conf):
+    logger.debug('Making blocks')
     x_radius = conf['holes']['width'] / 2
     if 'height' in conf['holes']:
         y_radius = conf['holes']['height'] / 2
     else:
         y_radius = x_radius * 2 / np.sqrt(3)
-    return [
+    logger.debug('Radii are ({}, {})'.format(x_radius, y_radius))
+    start = np.array([
         (-x_radius, y_radius / 2),
         (-x_radius, -y_radius / 2),
         (0, -y_radius),
         (x_radius, -y_radius / 2),
-        (x_radius, ),
+        (x_radius, y_radius / 2),
         (0, y_radius)
-    ]
+    ])
+    logger.debug('Initial points are {}'.format(start))
+    # generate one side!
+    # center = np.array([0, 0])
+    ingress_center = np.array([0.0, 0.0])
+    zfocus = conf['collimator']['length'] + conf['lesion']['distance']
+    ingress = start[:]
+    regions = []
+    i = 0
+
+    # while the maximum x value of the ingress is less than the diameter, we're good
+    while True:
+        max_x = np.amax(ingress, axis=0)[0]
+        print('max_x =', max_x)
+        collimator_radius = conf['collimator']['diameter'] / 2
+        print('collimator radius =', collimator_radius)
+        if max_x > collimator_radius:
+            break
+        i += 1
+        print('Iteration {}'.format(i))
+        target_x = make_target_x(conf, ingress_center[0])
+        print('target_x = {}'.format(target_x))
+        target = make_target(conf, ingress, np.array([target_x, 0]))
+        print('target = {}'.format(target))
+        egress = make_egress(ingress, target, conf['collimator']['length'], zfocus)
+        print('egress = {}'.format(egress))
+        print('added to regions')
+        regions.append(egress)
+
+        min_ingress_x = np.amax(ingress, axis=0)[0] + conf['septa']['x']
+        min_egress_x = np.amax(egress, axis=0)[0] + conf['septa']['x']
+        print('min_ingress_x {}'.format(min_ingress_x))
+        print('min_egress_x {}'.format(min_egress_x))
+
+        def width(points):
+            return np.amax(points, axis=0)[0] - np.amin(points, axis=0)[0]
+
+        ingress_dx = np.array([width(ingress) + conf['septa']['x'], 0])
+        egress_dx = np.array([width(egress) + conf['septa']['x'], 0])
+        candidate_ingress = ingress + ingress_dx
+        candidate_egress = egress + egress_dx
+        print('candidate_ingress = {}'.format(candidate_ingress))
+        print('candidate_egress = {}'.format(candidate_egress))
+        resulting_egress = make_egress(candidate_ingress, target, conf['collimator']['length'], zfocus)
+        resulting_ingress = make_ingress(candidate_egress, target, conf['collimator']['length'], zfocus)
+        print('resulting_egress = {}'.format(resulting_egress))
+        print('resulting_ingress = {}'.format(resulting_ingress))
+        if np.amin(resulting_egress, axis=0)[0] >= min_egress_x:
+            print('Shuffling along ingress')
+            # shuffling along ingress worked, move center that far
+            ingress_center += ingress_dx
+            ingress = candidate_ingress
+            egress = resulting_egress
+        elif np.amin(resulting_ingress, axis=0)[0] >= min_ingress_x:
+            # TODO choose a 'closest' egress point, shift by the septa, then
+            # backtrack up to the corresponding ingress point. 
+            # pick the furthest point, find it
+            print('Shuffling along egress')
+            ingress_dx = np.amin(resulting_ingress - ingress, axis=0)[0]
+            ingress = resulting_ingress
+            egress = candidate_egress
+        else:
+            raise ValueError('Impossible to construct collimator without overlap')
+        print('ingress {}'.format(ingress))
+        print('egress {}'.format(egress))
 
 
-def make_regions(conf):
-    points = make_anode_points(conf)
-    # ok now we need to 
+    # once we have the start and endpoint everywhere, we just interpolate the shit out of that
+    # but for now, screw it
+    # block_length = conf['collimator']['length'] / conf['beamnrc']['blocks']
+    # for i in range(conf['beamnrc']['blocks']):
+        # z = i * block_length
+    # ok, so now we have the region points!
+    block = {
+        'zmin': 0,
+        'zmax': conf['collimator']['length'],
+        'regions': regions
+    }
+    return [block]
 
-    # just construct one row
-    # start at 
-    x = 0
 
-
-def make_blocks_new(conf):
-    block_length = conf['collimator']['length'] / conf['beamnrc']['blocks']
-
-
-def make_blocks(conf):
+def _make_blocks(conf):
     block_length = conf['collimator']['length'] / conf['beamnrc']['blocks']
     lesion_radius = conf['lesion']['diameter'] / 2
     target_z = conf['collimator']['length'] + conf['lesion']['distance']
@@ -237,6 +357,7 @@ def get_revision():
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
     args = parse_args()
     config = load_config(args.config)
     template = load_template(args.template)
