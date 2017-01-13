@@ -270,18 +270,23 @@ async def run_simulation(sim):
         force_symlink(combined[key], os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key)))
 
     # plots
+    logger.info('Loading grace configuration')
     with open(sim['grace']) as f:
         plots = toml.load(f)['plots']
     plot_futures = [
         grace.make_plots(sim['directory'], combined, plots)
     ]
+
+    logger.info('Starting dose contour plots')
     target = py3ddose.Target(
         np.array(sim['phantom-isocenter']),
         sim['lesion-diameter'] / 2
     )
     for slug, path in combined['dose'].items():
         plot_futures.append(dose_contours.plot(sim['phantom'], path, target, sim['directory'], slug))
+    logger.info('Waiting for grace and dose contours to finish')
     grace_plots, *contours = await asyncio.gather(*plot_futures)
+    logger.info('Regrouping contour plots')
     contour_plots = OrderedDict()
     for stage in ['stationary', 'stationary_weighted', 'arc', 'arc_weighted']:
         for contour in [c for cs in contours for c in cs]:
