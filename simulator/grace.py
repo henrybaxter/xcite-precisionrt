@@ -85,7 +85,8 @@ async def make_plot(plot, phsp):
         await generate(lines, temp_path)
         await run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', eps_path, temp_path])
         os.rename(temp_path, grace_path)
-    plot['path'] = grace_path
+    plot['grace'] = grace_path
+    plot['eps'] = eps_path
     return plot
 
 

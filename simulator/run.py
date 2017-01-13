@@ -274,6 +274,11 @@ async def run_simulation(sim):
     with open(sim['grace']) as f:
         plots = toml.load(f)['plots']
     grace_plots = await grace.make_plots(combined, plots)
+    for plot in grace_plots:
+        for ext in ['grace', 'eps']:
+            source = os.path.abspath(plot[ext])
+            link_name = os.path.join(sim['directory'], plot['slug'] + '.' + ext)
+            force_symlink(source, link_name)
 
     logger.info('Starting dose contour plots')
     target = py3ddose.Target(
