@@ -45,12 +45,12 @@ files, and json configuration, and then it's all set.
 """
 
 
-async def make_plots(output_dir, phsp_paths, config):
+async def make_plots(output_dir, phsp_paths, plots):
     # each config is a dictionary with one element, plots
     # plots is a list of plots, we just merge them together
     os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
     plots = await asyncio.gather(*[
-        make_plot(plot, phsp_paths[plot['phsp'], output_dir]) for plot in config['plots']
+        make_plot(plot, phsp_paths[plot['phsp']], output_dir) for plot in plots
     ])
     # they are in order, now group them by plot['type']
     grouped = OrderedDict()
@@ -79,7 +79,7 @@ async def make_plot(plot, phsp, output_dir):
     plot['path'] = relpath
     plot, lines = plotter(phsp, temp_path, **plot)
     if not os.path.exists(output_path):
-        await generate(lines, temp_path, plot['grace'])
+        await generate(lines, temp_path)
         await run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', eps_path, temp_path])
         os.rename(temp_path, output_path)
     return plot
