@@ -55,13 +55,13 @@ def get_env():
     return env
 
 
-def generate(data, args):
+def generate(data, sim):
     context = data.copy()
-    context['args'] = args
-    report = get_env().get_template('template.tex').render(context)
-    with open(os.path.join(args.output_dir, 'report.tex'), 'w') as f:
+    context['sim'] = sim
+    report = get_env().get_template('templates/report.tex').render(context)
+    with open(os.path.join(sim['directory'], 'report.tex'), 'w') as f:
         f.write(report)
-    os.chdir(args.output_dir)
+    os.chdir(sim['directory'])
     latex_args, rest = latexmake.arg_parser().parse_known_args()
     latexmake.LatexMaker('report', latex_args).run()
     os.chdir('..')

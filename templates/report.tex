@@ -34,12 +34,12 @@
 \subsection{X-ray source}
 \begin{itemize}
 	\item Tungsten target
-	\item Target angle: \ang{((( args.target_angle )))}
-	\item Distance from electron gun to target: \SI{((( args.beam_distance )))}{\cm}
-	\item Electron beam size: \SI{((( args.beam_height * 10 )))}{\mm}
+	\item Target angle: \ang{((( sim['target-angle'] )))}
+	\item Distance from electron gun to target: \SI{((( sim['target-distance'] )))}{\cm}
+	\item Electron beam size: \SI{((( sim['beam-height'] * 10 )))}{\mm}
 	\item Incident electrons simulated (histories): ((( electrons )))
-	\item Target length: \SI{((( args.target_length )))}{\cm}
-	\item Gap between simulated electron beams: \SI{((( args.beam_gap )))}{\cm}
+	\item Target length: \SI{((( sim['target-length'] )))}{\cm}
+	\item Gap between simulated electron beams: \SI{((( sim['beam-gap'] )))}{\cm}
 \end{itemize}
 
 \subsection{Filter}
@@ -60,8 +60,8 @@
 
 \subsection{Dosing}
 \begin{itemize}
-	\item Target size: \SI{((( args.target_size )))}{\cm}
-	\item Target depth: \SI{((( args.target_z | abs )))}{\cm}
+	\item Lesion diameter: \SI{((( sim['collimator']['lesion-diameter']  )))}{\cm}
+	\item Target depth: \SI{((( sim['phantom-isocenter'][2] | abs )))}{\cm}
 	\item Distance from collimator to skin: \SI{((( skin_distance )))}{\cm}
 \end{itemize}
 	

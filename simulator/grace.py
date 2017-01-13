@@ -326,18 +326,17 @@ def eps_convert(directory):
     loop.run_until_complete(asyncio.gather(*operations))
     loop.close()
 
-
-if __name__ == '__main__':
+async def main():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('grace')
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('input')
     parser.add_argument('--eps')
-    parser.add_argument('--config', action='append', default=['grace.toml'])
+    parser.add_argument('--config', default='grace.toml')
     args = parser.parse_args()
     with open(args.config) as f:
-        config = toml.load(f)
+        config = toml.load(f)['plots']
     if args.eps:
         eps_convert(args.eps)
     else:
@@ -346,5 +345,11 @@ if __name__ == '__main__':
             'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
             'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
         }
-        plots = make_plots(phsp_paths, config)
+        plots = await make_plots(phsp_paths, config)
         print(plots)
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.close()
+

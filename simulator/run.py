@@ -54,7 +54,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--default-simulation', default='simulation.defaults.toml')
     parser.add_argument('--simulations', default='simulations.toml')
-    parser.add_argument('-f', '--force', action='store_true')
+    parser.add_argument('--force', action='store_true')
     parser.add_argument('-n', '--histories', type=float)
     parser.add_argument('-s', '--single-op', action='store_true')
     return parser.parse_args()
@@ -267,25 +267,24 @@ async def run_simulation(sim):
 
     logger.info('Linking combined phase space files')
     for key in ['source', 'filter', 'collimator']:
-        force_symlink(combined[key], os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key)))
+        force_symlink(combined[key], os.path.abspath(os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))))
 
     # plots
     logger.info('Loading grace configuration')
     with open(sim['grace']) as f:
         plots = toml.load(f)['plots']
-    plot_futures = [
-        grace.make_plots(sim['directory'], combined, plots)
-    ]
+    grace_plots = await grace.make_plots(combined, plots)
 
     logger.info('Starting dose contour plots')
     target = py3ddose.Target(
         np.array(sim['phantom-isocenter']),
         sim['lesion-diameter'] / 2
     )
+    contour_futures = []
     for slug, path in combined['dose'].items():
-        plot_futures.append(dose_contours.plot(sim['phantom'], path, target, sim['directory'], slug))
-    logger.info('Waiting for grace and dose contours to finish')
-    grace_plots, *contours = await asyncio.gather(*plot_futures)
+        contour_futures.append(dose_contours.plot(sim['phantom'], path, target, sim['directory'], slug))
+    logger.info('Waiting for dose contours to finish')
+    contours = await asyncio.gather(*contour_futures)
     logger.info('Regrouping contour plots')
     contour_plots = OrderedDict()
     for stage in ['stationary', 'stationary_weighted', 'arc', 'arc_weighted']:
@@ -303,14 +302,14 @@ async def run_simulation(sim):
     logger.info('Getting photons')
     photons = {}
     for stage in ['source', 'filter', 'collimator']:
-        photons[stage] = sum([sim[stage]['stats']['total_photons'] for s in simulations])
+        photons[stage] = sum([s[stage]['stats']['total_photons'] for s in simulations])
     data = {
         '_filter': templates['filter'],
         'collimator': templates['collimator'],
         'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
         'grace_plots': grace_plots,
         'contour_plots': contour_plots,
-        'skin_distance': sim['lesion-distance'] - abs(sim['phantom-isocenter'][2]),
+        'skin_distance': sim['collimator']['lesion-distance'] - abs(sim['phantom-isocenter'][2]),
         'ci': conformity,
         'ts': target_to_skin,
         'electrons': histories * len(y_values),
