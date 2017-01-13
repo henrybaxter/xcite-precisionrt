@@ -116,7 +116,7 @@ async def build_source(sim, histories):
     template['title'] = name
     folder = os.path.join(sim['egs-home'], 'BEAM_{}'.format(name))
     if not os.path.exists(folder):
-        await beam_build(sim['egs_home'], name, template['cms'])
+        await beam_build(sim['egs-home'], name, template['cms'])
     return template
 
 

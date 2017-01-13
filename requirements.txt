@@ -1,4 +1,5 @@
 pytoml
+beamviz
 pathos
 scipy
 numpy
@@ -9,3 +10,4 @@ PyQt5
 Jinja2
 natsort
 arrow
+shapely

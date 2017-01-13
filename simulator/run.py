@@ -142,7 +142,7 @@ def generate_y(target_length, spacing, reflect):
     return result
 
 
-async def combine_doses(args, doses):
+async def combine_doses(sim, doses):
     """
     what is the purpose here? how do we weight the arcs?
     the problem is the arc dose seems different
@@ -168,7 +168,7 @@ async def combine_doses(args, doses):
         if 'arc' in stage:  # flatten
             beamlet_doses = [d for ds in beamlet_doses for d in ds]
         paths = [dose['npz'] for dose in beamlet_doses]
-        path = os.path.join(args.output_dir, '{}.3ddose'.format(stage))
+        path = os.path.join(sim['directory'], '{}.3ddose'.format(stage))
         if os.path.exists(path):
             logger.warning('Combined dose {} already exists'.format(path))
         else:
@@ -277,7 +277,7 @@ async def run_simulation(sim):
     ]
     target = py3ddose.Target(
         np.array(sim['phantom-isocenter']),
-        sim['collimator']['lesion-diameter'] / 2
+        sim['lesion-diameter'] / 2
     )
     for slug, path in combined['dose'].items():
         plot_futures.append(dose_contours.plot(sim['phantom'], path, target, sim['directory'], slug))

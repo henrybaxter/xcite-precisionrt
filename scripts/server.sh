@@ -1,5 +1,5 @@
 sudo apt update && sudo apt dist-upgrade -y -qq
-sudo apt install build-essential libbz2-dev libssl-dev libreadline-dev \
+sudo apt install build-essential libbz2-dev libssl-dev libreadline-dev libgeos-dev awscli \
 	libsqlite3-dev libfreetype6-dev pkg-config texlive-full gfortran sysstat grace -y -qq
 
 # sudo apt install python3-pip -y -qq

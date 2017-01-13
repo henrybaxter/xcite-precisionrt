@@ -24,6 +24,8 @@ target-distance = 50.0
 target-length = 75.0
 target-angle = 45.0
 
+lesion-diameter = 1.0
+
 dose-recycle = 9
 dose-photon-splitting = 20
 phantom-isocenter = [0, 20, -10]
