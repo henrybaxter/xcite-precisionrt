@@ -6,28 +6,26 @@ import hashlib
 import json
 
 from . import egsinp
-from .utils import run_command, read_3ddose, copy, remove
+from .utils import run_command, read_3ddose, copy, remove, XCITE_DIR
 
 logger = logging.getLogger(__name__)
 
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
-
-async def simulate(args, templates, index, y):
-    source_beamlet = await simulate_source(args, templates['source'], y)
+async def simulate(sim, templates, index, y):
+    source_beamlet = await simulate_source(sim, templates['source'], y)
     logger.info('{} - simulated source'.format(index))
-    filtered_beamlet = await filter_source(args, templates['filter'], source_beamlet)
+    filtered_beamlet = await filter_source(sim, templates['filter'], source_beamlet)
     logger.info('{} - simulated filter'.format(index))
-    collimated_beamlet = await collimate(args, templates['collimator'], filtered_beamlet)
+    collimated_beamlet = await collimate(sim, templates['collimator'], filtered_beamlet)
     logger.info('{} - simulated collimator'.format(index))
-    if args.reflect:
+    if sim['reflect']:
         reflected_beamlet = await reflect(collimated_beamlet)
         dose = await asyncio.gather(*[
-            simulate_doses(args, templates, reflected_beamlet, index[0]),
-            simulate_doses(args, templates, collimated_beamlet, index[1])
+            simulate_doses(sim, templates, reflected_beamlet, index[0]),
+            simulate_doses(sim, templates, collimated_beamlet, index[1])
         ])
     else:
-        dose = await simulate_doses(args, templates, collimated_beamlet, index)
+        dose = await simulate_doses(sim, templates, collimated_beamlet, index)
     result = {
         'source': source_beamlet,
         'filter': filtered_beamlet,
@@ -61,10 +59,10 @@ async def reflect(original):
     return beamlet
 
 
-async def simulate_source(args, template, y):
-    folder = os.path.join(args.egs_home, 'BEAM_RFLCT')
+async def simulate_source(sim, template, y):
+    folder = os.path.join(sim['egs-home'], 'BEAM_RFLCT')
     # calculate
-    theta = math.atan(y / args.beam_distance)
+    theta = math.atan(y / sim['target-distance'])
     cos_x = -math.cos(theta)
     cos_y = math.copysign(math.sqrt(1 - cos_x * cos_x), y)
 
@@ -90,7 +88,7 @@ async def simulate_source(args, template, y):
         remove(temp_phsp)
         with open(beamlet['egsinp'], 'w') as f:
             f.write(egsinp_str)
-        command = ['BEAM_RFLCT', '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
+        command = ['BEAM_RFLCT', '-p', sim['pegs4'], '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
         # translate
         await run_command(['beamdpr', 'translate', '-i', temp_phsp, '-y', '({})'.format(y)])
@@ -106,8 +104,8 @@ async def simulate_source(args, template, y):
     return beamlet
 
 
-async def filter_source(args, template, source_beamlet):
-    folder = os.path.join(args.egs_home, 'BEAM_FILTR')
+async def filter_source(sim, template, source_beamlet):
+    folder = os.path.join(sim['egs-home'], 'BEAM_FILTR')
     # prepare template
     template['ncase'] = source_beamlet['stats']['total_particles']
     template['spcnam'] = os.path.join('../', 'BEAM_RFLCT', os.path.basename(source_beamlet['phsp']))
@@ -131,7 +129,7 @@ async def filter_source(args, template, source_beamlet):
         remove(temp_phsp)
         with open(beamlet['egsinp'], 'w') as f:
             f.write(egsinp_str)
-        command = ['BEAM_FILTR', '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
+        command = ['BEAM_FILTR', '-p', sim['pegs4'], '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
         os.rename(temp_phsp, beamlet['phsp'])
 
@@ -142,9 +140,9 @@ async def filter_source(args, template, source_beamlet):
     return beamlet
 
 
-async def collimate(args, template, source_beamlet):
+async def collimate(sim, template, source_beamlet):
     name = 'BEAM_{}'.format(template['title'])
-    folder = os.path.join(args.egs_home, name)
+    folder = os.path.join(sim['egs-home'], name)
 
     # prepare template
     template['ncase'] = source_beamlet['stats']['total_particles']
@@ -169,7 +167,7 @@ async def collimate(args, template, source_beamlet):
         remove(beamlet['phsp'])
         with open(beamlet['egsinp'], 'w') as f:
             f.write(egsinp_str)
-        command = [name, '-p', args.pegs4, '-i', os.path.basename(beamlet['egsinp'])]
+        command = [name, '-p', sim['pegs4'], '-i', os.path.basename(beamlet['egsinp'])]
         await run_command(command, cwd=folder)
         os.rename(temp_phsp, beamlet['phsp'])
 
@@ -180,18 +178,18 @@ async def collimate(args, template, source_beamlet):
     return beamlet
 
 
-async def simulate_doses(args, templates, beamlet, index):
+async def simulate_doses(sim, templates, beamlet, index):
     context = {
-        'egsphant_path': os.path.join(SCRIPT_DIR, args.phantom),
+        'egsphant_path': os.path.join(XCITE_DIR, sim['phantom']),
         'phsp_path': beamlet['phsp'],
-        'ncase': beamlet['stats']['total_photons'] * (args.dose_recycle + 1),
-        'nrcycl': args.dose_recycle,
-        'n_split': args.dose_photon_splitting,
-        'dsource': args.target_distance,
+        'ncase': beamlet['stats']['total_photons'] * (sim['dose-recycle'] + 1),
+        'nrcycl': sim['dose-recycle'],
+        'n_split': sim['dose-photon-splitting'],
+        'dsource': sim['lesion-distance'],
         'phicol': 90,
-        'x': args.target_x,
-        'y': args.target_y,
-        'z': args.target_z,
+        'x': sim['phantom-isocenter'][0],
+        'y': sim['phantom-isocenter'][1],
+        'z': sim['phantom-isocenter'][2],
         'idat': 1,
         'theta': 180,
     }
@@ -201,24 +199,28 @@ async def simulate_doses(args, templates, beamlet, index):
     # stationary
     context['phi'] = 0
     egsinp_str = templates['stationary_dose'].format(**context)
-    path = os.path.join(args.output_dir, 'dose/stationary/stationary{}.3ddose.npz'.format(index))
-    doses['stationary'] = simulate_dose(args, beamlet, egsinp_str, path)
+    for subfolder in ['dose/stationary', 'dose/arc']:
+        os.makedirs(os.path.join(sim['directory'], subfolder), exist_ok=True)
+    path = os.path.join(sim['directory'], 'dose/stationary/stationary{}.3ddose.npz'.format(index))
+    doses['stationary'] = simulate_dose(sim, beamlet, egsinp_str, path)
 
     # arc
-    for phimin, phimax in dose_angles(args):
+    for phimin, phimax in dose_angles(sim):
         context['nang'] = 1
         context['phimin'] = phimin
         context['phimax'] = phimax
         egsinp_str = templates['arc_dose'].format(**context)
-        path = os.path.join(args.output_dir, 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
-        doses['arc'].append(simulate_dose(args, beamlet, egsinp_str, path))
+        path = os.path.join(sim['directory'], 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
+        doses['arc'].append(simulate_dose(sim, beamlet, egsinp_str, path))
+        if sim['single-op']:
+            break
     futures = [doses['stationary']] + doses['arc']
     doses['stationary'], *doses['arc'] = await asyncio.gather(*futures)
     return doses
 
 
-async def simulate_dose(args, beamlet, egsinp_str, path):
-    folder = os.path.join(args.egs_home, 'dosxyznrc')
+async def simulate_dose(sim, beamlet, egsinp_str, path):
+    folder = os.path.join(sim['egs-home'], 'dosxyznrc')
     # hash
     md5 = beamlet['hash'].copy()
     md5.update(egsinp_str.encode('utf-8'))
@@ -237,7 +239,7 @@ async def simulate_dose(args, beamlet, egsinp_str, path):
         remove(dose['3ddose'])
         with open(dose['egsinp'], 'w') as f:
             f.write(egsinp_str)
-        command = ['dosxyznrc', '-p', args.pegs4, '-i', os.path.basename(dose['egsinp'])]
+        command = ['dosxyznrc', '-p', sim['pegs4'], '-i', os.path.basename(dose['egsinp'])]
         out = await run_command(command, cwd=folder)
         if 'Warning' in out:
             logger.info('Warning in {}'.format(dose['egslst']))

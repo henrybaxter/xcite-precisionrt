@@ -1,288 +1,220 @@
+import time
 import math
 import sys
 import os
-import toml
+import pytoml as toml
 import subprocess
 import argparse
 import logging
 import copy
-from operator import itemgetter
+import itertools
 
 import numpy as np
 from beamviz import visualize
+from shapely.geometry import Polygon
 
 from . import egsinp
 from .utils import XCITE_DIR
 
 logger = logging.getLogger(__name__)
 
-def reflect_x(points):
-    reflected = []
-    for x, y in points:
-        reflected.append((-x, y))
-    return reflected
 
-
-def reflect_y(points):
-    reflected = []
-    for x, y in points:
-        reflected.append((x, -y))
-    return reflected
-
-
-def find_x(x0, z0, x1, z1, z2):
-    m = (z1 - z0) / ((x1 - x0) or 0.000001)
-    x2 = (z2 - z0) / m + x0
-    return x2
-
-
-def translate(points, dx=0, dy=0):
-    translated = []
-    for x, y in points:
-        translated.append((x + dx, y + dy))
-    return translated
-
-
-def make_target_x(conf, x):
-    logger.info('Making target with ingress_x {}'.format(x))
-    collimator_radius = conf['collimator']['diameter'] / 2
-    lesion_radius = conf['lesion']['diameter'] / 2
-    normalized = x / collimator_radius * lesion_radius
-    logger.info('Normalized is {}'.format(normalized))
-    if conf['target']['distribution'] == 'center':
-        coefficients = [0]
-    elif conf['target']['distribution'] == 'left-right':
-        lesion_radius = conf['lesion']['diameter'] / 2
-        midpoint = lesion_radius / 2
-        coefficients = [math.copysign(midpoint, x)]
-    elif conf['target']['distribution'] == 'polynomial':
-        coefficients = conf['target']['coefficients']
-    else:
-        raise ValueError('Unknown distribution {}'.format(conf['target']['distribution']))
-    logger.info('coefficients = {}, normalized = {}'.format(coefficients, normalized))
-    result = np.polyval(coefficients, normalized)
-    logger.info('result = {}'.format(result))
+def map_to_circle(ingress, ingress_center, target_center, radius):
+    translated = ingress - ingress_center
+    norms = np.sqrt(np.sum(np.square(translated), axis=1))[:, np.newaxis]
+    normalized = translated / norms
+    result = normalized * radius + target_center
     return result
 
 
-def make_target(conf, ingress, center):
-    logger.info('Making target of ingress {} and center {}'.format(ingress, center))
-    centers = np.repeat(center, ingress.shape[0]).reshape(ingress.shape)
-    if conf['target']['mapto'] == 'point':
-        return centers
-    elif conf['target']['mapto'] == 'rectangle':
-        # rectangle is relative to center
-        size = np.array([conf['target']['width'], conf['target']['height']])
-        print('size', size)
-        result = centers + np.copysign(size / 2, ingress - centers)
-        print('result', result)
-        return result
-    elif conf['target']['mapto'] == 'circle':
-        norms = np.sqrt(np.sum(np.square(ingress), axis=1))
-        return (ingress - center) / norms[:, np.newaxis] * conf['target']['radius']
-    elif conf['target']['mapto'] == 'chords':
-        # here we map to a circle, but clamp the x
-        # so the chord is of width conf['target']['width']
-        # and the height of the chord is dictated by the radius
-        norms = np.sqrt(np.sum(np.square(ingress), axis=1))
-        circle = (ingress - center) / norms[:, np.newaxis] * conf['target']['radius']
-        half_width = conf['target']['width'] / 2
-        return np.array([
-            np.clip(circle[:, 0], center[0] - half_width, center[0] + half_width),
-            circle[:, 1]
-        ]).T
+def clip_y(vectors, min_value, max_value):
+    return np.array([
+        vectors[:, 0],
+        np.clip(vectors[:, 1], min_value, max_value)
+    ]).T
 
 
-def make_egress(ingress, target, z, zmax):
-    z0 = 0
-    z1 = z
-    z2 = zmax
-    return ingress + (target - ingress) / (z2 - z0) * z1
+def make_egress(conf, ingress, ingress_center):
+    target_center = make_target_center(conf, ingress_center)
+    target = make_target(conf, ingress, ingress_center, target_center)
+    zfocus = conf['length'] + conf['lesion-distance']
+    egress = ingress + (target - ingress) / zfocus * conf['length']
+    return egress
 
 
-def make_ingress(egress, target, z, zmax):
-    z0 = 0
-    z1 = z
-    z2 = zmax
-    return target + (egress - target) / (z2 - z1) * (z2 - z0)
+def make_target_center(conf, ingress_center):
+    x = ingress_center[0]
+    collimator_radius = conf['diameter'] / 2
+    lesion_radius = conf['lesion-diameter'] / 2
+    normalized = x / collimator_radius * lesion_radius
+    if conf['target-distribution'] == 'center':
+        coefficients = [0]
+    elif conf['target-distribution'] == 'left-right':
+        lesion_radius = conf['lesion']['diameter'] / 2
+        midpoint = lesion_radius / 2
+        coefficients = [math.copysign(midpoint, x)]
+    elif conf['target-distribution'] == 'polynomial':
+        coefficients = conf['target-coefficients']
+    else:
+        raise ValueError('Unknown distribution {}'.format(conf['target-distribution']))
+    return np.array([np.polyval(coefficients, normalized), 0])
+
+
+def make_target(conf, ingress, ingress_center, target_center):
+    if conf['target-shape'] == 'point':
+        return map_to_circle(ingress, ingress_center, target_center, radius=0)
+    elif conf['target-shape'] == 'line':
+        radius = conf['lesion-diameter'] / 2
+        return clip_y(map_to_circle(ingress, ingress_center, target_center, radius), 0, 0)
+    elif conf['target-shape'] == 'circle':
+        return map_to_circle(ingress, ingress_center, target_center, conf['lesion-diameter'] / 2)
+    else:
+        raise ValueError('Unknown target shape {}'.format(conf['target-shape']))
+
+
+def interpolate(ingress, egress, z, zmax):
+    if z == 0:
+        return ingress
+    return ingress + (egress - ingress) / zmax * z
+
+
+def calculate_dy(conf, ingress, center, egress, dx, iterations=1000):
+    septa = conf['septa']['y']
+    precision = conf['precision']
+    height = np.amax(ingress, axis=0)[1] - np.amin(ingress, axis=0)[1]
+    for i in range(iterations):
+        dy = np.array([0, height / 2 + septa + i * precision])
+        if Polygon(egress).distance(Polygon(make_egress(conf, ingress + dy + dx / 2, center + dy + dx / 2))) > septa:
+            return dy
+    raise ValueError('calculate_dx failed after {} iterations'.format(iterations))
+
+
+def calculate_dx(conf, ingress, center, egress, iterations=1000):
+    septa = conf['septa']['x']
+    precision = conf['precision']
+    width = np.amax(ingress, axis=0)[0] - np.amin(ingress, axis=0)[0]
+    for i in range(iterations):
+        dx = np.array([width + septa + i * precision, 0])
+        next_egress = make_egress(conf, ingress + dx, center + dx)
+        if Polygon(egress).distance(Polygon(next_egress)) > septa:
+            return dx
+    raise ValueError('calculate_dy failed after {} iterations'.format(iterations))
 
 
 def make_blocks(conf):
-    logger.debug('Making blocks')
-    x_radius = conf['holes']['width'] / 2
-    if 'height' in conf['holes']:
-        y_radius = conf['holes']['height'] / 2
+    if conf['rows'] % 2 == 0:
+        raise ValueError('Only an odd number of rows is supported')
+    conf['septa-x'] = conf.get('septa-x', conf.get('septa'))
+    conf['septa-y'] = conf.get('septa-y', conf.get('septa'))
+    if conf['septa-x'] < 0 or conf['septa-y'] < 0:
+        raise ValueError('Only non-negative septa values are supported')
+    x_radius = conf['hole-width'] / 2
+    if 'hole-height' in conf:
+        y_radius = conf['hole-height'] / 2
     else:
         y_radius = x_radius * 2 / np.sqrt(3)
-    logger.debug('Radii are ({}, {})'.format(x_radius, y_radius))
-    start = np.array([
-        (-x_radius, y_radius / 2),
+    ingress = np.array([
+        # the order matters for ease of constructing the endcaps
         (-x_radius, -y_radius / 2),
         (0, -y_radius),
         (x_radius, -y_radius / 2),
         (x_radius, y_radius / 2),
-        (0, y_radius)
+        (0, y_radius),
+        (-x_radius, y_radius / 2)
     ])
-    logger.debug('Initial points are {}'.format(start))
-    # generate one side!
-    # center = np.array([0, 0])
-    ingress_center = np.array([0.0, 0.0])
-    zfocus = conf['collimator']['length'] + conf['lesion']['distance']
-    ingress = start[:]
-    regions = []
-    i = 0
-
-    # while the maximum x value of the ingress is less than the diameter, we're good
-    while True:
-        max_x = np.amax(ingress, axis=0)[0]
-        print('max_x =', max_x)
-        collimator_radius = conf['collimator']['diameter'] / 2
-        print('collimator radius =', collimator_radius)
-        if max_x > collimator_radius:
+    center = np.array([0.0, 0.0])
+    egress = make_egress(conf, ingress, center)
+    dx = calculate_dx(conf, ingress, center, egress)
+    rows = [(center, ingress, egress)]
+    max_radius = conf['diameter'] / 2
+    for i in itertools.count(1):
+        xy = i * dx
+        if np.amax(ingress + xy, axis=0)[0] > max_radius:
             break
+        rows.append((center + xy, ingress + xy, make_egress(conf, ingress + xy, center + xy)))
+
+    dy = calculate_dy(conf, ingress, center, egress, dx)
+
+    # reflect everything (around x)
+    for center, ingress, egress in rows[1:]:
+        xy, ingress, egress = np.copy(center), np.copy(ingress), np.copy(egress)
+        xy[0] *= -1
+        ingress[:, 0] *= -1
+        egress[:, 0] *= -1
+        rows.insert(0, (xy, ingress, egress))
+
+    columns = len(rows)
+
+    # now add the rows
+    for center, ingress, egress in rows[:]:
+        for i in range(conf['rows'] // 2 + 1):
+            xy = i * dy + (i % 2) * dx / 2
+            rows.append((center + xy, ingress + xy, make_egress(conf, ingress + xy, center + xy)))
         i += 1
-        print('Iteration {}'.format(i))
-        target_x = make_target_x(conf, ingress_center[0])
-        print('target_x = {}'.format(target_x))
-        target = make_target(conf, ingress, np.array([target_x, 0]))
-        print('target = {}'.format(target))
-        egress = make_egress(ingress, target, conf['collimator']['length'], zfocus)
-        print('egress = {}'.format(egress))
-        print('added to regions')
-        regions.append(egress)
+        xy = i * dy + (i % 2) * dx / 2
+        # here we want to chop the ingress a bit.
+        # take only the first 3 points
+        if conf['rowcaps']:
+            rows.append((center + xy, ingress[:3] + xy, make_egress(conf, ingress[:3] + xy, center[:3] + xy)))
 
-        min_ingress_x = np.amax(ingress, axis=0)[0] + conf['septa']['x']
-        min_egress_x = np.amax(egress, axis=0)[0] + conf['septa']['x']
-        print('min_ingress_x {}'.format(min_ingress_x))
-        print('min_egress_x {}'.format(min_egress_x))
+    # finally reflect around y, BUT skip the first row
+    pairs = []
+    for xy, ingress, egress in rows:
+        pairs.append((ingress, egress))
 
-        def width(points):
-            return np.amax(points, axis=0)[0] - np.amin(points, axis=0)[0]
+    for xy, ingress, egress in rows[columns:]:
+        xy, ingress, egress = np.copy(xy), np.copy(ingress), np.copy(egress)
+        xy[1] *= -1
+        ingress[:, 1] *= -1
+        egress[:, 1] *= -1
+        pairs.append((ingress, egress))
 
-        ingress_dx = np.array([width(ingress) + conf['septa']['x'], 0])
-        egress_dx = np.array([width(egress) + conf['septa']['x'], 0])
-        candidate_ingress = ingress + ingress_dx
-        candidate_egress = egress + egress_dx
-        print('candidate_ingress = {}'.format(candidate_ingress))
-        print('candidate_egress = {}'.format(candidate_egress))
-        resulting_egress = make_egress(candidate_ingress, target, conf['collimator']['length'], zfocus)
-        resulting_ingress = make_ingress(candidate_egress, target, conf['collimator']['length'], zfocus)
-        print('resulting_egress = {}'.format(resulting_egress))
-        print('resulting_ingress = {}'.format(resulting_ingress))
-        if np.amin(resulting_egress, axis=0)[0] >= min_egress_x:
-            print('Shuffling along ingress')
-            # shuffling along ingress worked, move center that far
-            ingress_center += ingress_dx
-            ingress = candidate_ingress
-            egress = resulting_egress
-        elif np.amin(resulting_ingress, axis=0)[0] >= min_ingress_x:
-            # TODO choose a 'closest' egress point, shift by the septa, then
-            # backtrack up to the corresponding ingress point. 
-            # pick the furthest point, find it
-            print('Shuffling along egress')
-            ingress_dx = np.amin(resulting_ingress - ingress, axis=0)[0]
-            ingress = resulting_ingress
-            egress = candidate_egress
-        else:
-            raise ValueError('Impossible to construct collimator without overlap')
-        print('ingress {}'.format(ingress))
-        print('egress {}'.format(egress))
+    # now let's build some rows.
+    # this is a bit more complicated isn't it.
+    # what they focus on is a bit different
 
-
-    # once we have the start and endpoint everywhere, we just interpolate the shit out of that
-    # but for now, screw it
-    # block_length = conf['collimator']['length'] / conf['beamnrc']['blocks']
-    # for i in range(conf['beamnrc']['blocks']):
-        # z = i * block_length
-    # ok, so now we have the region points!
-    block = {
-        'zmin': 0,
-        'zmax': conf['collimator']['length'],
-        'regions': regions
-    }
-    return [block]
-
-
-def _make_blocks(conf):
-    block_length = conf['collimator']['length'] / conf['beamnrc']['blocks']
-    lesion_radius = conf['lesion']['diameter'] / 2
-    target_z = conf['collimator']['length'] + conf['lesion']['distance']
-    assert conf['septa']['x'] == conf['septa']['y']
-    septa = conf['septa']['x']
-    dy = np.sqrt(3) / 2 * lesion_radius
-    dx = lesion_radius / 2
-    phantom_points = [
-        (-lesion_radius, 0),
-        (-dx, -dy),
-        (dx, -dy),
-        (lesion_radius, 0),
-        (dx, dy),
-        (-dx, dy)
-    ]
-
-    target_points = [(0, 0) for x, y in phantom_points]
-
-    # point them linearly at single points along, so there is no focal point?
-    # ok now we're going to translate them
-    phantom_regions = []  # [(phantom_points, target_points)]
-    width_remaining = conf['collimator']['diameter'] / 2
-    dx = lesion_radius * 2 + septa
-    dy = lesion_radius * 2 + septa
-    i = 0
-    while width_remaining >= dx:
-        width_remaining -= dx
-        for j in range(conf['collimator']['rows'] // 2 + 1):
-            _dx = i * dx
-            _dy = j * dy
-            if j % 2 == 1:
-                _dx = _dx - lesion_radius
-            points = translate(phantom_points, dx=_dx, dy=_dy)
-            phantom_regions.append((points, target_points))
-        i += 1
-    for phantom_points, target_points in phantom_regions[:]:
-        phantom_regions.insert(0, (reflect_y(phantom_points), reflect_y(target_points)))
-
-    for phantom_points, target_points in phantom_regions[:]:
-        phantom_regions.insert(0, (reflect_x(phantom_points), reflect_x(target_points)))
-
+    block_length = conf['length'] / conf['blocks']
     blocks = []
-    for i in range(conf['beamnrc']['blocks']):
+    for i in range(conf['blocks']):
+        z = i * block_length
         regions = []
-        current_z = i * block_length
-        for phantom_points, target_points in phantom_regions:
-            region = []
-            # need to translate by the center of this region
-            # so where is the center?
-            for (x, y), (target_x, target_y) in zip(phantom_points, target_points):
-                x_ = find_x(target_x, target_z, x, conf['collimator']['length'], current_z + block_length)
-                y_ = find_x(target_y, target_z, y, conf['collimator']['length'], current_z + block_length)
-                region.append((x_, y_))
-            regions.append(region)
-        block = {
-            'zmin': current_z,
-            'zmax': current_z + block_length,
+        for ingress, egress in pairs:
+            # interpolate between them
+            # ingress is at z = 0
+            # egress is at z = conf['length']
+            # need to find the point between
+            # now since the
+            regions.append(interpolate(ingress, egress, (i + 0.5) * block_length, conf['length']))
+            # here we need to interpolate between them
+        blocks.append({
+            'zmin': z,
+            'zmax': z + block_length,
             'regions': regions
-        }
-        blocks.append(block)
+        })
     return blocks
 
 
-def build_collimator(template, config):
+def make_collimator(template, config):
+    with open('collimator.defaults.toml') as f:
+        defaults = toml.load(f).copy()
+        defaults.update(config)
+        config = defaults
+    print(config)
     collimator = copy.deepcopy(template)
     blocks = make_blocks(config)
     for i, block in enumerate(blocks):
         cm = {
             'type': 'BLOCK',
             'identifier': 'BLCK{}'.format(i),
-            'rmax_cm': config['beamnrc']['rmax'],
+            'rmax_cm': config['rmax'],
             'title': 'BLCK{}'.format(i),
             'zmin': block['zmin'],
             'zmax': block['zmax'],
-            'zfocus': config['collimator']['length'] + config['lesion']['distance'],
-            'xpmax': config['beamnrc']['rmax'],
-            'ypmax': config['beamnrc']['rmax'],
-            'xnmax': -config['beamnrc']['rmax'],
-            'ynmax': -config['beamnrc']['rmax'],
+            'zfocus': config['length'] + config['lesion-distance'],
+            'xpmax': config['rmax'],
+            'ypmax': config['rmax'],
+            'xnmax': -config['rmax'],
+            'ynmax': -config['rmax'],
             'air_gap': {
                 'ecut': 0.811,
                 'pcut': 0.01,
@@ -353,26 +285,25 @@ def save_config(config, path):
 
 
 def get_revision():
-    return subprocess.run(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
+    return subprocess.run(
+        ['git', 'rev-parse', 'HEAD'],
+        stdout=subprocess.PIPE
+    ).stdout.decode('utf-8').strip()
 
 
 def main():
+    start = time.time()
     logging.basicConfig(level=logging.DEBUG)
     args = parse_args()
     config = load_config(args.config)
     template = load_template(args.template)
-    collimator = build_collimator(template, config)
+    collimator = make_collimator(template, config)
     save_collimator(collimator, args.output)
     save_config(config, os.path.splitext(args.output)[0] + '.toml')
     visualize.render(args.output, config['lesion']['diameter'])
+    elapsed = time.time() - start
+    logger.info('Took {:.2f} seconds'.format(elapsed))
 
 
 if __name__ == '__main__':
     sys.exit(main())
-
-    """
-    jout = open(args.output.replace('.egsinp', '.json'), 'w')
-    data = vars(args)
-    data['revision'] = get_revision()
-    json.dump(data, jout, sort_keys=True, indent=2)
-    """

@@ -1,0 +1,8 @@
+
+[[scad]]
+
+name = "perspective"
+description = "Perspective showing the shape of the collimator"
+distance = 100
+translation = [0, 0, 0]
+rotation = [55, 0, 25]

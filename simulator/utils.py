@@ -50,7 +50,7 @@ async def run_command(command, stdin=None, **kwargs):
         **kwargs)
     stdout, stderr = await process.communicate(stdin)
     stdout = stdout.decode('utf-8')
-    if process.returncode != 0 or 'ERROR' in stdout or 'Warning' in stdout:
+    if process.returncode != 0 or 'ERROR' in stdout or 'Warning' in stdout or 'Try again.' in stdout:
         message = 'Command failed: "{}"'.format(' '.join(command))
         logger.error(message)
         logger.error(stdout)

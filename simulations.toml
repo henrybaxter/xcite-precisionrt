@@ -1,29 +1,93 @@
-foo = "bar"
-[2mm-50cm-magdalena]
+# this is the master document of all simulations
+# ideally all of them are completely defined by this file
+# for ease of development/fixes, there are sub components that are largely separate:
+# - simulations can run using a simulation.toml
+# - grace plots can be generated using grace.toml
+# - collimators can be generated using collimator.toml
+# - collimators can be used directly with collimator = "path.egsinp"
+# - scad screenshots can be used directly with scad.toml
 
-beam-width = 0.2
-collimator = "magdalena-collimator-1.egsinp"
+
+# magdalena's
+
+[[simulations]]
+name = "Magdalena - 2mm Beam"
+summary = "Magdalena's original collimator with a 2mm electron beam."
+collimator = "collimators/magdalena-collimator-1.egsinp"
 beam-height = 0.2
-histories = 10000000000
-dose-recycle = 99
 
-[5mm-50cm-magdalena]
 
-collimator = "magdalena-collimator-1.egsinp"
+[[simulations]]
+name = "Magdalena - 5mm Beam"
+summary = "Magdalena's original collimator with a 5mm electron beam."
+collimator = "collimators/magdalena-collimator-1.egsinp"
 beam-height = 0.5
-histories = 10000000000
-dose-recycle = 99
 
-[10mm-50cm-magdalena]
 
-collimator = "magdalena-collimator-1.egsinp"
+[[simulations]]
+name = "Magdalena - 10mm Beam"
+summary = "Magdalena's original collimator with a 10mm electron beam."
+collimator = "collimators/magdalena-collimator-1.egsinp"
 beam-height = 0.5
-histories = 10000000000
-dose-recycle = 99
-description = """
-This is a long description
-with multiple
 
 
-lines
-"""
+# stamped
+
+[[simulations]]
+name = "Stamped - 1 row - 0.2mm Septa"
+summary = "Similar to stamped collimator, using a single row, with 0.2mm septa."
+beam-height = 0.2
+[simulations.collimator]
+septa = 0.02
+hole-width = 0.2
+target-shape = "point"
+
+[[simulations]]
+name = "Stamped - 1 row - 0.3mm Septa"
+summary = "Similar to stamped collimator, using a single row, with 0.3mm septa."
+beam-height = 0.2
+[simulations.collimator]
+septa = 0.03
+hole-width = 0.2
+target-shape = "point"
+
+[[simulations]]
+name = "Stamped - 1 row - 0.4mm Septa"
+summary = "Similar to stamped collimator, using a single row, with 0.4mm septa."
+beam-height = 0.2
+[simulations.collimator]
+septa = 0.04
+hole-width = 0.2
+target-shape = "point"
+
+[[simulations]]
+name = "Stamped - 1 row - 0.5mm Septa"
+summary = "Similar to stamped collimator, using a single row, with 0.5mm septa."
+beam-height = 0.2
+[simulations.collimator]
+septa = 0.05
+hole-width = 0.2
+target-shape = "point"
+
+[[simulations]]
+name = "Stamped - 5 row - 0.2mm Septa"
+summary = "Similar to stampled collimator, using five rows, 10mm beam, and a 0.2mm septa."
+beam-height = 1.0
+[simulations.collimator]
+septa = 0.02
+rows = 5
+hole-width = 0.2
+target-shape = "point"
+
+
+# diverging
+
+[[simulations]]
+name = "Diverging - 1 row - 2mm hole - 0.2mm Septa - 1cm Lesion"
+summary = "Diverging version of stamped collimator. Single row, 2mm hole width, and a 0.2mm septa."
+[simulations.collimator]
+septa = 0.02
+hole-width = 0.2
+target-shape = "lesion"
+
+

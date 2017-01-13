@@ -1,0 +1,35 @@
+grace = "grace.toml"
+
+pegs4 = "allkV"
+
+# maximum extent of all component modules
+rmax = 50.0
+
+# reflect instead of simulating both sides
+
+reflect = true
+
+total-histories = 1e10
+
+# y in cm
+beam-width = 1.0
+# z in cm
+beam-height = 0.5
+# gap between incident electron beams
+beam-gap = 0.0
+
+# electron beam source to target in cm
+target-distance = 50.0
+# length of reflection target
+target-length = 75.0
+target-angle = 45.0
+
+dose-recycle = 9
+dose-photon-splitting = 20
+phantom-isocenter = [0, 20, -10]
+phantom = "phantoms/cylindricalp.egsphant"
+
+beamnrc-template = "templates/template.egsinp"
+stationary-dose-template = "templates/dose_template.egsinp"
+arc-dose-template = "templates/arc_dose_template.egsinp"
+

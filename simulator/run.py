@@ -1,15 +1,17 @@
-import sys
-import datetime
+import io
 import time
 import argparse
 import os
 import math
 import hashlib
+import pytoml as toml
 import logging
 import asyncio
 from collections import OrderedDict
 
 import numpy as np
+import boto3
+from botocore.exceptions import ClientError as BotoClientError
 
 from . import collimator_analyzer
 from . import py3ddose
@@ -25,76 +27,73 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
+async def main():
+    configure_logging()
+    args = parse_args()
+    simulations = read_simulations(args.simulations, args.default_simulation, args.histories, args.single_op)
+    for simulation in simulations:
+        if claim(simulation) or args.force:
+            await run_simulation(simulation)
+            upload_report(simulation)
+
+
+def configure_logging():
+    formatter = logging.Formatter('%(levelname)s %(asctime)s %(message)s', '%H:%M:%S')
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    file_handler = logging.FileHandler('debug.log')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(console_handler)
+    logging.getLogger().addHandler(file_handler)
+    logging.getLogger().setLevel(logging.DEBUG)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--default-simulation', default='simulation.defaults.toml')
+    parser.add_argument('--simulations', default='simulations.toml')
+    parser.add_argument('-f', '--force', action='store_true')
+    parser.add_argument('-n', '--histories', type=float)
+    parser.add_argument('-s', '--single-op', action='store_true')
+    return parser.parse_args()
 
-    parser.add_argument('--plot-config', action='append', default=['grace.json'])
 
-    # common
-    parser.add_argument('name')
-    parser.add_argument('--egsinp-template', default='template.egsinp')
-    parser.add_argument('--pegs4', default='allkV')
-    parser.add_argument('--rmax', type=float, default=50.0,
-                        help='Max extent of all component modules')
-    parser.add_argument('--reflect', action='store_true', default=True)
+def read_simulations(simulations, default_simulation, histories, single_op):
+    with open(simulations) as f:
+        overrides = toml.load(f)['simulations']
+    with open(default_simulation) as f:
+        defaults = toml.load(f)
+    simulations = []
+    for override in overrides:
+        simulation = defaults.copy()
+        simulation.update(override)
+        if histories:
+            simulation['total-histories'] = histories
+        simulation['single-op'] = single_op
+        simulations.append(simulation)
+    return [verify_sim(sim) for sim in simulations]
 
-    # source arguments
-    parser.add_argument('--beam-width', type=float, default=1,
-                        help='Beam width (y) in cm')
-    parser.add_argument('--beam-height', type=float, default=0.5,
-                        help='Beam height (z) in cm')
-    parser.add_argument('--beam-distance', type=float, default=50.0,
-                        help='Beam axis of rotation to target in cm')
-    parser.add_argument('--target-length', type=float, default=75.0,
-                        help='Length of target in cm')
-    parser.add_argument('--target-angle', default=45.0, type=float,
-                        help='Angle of reflection target')
-    parser.add_argument('--beam-gap', type=float, default=0.0,
-                        help='Gap between incident beams')
-    parser.add_argument('--histories', type=int, default=int(1e9),
-                        help='Divided among source beamlets')
 
-    # collimator
-    #   generated
-    parser.add_argument('--target-distance', type=float, default=None,
-                        help='Distance from end of collimator to isocenter')
-    #   given
-    parser.add_argument('--collimator', required=True,
-                        help='Input egsinp path or use stamped values')
+def claim(simulation):
+    """Clearly not thread safe, but it'll do the trick."""
+    s3 = boto3.resource('s3')
+    path = os.path.join(simulation['directory'], 'claimed.toml')
+    try:
+        s3.Object('xcite-simulations', path).get()
+    except BotoClientError:
+        body = io.BytesIO(toml.dumps(simulation).encode('utf-8'))
+        s3.Object('xcite-simulations', path).put(Body=body)
+        return True
+    return False
 
-    # dose
-    parser.add_argument('--phantom', default='cylindricalp.egsphant',
-                        help='.egsphant file')
-    parser.add_argument('--target-z', type=float, default=-10,
-                        help='Isocenter z coordinate')
-    parser.add_argument('--target-y', type=float, default=20,
-                        help='Isocenter y coordinate')
-    parser.add_argument('--target-x', type=float, default=0,
-                        help='Isocenter x coordinate')
-    parser.add_argument('--target-size', type=float, default=1.0,
-                        help='Target size')
-    parser.add_argument('--dose-egsinp', default='dose_template.egsinp',
-                        help='.egsinp for dosxyznrc')
-    parser.add_argument('--arc-dose-egsinp', default='arc_dose_template.egsinp',
-                        help='.egsinp for arced dosxyznrc')
-    parser.add_argument('--dose-recycle', type=int, default=9,
-                        help='Use particles n + 1 times')
-    parser.add_argument('--dose-photon-splitting', type=int, default=20,
-                        help='n_split in dose egsinp')
 
-    args = parser.parse_args()
-    args.output_dir = args.name.replace(' ', '-')
-    if os.path.exists(args.output_dir):
-        logger.error('{} already exists'.format(args.output_dir))
-        sys.exit(1)
-    for subfolder in ['dose/stationary', 'dose/arc']:
-        os.makedirs(os.path.join(args.output_dir, subfolder), exist_ok=True)
-
-    args.egs_home = os.path.abspath(os.path.join(
-        os.environ['HEN_HOUSE'], '../egs_home/'))
-    logger.info('egs_home is {}'.format(args.egs_home))
-
-    return args
+def upload_report(simulation):
+    s3 = boto3.resource('s3')
+    path = os.path.join(simulation['directory'], 'report.pdf')
+    with open(path, 'rb') as f:
+        s3.Object('xcite-simulations', path).put(f)
 
 
 async def sample_combine(beamlets, reflect, desired=int(1e7)):
@@ -183,64 +182,67 @@ async def combine_doses(args, doses):
     return result
 
 
-async def configure_logging(args):
-    revision = (await run_command(['git', 'rev-parse', '--short', 'HEAD'])).strip()
-    formatter = logging.Formatter('%(levelname)s {name} {revision} %(asctime)s %(message)s'.format(
-        revision=revision, name=args.name), '%H:%M:%S')
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(formatter)
-    today = datetime.date.today()
-    filename = 'simulation.{}.{}.log'.format(args.name.replace(' ', ''), str(today))
-    file_handler = logging.FileHandler(filename)
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-    logging.getLogger().addHandler(console_handler)
-    logging.getLogger().addHandler(file_handler)
-    logging.getLogger().setLevel(logging.DEBUG)
+def verify_sim(sim):
+    sim['directory'] = os.path.abspath(sim['name'].replace(' - ', '-').replace(' ', '-'))
+    assert 'collimator' in sim, "{} does not defined collimator".format(sim['name'])
+    sim['egs-home'] = os.path.abspath(os.path.join(os.environ['HEN_HOUSE'], '../egs_home/'))
+    paths = [
+        sim['beamnrc-template'], sim['stationary-dose-template'],
+        sim['arc-dose-template'], sim['grace'],
+        os.path.join(os.environ['HEN_HOUSE'], 'pegs4', 'data', sim['pegs4'] + '.pegs4dat'),
+    ]
+    for path in paths:
+        assert os.path.exists(path), "Could not find {}".format(path)
+    floats = [
+        'rmax', 'beam-width', 'beam-height', 'beam-gap',
+        'target-distance', 'target-length', 'target-angle'
+    ]
+    ints = [
+        'total-histories', 'dose-recycle', 'dose-photon-splitting'
+    ]
+    sim['phantom-isocenter'] = list(map(float, sim['phantom-isocenter']))
+    for key in floats:
+        sim[key] = float(sim[key])
+    for key in ints:
+        sim[key] = int(sim[key])
+    return sim
 
 
-def log_args(args):
-    printable_args = [(k, v) for k, v in sorted(args.__dict__.items())]
-    pretty_args = '\n'.join(['\t{}: {}'.format(k, v) for k, v in printable_args])
-    logger.info('Arguments: \n{}'.format(pretty_args))
-
-
-async def main():
+async def run_simulation(sim):
+    logger.info('Starting simulation {}'.format(sim['name']))
     start = time.time()
-    args = parse_args()
-    await configure_logging(args)
-    log_args(args)
-    y_values = generate_y(args.target_length, args.beam_width + args.beam_gap, args.reflect)
-    histories = args.histories // len(y_values)
-    if args.reflect:
+    y_values = generate_y(sim['target-length'], sim['beam-width'] + sim['beam-gap'], sim['reflect'])
+    histories = sim['total-histories'] // len(y_values)
+    if sim['reflect']:
         histories //= 2
     stages = ['source', 'filter', 'collimator', 'dose']
     templates = {stage: template for stage, template in zip(stages, await asyncio.gather(*[
-        build.build_source(args, histories),
-        build.build_filter(args),
-        build.build_collimator(args)
+        build.build_source(sim, histories),
+        build.build_filter(sim),
+        build.build_collimator(sim)
     ]))}
-    with open(args.dose_egsinp) as f:
+    with open(sim['stationary-dose-template']) as f:
         templates['stationary_dose'] = f.read()
-    with open(args.arc_dose_egsinp) as f:
+    with open(sim['arc-dose-template']) as f:
         templates['arc_dose'] = f.read()
     simulations = []
     for i, y in enumerate(y_values):
-        if args.reflect:
+        if sim['reflect']:
             index = (len(y_values) - i - 1, i + len(y_values))
         else:
             index = i
-        simulations.append(simulate.simulate(args, templates, index, y))
+        simulations.append(simulate.simulate(sim, templates, index, y))
+        if sim['single-op']:
+            break
     simulations = await asyncio.gather(*simulations)
     logger.info('All simulations finished, combining')
     beamlets = {
-        'source': [sim['source'] for sim in simulations],
-        'filter': [sim['filter'] for sim in simulations],
-        'collimator': [sim['collimator'] for sim in simulations],
+        'source': [s['source'] for s in simulations],
+        'filter': [s['filter'] for s in simulations],
+        'collimator': [s['collimator'] for s in simulations],
     }
     doses = {}
-    if args.reflect:
+    if sim['reflect']:
         # dose calculations were put into tuples
         for key in ['stationary', 'arc']:
             full = []
@@ -257,27 +259,28 @@ async def main():
             doses[key] = full
 
     combined = {stage: result for stage, result in zip(stages, await asyncio.gather(*[
-        sample_combine(beamlets['source'], args.reflect),
-        sample_combine(beamlets['filter'], args.reflect),
-        sample_combine(beamlets['collimator'], args.reflect),
-        combine_doses(args, doses)
+        sample_combine(beamlets['source'], sim['reflect']),
+        sample_combine(beamlets['filter'], sim['reflect']),
+        sample_combine(beamlets['collimator'], sim['reflect']),
+        combine_doses(sim, doses)
     ]))}
 
     logger.info('Saving combined phase space files')
     await asyncio.gather(*[
-        copy(combined[key], os.path.join(args.output_dir, 'sampled_{}.egsphsp'.format(key)))
+        copy(combined[key], os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key)))
         for key in ['source', 'filter', 'collimator']
     ])
 
     # plots
     plot_futures = [
-        grace.make_plots(args.output_dir, combined, args.plot_config),
+        grace.make_plots(sim['directory'], combined, sim['grace']),
     ]
     target = py3ddose.Target(
-        np.array([args.target_z, args.target_y, args.target_x]),
-        args.target_size)
+        np.array(sim['phantom-isocenter']),
+        sim['collimator']['lesion-diameter'] / 2
+    )
     for slug, path in combined['dose'].items():
-        plot_futures.append(dose_contours.plot(args.phantom, path, target, args.output_dir, slug))
+        plot_futures.append(dose_contours.plot(sim['phantom'], path, target, sim['directory'], slug))
     grace_plots, *contours = await asyncio.gather(*plot_futures)
     contour_plots = OrderedDict()
     for stage in ['stationary', 'stationary_weighted', 'arc', 'arc_weighted']:
@@ -295,19 +298,19 @@ async def main():
     logger.info('Getting photons')
     photons = {}
     for stage in ['source', 'filter', 'collimator']:
-        photons[stage] = sum([sim[stage]['stats']['total_photons'] for sim in simulations])
+        photons[stage] = sum([sim[stage]['stats']['total_photons'] for s in simulations])
     data = {
         '_filter': templates['filter'],
         'collimator': templates['collimator'],
         'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
         'grace_plots': grace_plots,
         'contour_plots': contour_plots,
-        'skin_distance': args.target_distance - abs(args.target_z),
+        'skin_distance': sim['lesion-distance'] - abs(sim['phantom-isocenter'][2]),
         'ci': conformity,
         'ts': target_to_skin,
         'electrons': histories * len(y_values),
         'photons': photons
     }
-    report.generate(data, args)
+    report.generate(data, sim)
     logger.info('Finished in {:.2f} seconds'.format(time.time() - start))
-    logger.info('Output in {}'.format(args.output_dir))
+    logger.info('Output in {}'.format(sim['directory']))

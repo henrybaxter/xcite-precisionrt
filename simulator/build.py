@@ -10,7 +10,7 @@ import platform
 
 from . import egsinp
 from .utils import run_command
-
+from .collimator import make_collimator
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +48,14 @@ def get_egsinp(path):
     return template
 
 
-async def build_filter(args):
+async def build_filter(sim):
     logger.info('Building filter')
-    template = get_egsinp(args.egsinp_template)
+    template = get_egsinp(sim['beamnrc-template'])
     template['cms'] = [
         {
             'type': 'SLABS',
             'identifier': 'FLTR',
-            'rmax_cm': args.rmax,
+            'rmax_cm': sim['rmax'],
             'title': 'FLTR',
             'zmin_slabs': 0.01,
             'slabs': [
@@ -97,26 +97,26 @@ async def build_filter(args):
     template['init_icm'] = 1
     name = 'FILTR'
     template['title'] = name
-    folder = os.path.join(args.egs_home, 'BEAM_{}'.format(name))
+    folder = os.path.join(sim['egs-home'], 'BEAM_{}'.format(name))
     if not os.path.exists(folder):
-        await beam_build(args.egs_home, name, template['cms'])
+        await beam_build(sim['egs-home'], name, template['cms'])
     return template
 
 
-async def build_source(args, histories):
+async def build_source(sim, histories):
     logger.info('Building source')
-    template = get_egsinp(args.egsinp_template)
+    template = get_egsinp(sim['beamnrc-template'])
     template['ncase'] = histories
-    template['ybeam'] = args.beam_width / 2
-    template['zbeam'] = args.beam_height / 2
+    template['ybeam'] = sim['beam-width'] / 2
+    template['zbeam'] = sim['beam-height'] / 2
     xtube = template['cms'][0]
-    xtube['rmax_cm'] = args.rmax
-    xtube['anglei'] = args.target_angle
+    xtube['rmax_cm'] = sim['rmax']
+    xtube['anglei'] = sim['target-angle']
     name = 'RFLCT'
     template['title'] = name
-    folder = os.path.join(args.egs_home, 'BEAM_{}'.format(name))
+    folder = os.path.join(sim['egs-home'], 'BEAM_{}'.format(name))
     if not os.path.exists(folder):
-        await beam_build(args.egs_home, name, template['cms'])
+        await beam_build(sim['egs_home'], name, template['cms'])
     return template
 
 
@@ -138,25 +138,28 @@ async def beam_build(egs_home, name, cms):
     logger.info('{} built in {} seconds'.format(name, elapsed))
 
 
-async def build_collimator(args):
+async def build_collimator(sim):
     logger.info('Building collimator')
-    template = get_egsinp(args.egsinp_template)
+    # for basic simulation properties
+    template = get_egsinp(sim['beamnrc-template'])
     template['cms'] = []
-    collimator = get_egsinp(args.collimator)
+    if isinstance(sim['collimator'], str):
+        collimator = get_egsinp(sim['collimator'])
+    else:
+        collimator = make_collimator(template, sim['collimator'])
     template['cms'] = [cm for cm in collimator['cms'] if cm['type'] == 'BLOCK']
     if not template['cms']:
         raise ValueError('No BLOCK CMs found in collimator')
+    if 'lesion-distance' not in sim:
+        sim['lesion-distance'] = template['cms'][0]['zfocus'] - template['cms'][0]['zmin']
+        logger.warning('Inferred lesion distance of {}'.format(sim['lesion-distance']))
     # for collimators that are part of a larger egsinp simulation file
     zoffset = template['cms'][0]['zmin']
-    if not args.target_distance:
-        # target distance is measured from the end of the collimator
-        args.target_distance = template['cms'][0]['zfocus'] - zoffset - template['cms'][-1]['zmax']
-        logger.info('Inferring target distance of {} cm'.format(args.target_distance))
     for block in template['cms']:
         block['zmin'] -= zoffset
         block['zmax'] -= zoffset
         block['zfocus'] -= zoffset
-        block['rmax_cm'] = args.rmax
+        block['rmax_cm'] = sim['rmax']
     template['isourc'] = '21'
     template['iqin'] = '0'
     template['default_medium'] = 'Air_516kV'
@@ -173,11 +176,11 @@ async def build_collimator(args):
         'cm': len(template['cms']),  # the LAST block of the collimator
         'mzone_type': 1,
         'nsc_zones': 1,
-        'zones': tuple([args.rmax])
+        'zones': tuple([sim['rmax']])
     }]
     name = 'CLMT{}'.format(len(template['cms']))
     template['title'] = name
-    folder = os.path.join(args.egs_home, 'BEAM_{}'.format(name))
+    folder = os.path.join(sim['egs-home'], 'BEAM_{}'.format(name))
     if not os.path.exists(folder):
-        await beam_build(args.egs_home, name, template['cms'])
+        await beam_build(sim['egs-home'], name, template['cms'])
     return template
