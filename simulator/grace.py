@@ -1,10 +1,11 @@
 import asyncio
 import logging
-import json
 import os
 import platform
 from subprocess import Popen
 from collections import OrderedDict
+
+import pytoml as toml
 
 from .utils import run_command
 
@@ -37,7 +38,7 @@ GRACE = ['fluence_vs_position', 'energy_fluence_vs_position', 'spectral_distribu
 """
 
 """
-Grace operates on a json file that describes all of the options.
+Grace operates on a toml file that describes all of the options.
 It can run totally independently of the report. It needs the phase space
 files, and json configuration, and then it's all set.
 
@@ -329,10 +330,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input')
     parser.add_argument('--eps')
-    parser.add_argument('--config', action='append', default=['grace.json'])
+    parser.add_argument('--config', action='append', default=['grace.toml'])
     args = parser.parse_args()
     with open(args.config) as f:
-        config = json.load(f)
+        config = toml.load(f)
     if args.eps:
         eps_convert(args.eps)
     else:

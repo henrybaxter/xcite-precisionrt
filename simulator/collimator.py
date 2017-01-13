@@ -198,8 +198,8 @@ def make_collimator(template, config):
     with open('collimator.defaults.toml') as f:
         defaults = toml.load(f).copy()
         defaults.update(config)
-        config = defaults
-    print(config)
+        config.clear()
+        config.update(defaults)
     collimator = copy.deepcopy(template)
     blocks = make_blocks(config)
     for i, block in enumerate(blocks):

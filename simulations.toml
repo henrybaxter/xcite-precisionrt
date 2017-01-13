@@ -13,22 +13,26 @@
 [[simulations]]
 name = "Magdalena - 2mm Beam"
 summary = "Magdalena's original collimator with a 2mm electron beam."
-collimator = "collimators/magdalena-collimator-1.egsinp"
 beam-height = 0.2
+[simulations.collimator]
+path = "collimators/magdalena-collimator-1.egsinp"
 
 
 [[simulations]]
 name = "Magdalena - 5mm Beam"
 summary = "Magdalena's original collimator with a 5mm electron beam."
-collimator = "collimators/magdalena-collimator-1.egsinp"
 beam-height = 0.5
+[simulations.collimator]
+path = "collimators/magdalena-collimator-1.egsinp"
+
 
 
 [[simulations]]
 name = "Magdalena - 10mm Beam"
 summary = "Magdalena's original collimator with a 10mm electron beam."
-collimator = "collimators/magdalena-collimator-1.egsinp"
 beam-height = 0.5
+[simulations.collimator]
+path = "collimators/magdalena-collimator-1.egsinp"
 
 
 # stamped
