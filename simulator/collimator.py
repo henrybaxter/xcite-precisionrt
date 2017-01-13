@@ -79,7 +79,7 @@ def interpolate(ingress, egress, z, zmax):
 
 
 def calculate_dy(conf, ingress, center, egress, dx, iterations=1000):
-    septa = conf['septa']['y']
+    septa = conf['septa-y']
     precision = conf['precision']
     height = np.amax(ingress, axis=0)[1] - np.amin(ingress, axis=0)[1]
     for i in range(iterations):
@@ -90,7 +90,7 @@ def calculate_dy(conf, ingress, center, egress, dx, iterations=1000):
 
 
 def calculate_dx(conf, ingress, center, egress, iterations=1000):
-    septa = conf['septa']['x']
+    septa = conf['septa-x']
     precision = conf['precision']
     width = np.amax(ingress, axis=0)[0] - np.amin(ingress, axis=0)[0]
     for i in range(iterations):

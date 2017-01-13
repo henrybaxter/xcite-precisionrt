@@ -32,6 +32,9 @@ async def main():
     args = parse_args()
     simulations = read_simulations(args.simulations, args.default_simulation, args.histories, args.single_op)
     for simulation in simulations:
+        if simulation['beam-height'] != args.beam_height:
+            logger.warning('Skipping {} because beam height is {} not {}'.format(simulation['name'], simulation['beam-height'], args.beam_height))
+            continue
         if claim(simulation) or args.force:
             await run_simulation(simulation)
             upload_report(simulation)
@@ -59,6 +62,7 @@ def parse_args():
     parser.add_argument('--force', action='store_true')
     parser.add_argument('-n', '--histories', type=float)
     parser.add_argument('-s', '--single-op', action='store_true')
+    parser.add_argument('--beam-height', type=float, default=0.2, help='Simulation types to run')
     return parser.parse_args()
 
 
