@@ -35,6 +35,8 @@ async def main():
         if claim(simulation) or args.force:
             await run_simulation(simulation)
             upload_report(simulation)
+            if args.single_op:
+                break
 
 
 def configure_logging():
@@ -267,18 +269,21 @@ async def run_simulation(sim):
 
     logger.info('Linking combined phase space files')
     for key in ['source', 'filter', 'collimator']:
-        force_symlink(combined[key], os.path.abspath(os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))))
+        source = os.path.abspath(combined[key])
+        link_name = os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))
+        force_symlink(source, link_name)
 
     # plots
     logger.info('Loading grace configuration')
     with open(sim['grace']) as f:
         plots = toml.load(f)['plots']
     grace_plots = await grace.make_plots(combined, plots)
-    for plot in grace_plots:
-        for ext in ['grace', 'eps']:
-            source = os.path.abspath(plot[ext])
-            link_name = os.path.join(sim['directory'], plot['slug'] + '.' + ext)
-            force_symlink(source, link_name)
+    for plot_type, plots in grace_plots.items():
+        for plot in plots:
+            for ext in ['grace', 'eps']:
+                source = os.path.abspath(plot[ext])
+                link_name = os.path.join(sim['directory'], 'grace', plot['slug'] + '.' + ext)
+                force_symlink(source, link_name)
 
     logger.info('Starting dose contour plots')
     target = py3ddose.Target(
