@@ -48,6 +48,11 @@ files, and json configuration, and then it's all set.
 
 
 async def make_plots(phsp_paths, plots):
+    slugs = set()
+    for plot in plots:
+        if plot['slug'] in slugs:
+            raise KeyError('Slug {} is not unique'.format(plot['slug']))
+        slugs.add(plot['slug'])
     # each config is a dictionary with one element, plots
     # plots is a list of plots, we just merge them together
     os.makedirs('grace', exist_ok=True)

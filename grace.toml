@@ -4,32 +4,21 @@ phsp = "source"
 type = "scatter"
 slug = "source_scatter"
 [plots.extents]
-xmax = 50
-xmin = -50
+xmax = 40
+xmin = -40
 ymax = 2
 ymin = -2
 
 [[plots]]
-name = "Reflection Target Scatter Plot (Small Section)"
-phsp = "source"
-type = "scatter"
-slug = "source_scatter_section"
-[plots.extents]
-xmax = 1
-xmin = -1
-ymax = 1
-ymin = -1
-
-[[plots]]
-name = "Reflection Target Scatter Plot (Contextual)"
+name = "Reflection Target Scatter Plot (Whole Field)"
 phsp = "source"
 type = "scatter"
 slug = "source_scatter_contextual"
 [plots.extents]
-xmax = 40
-xmin = -40
-ymax = 5
-ymin = -5
+xmax = 50
+xmin = -50
+ymax = 50
+ymin = -50
 
 [[plots]]
 name = "Filter Scatter Plot"
@@ -37,10 +26,10 @@ phsp = "filter"
 type = "scatter"
 slug = "filter_scatter"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 name = "Collimator Scatter Plot"
@@ -48,10 +37,10 @@ phsp = "collimator"
 type = "scatter"
 slug = "collimator_scatter"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 name = "Collimator Scatter Plot (Small Section)"
@@ -71,10 +60,10 @@ axis = "x"
 name = "Reflection Target Energy Fluence along X"
 slug = "source_fluence_x"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 type = "energy_fluence"
@@ -83,10 +72,10 @@ axis = "y"
 name = "Reflection Target Energy Fluence along Y"
 slug = "source_fluence_y"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 type = "energy_fluence"
@@ -95,10 +84,10 @@ axis = "x"
 name = "Filter Energy Fluence along X"
 slug = "filter_fluence_x"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 type = "energy_fluence"
@@ -107,10 +96,10 @@ axis = "y"
 name = "Filter Energy Fluence along Y"
 slug = "filter_fluence_y"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 type = "energy_fluence"
@@ -119,10 +108,10 @@ axis = "x"
 name = "Collimator Energy Fluence along X"
 slug = "collimator_fluence_x"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 type = "energy_fluence"
@@ -131,8 +120,21 @@ axis = "y"
 name = "Collimator Energy Fluence along Y"
 slug = "collimator_fluence_y"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
+
+
+[[plots]]
+type = "energy_fluence"
+phsp = "collimator"
+axis = "y"
+name = "Collimator Energy Fluence along Y (Small Section)"
+slug = "collimator_fluence_y_small"
+[plots.extents]
+xmax = 1
+xmin = -1
 ymax = 1
 ymin = -1
 
@@ -142,10 +144,10 @@ phsp = "source"
 type = "angular"
 slug = "source_angular"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 name = "Filter Angular Distribution"
@@ -153,10 +155,10 @@ phsp = "filter"
 type = "angular"
 slug = "filter_angular"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 name = "Collimator Angular Distribution"
@@ -164,10 +166,10 @@ phsp = "collimator"
 type = "angular"
 slug = "collimator_angular"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 name = "Reflection Target Spectral Distribution"
@@ -175,10 +177,10 @@ phsp = "source"
 type = "spectral"
 slug = "source_spectral"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 name = "Filter Spectral Distribution"
@@ -186,10 +188,10 @@ phsp = "filter"
 type = "spectral"
 slug = "filter_spectral"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
 
 [[plots]]
 name = "Collimator Spectral Distribution"
@@ -197,7 +199,7 @@ phsp = "collimator"
 type = "spectral"
 slug = "collimator_spectral"
 [plots.extents]
-xmax = 37.5
-xmin = -37.5
-ymax = 1
-ymin = -1
+xmax = 40
+xmin = -40
+ymax = 2
+ymin = -2
