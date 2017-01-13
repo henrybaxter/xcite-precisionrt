@@ -91,10 +91,11 @@ def claim(simulation):
     return False
 
 
-def upload_report(simulation):
+def upload_report(sim):
     s3 = boto3.client('s3')
-    path = os.path.join(simulation['directory'], 'report.pdf')
-    key = os.path.join(os.path.basename(simulation['directory']), 'report.pdf')
+    path = os.path.join(sim['directory'], 'report.pdf')
+    slug = os.path.basename(sim['directory'])
+    key = os.path.join(slug, slug + '.pdf')
     with open(path, 'rb') as f:
         s3.put_object(
             Bucket='xcite-simulations',
