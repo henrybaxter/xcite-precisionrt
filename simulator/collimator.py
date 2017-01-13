@@ -300,7 +300,7 @@ def main():
     collimator = make_collimator(template, config)
     save_collimator(collimator, args.output)
     save_config(config, os.path.splitext(args.output)[0] + '.toml')
-    visualize.render(args.output, config['lesion']['diameter'])
+    visualize.render(args.output, config['lesion-diameter'])
     elapsed = time.time() - start
     logger.info('Took {:.2f} seconds'.format(elapsed))
 

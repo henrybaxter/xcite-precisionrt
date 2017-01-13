@@ -300,7 +300,13 @@ async def run_simulation(sim):
                 link_name = os.path.join(sim['directory'], relpath)
                 plot['path'] = relpath
                 force_symlink(source, link_name)
-                
+
+    # scads
+    logger.info('Generating scad visualizations')
+    # first we need to generate the scad using beamviz
+    # then we need to use scad on it
+    # we'll run this every time for now, it's not that bad
+
 
     logger.info('Starting dose contour plots')
     target = py3ddose.Target(

@@ -58,13 +58,23 @@
 	\item Total area of holes at exit: \SI{((( collimator_stats['exit_area'] | f )))}{\cm\squared}
 \end{itemize}
 
+\subsection{Visualization}
+((* for image in scad_images *))
+	\subsubsection{(((image.description)))}
+	\begin{figure}[H]
+	\centering
+	\includegraphics{(((image.path|strip_extension)))}
+	\caption{(((image.description)))}
+	\end{figure}
+((* endfor *))
+
 \subsection{Dosing}
 \begin{itemize}
 	\item Lesion diameter: \SI{((( sim['collimator']['lesion-diameter']  )))}{\cm}
 	\item Target depth: \SI{((( sim['phantom-isocenter'][2] | abs )))}{\cm}
 	\item Distance from collimator to skin: \SI{((( skin_distance )))}{\cm}
 \end{itemize}
-	
+
 \section{Pre-Dosing Plots}
 ((* for plot_type, plots in grace_plots.items() *))
 	\subsection{((( plot_type.replace('_', ' ').title() ))) Plots}

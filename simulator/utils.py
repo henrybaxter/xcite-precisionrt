@@ -23,6 +23,12 @@ executor = ProcessPoolExecutor()
 XCITE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
+def run_async(future):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(future)
+    loop.close()
+
+
 def force_symlink(source, link_name):
     try:
         os.symlink(source, link_name)
