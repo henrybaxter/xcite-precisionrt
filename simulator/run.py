@@ -81,21 +81,29 @@ def read_simulations(simulations, default_simulation, histories, single_op):
 def claim(simulation):
     """Clearly not thread safe, but it'll do the trick."""
     s3 = boto3.resource('s3')
-    path = os.path.join(simulation['directory'], 'claimed.toml')
+    key = os.path.join(os.path.basename(simulation['directory']), 'claimed.toml')
     try:
-        s3.Object('xcite-simulations', path).get()
+        s3.Object('xcite-simulations', key).get()
     except BotoClientError:
         body = io.BytesIO(toml.dumps(simulation).encode('utf-8'))
-        s3.Object('xcite-simulations', path).put(Body=body)
+        s3.Object('xcite-simulations', key).put(Body=body)
         return True
     return False
 
 
 def upload_report(simulation):
-    s3 = boto3.resource('s3')
+    s3 = boto3.client('s3')
     path = os.path.join(simulation['directory'], 'report.pdf')
+    key = os.path.join(os.path.basename(simulation['directory']), 'report.pdf')
     with open(path, 'rb') as f:
-        s3.Object('xcite-simulations', path).put(f)
+        s3.put_object(
+            Bucket='xcite-simulations',
+            Key=key,
+            Body=f,
+            ACL='public-read'
+        )
+    url = 'https://s3-us-west-2.amazonaws.com/xcite-simulations/' + key
+    logger.info('Report uploaded to {}'.format(url))
 
 
 async def sample_combine(beamlets, reflect, desired=int(1e7)):
@@ -278,12 +286,16 @@ async def run_simulation(sim):
     with open(sim['grace']) as f:
         plots = toml.load(f)['plots']
     grace_plots = await grace.make_plots(combined, plots)
+    os.makedirs(os.path.join(sim['directory'], 'grace'), exist_ok=True)
     for plot_type, plots in grace_plots.items():
         for plot in plots:
             for ext in ['grace', 'eps']:
                 source = os.path.abspath(plot[ext])
-                link_name = os.path.join(sim['directory'], 'grace', plot['slug'] + '.' + ext)
+                relpath = os.path.join('grace', plot['slug'] + '.' + ext)
+                link_name = os.path.join(sim['directory'], relpath)
+                plot['path'] = relpath
                 force_symlink(source, link_name)
+                
 
     logger.info('Starting dose contour plots')
     target = py3ddose.Target(
