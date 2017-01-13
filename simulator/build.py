@@ -144,19 +144,18 @@ async def build_collimator(sim):
     template = get_egsinp(sim['beamnrc-template'])
     template['cms'] = []
     if 'path' in sim['collimator']:
-        collimator = get_egsinp(sim['collimator'])
+        collimator = get_egsinp(sim['collimator']['path'])
+        cms = [cm for cm in collimator['cms'] if cm['type'] == 'BLOCK']
         if 'lesion-distance' not in sim['collimator']:
-            sim['collimator']['lesion-distance'] = template['cms'][0]['zfocus'] - template['cms'][0]['zmin'] - template['cms'][-1]['zmax']
-            logger.warning('Inferred lesion distance of {}'.format(sim['lesion-distance']))
+            sim['collimator']['lesion-distance'] = cms[0]['zfocus'] - cms[0]['zmin'] - cms[-1]['zmax']
+            logger.warning('Inferred lesion distance of {}'.format(sim['collimator']['lesion-distance']))
     else:
         # this one sets the lesion distance too
         collimator = make_collimator(template, sim['collimator'])
-    template['cms'] = [cm for cm in collimator['cms'] if cm['type'] == 'BLOCK']
-    if not template['cms']:
-        raise ValueError('No BLOCK CMs found in collimator')
-    if 'lesion-distance' not in sim:
-
-
+        cms = [cm for cm in collimator['cms'] if cm['type'] == 'BLOCK']
+    if not cms:
+        raise ValueError('No CMs found in collimator')
+    template['cms'] = cms
     # for collimators that are part of a larger egsinp simulation file
     zoffset = template['cms'][0]['zmin']
     for block in template['cms']:

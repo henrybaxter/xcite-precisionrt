@@ -185,7 +185,7 @@ async def simulate_doses(sim, templates, beamlet, index):
         'ncase': beamlet['stats']['total_photons'] * (sim['dose-recycle'] + 1),
         'nrcycl': sim['dose-recycle'],
         'n_split': sim['dose-photon-splitting'],
-        'dsource': sim['lesion-distance'],
+        'dsource': sim['collimator']['lesion-distance'],
         'phicol': 90,
         'x': sim['phantom-isocenter'][0],
         'y': sim['phantom-isocenter'][1],

@@ -272,8 +272,10 @@ async def run_simulation(sim):
     ])
 
     # plots
+    with open(sim['grace']) as f:
+        plots = toml.load(f)['plots']
     plot_futures = [
-        grace.make_plots(sim['directory'], combined, sim['grace']),
+        grace.make_plots(sim['directory'], combined, plots)
     ]
     target = py3ddose.Target(
         np.array(sim['phantom-isocenter']),
