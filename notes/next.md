@@ -22,6 +22,8 @@ another dvh (oar)
 	https://www.dropbox.com/s/r7rv9ijte2vlntx/Screenshot%202017-01-13%2014.30.56.png?dl=0
 - dose volume histogram
 	- find a good example
+	- need a 3ddose file (preferrably .npz file) that we can work on
+	- from there we generate the dvh
 	- generate one ffs
 - dose values table
 	- figure out what the sheet says!
