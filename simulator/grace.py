@@ -1,7 +1,9 @@
 import asyncio
+import hashlib
 import logging
 import os
 import platform
+import json
 from subprocess import Popen
 from collections import OrderedDict
 
@@ -45,12 +47,12 @@ files, and json configuration, and then it's all set.
 """
 
 
-async def make_plots(output_dir, phsp_paths, plots):
+async def make_plots(phsp_paths, plots):
     # each config is a dictionary with one element, plots
     # plots is a list of plots, we just merge them together
-    os.makedirs(os.path.join(output_dir, 'grace'), exist_ok=True)
+    os.makedirs('grace', exist_ok=True)
     plots = await asyncio.gather(*[
-        make_plot(plot, phsp_paths[plot['phsp']], output_dir) for plot in plots
+        make_plot(plot, phsp_paths[plot['phsp']]) for plot in plots
     ])
     # they are in order, now group them by plot['type']
     grouped = OrderedDict()
@@ -59,7 +61,13 @@ async def make_plots(output_dir, phsp_paths, plots):
     return grouped
 
 
-async def make_plot(plot, phsp, output_dir):
+async def make_plot(plot, phsp):
+    # phase space, plot options
+    base = hashlib.md5((json.dumps(plot) + phsp).encode('utf-8')).hexdigest()
+    # we need to generate a grace file and then an eps file, and we want to keep both
+    # unless the eps file exists, we assume something went wrong
+    grace_path = os.path.join('grace', base + '.grace')
+    eps_path = os.path.join('grace', base + '.eps')
     if plot['type'] == 'scatter':
         plotter = scatter
     elif plot['type'] == 'energy_fluence':
@@ -71,17 +79,13 @@ async def make_plot(plot, phsp, output_dir):
     else:
         raise ValueError('Unknown plot type {}'.format(plot['type']))
     logger.info("Processing {}".format(plot['slug']))
-    filename = plot['slug'] + '.grace'
-    relpath = os.path.join('grace', filename)
-    output_path = os.path.join(output_dir, relpath)
-    eps_path = output_path.replace('.grace', '.eps')
-    temp_path = output_path + '.temp'
-    plot['path'] = relpath
+    temp_path = grace_path + '.temp'
     plot, lines = plotter(phsp, temp_path, **plot)
-    if not os.path.exists(output_path):
+    if not os.path.exists(grace_path):
         await generate(lines, temp_path)
         await run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', eps_path, temp_path])
-        os.rename(temp_path, output_path)
+        os.rename(temp_path, grace_path)
+    plot['path'] = grace_path
     return plot
 
 
@@ -342,4 +346,5 @@ if __name__ == '__main__':
             'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
             'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
         }
-        make_plots(args.input, phsp_paths, config)
+        plots = make_plots(phsp_paths, config)
+        print(plots)
