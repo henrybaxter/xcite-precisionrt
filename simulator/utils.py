@@ -1,4 +1,5 @@
 import os
+import errno
 import shutil
 import logging
 import asyncio
@@ -20,6 +21,15 @@ counter = asyncio.Semaphore(MAX)
 executor = ProcessPoolExecutor()
 
 XCITE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+
+def force_symlink(source, link_name):
+    try:
+        os.symlink(source, link_name)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            os.remove(link_name)
+            os.symlink(source, link_name)
 
 
 def remove(path):

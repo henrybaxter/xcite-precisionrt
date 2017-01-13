@@ -19,7 +19,7 @@ from . import grace
 from . import simulate
 from . import dose_contours
 from . import build
-from .utils import run_command, copy, read_3ddose
+from .utils import run_command, copy, read_3ddose, force_symlink
 from . import report
 
 logger = logging.getLogger(__name__)
@@ -265,11 +265,9 @@ async def run_simulation(sim):
         combine_doses(sim, doses)
     ]))}
 
-    logger.info('Saving combined phase space files')
-    await asyncio.gather(*[
-        copy(combined[key], os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key)))
-        for key in ['source', 'filter', 'collimator']
-    ])
+    logger.info('Linking combined phase space files')
+    for key in ['source', 'filter', 'collimator']:
+        force_symlink(combined[key], os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key)))
 
     # plots
     with open(sim['grace']) as f:
