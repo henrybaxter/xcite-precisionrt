@@ -14,7 +14,7 @@ total-histories = 1e10
 # y in cm
 beam-width = 1.0
 # z in cm
-beam-height = 0.5
+# beam-height = 0.5
 # gap between incident electron beams
 beam-gap = 0.0
 

@@ -30,7 +30,7 @@ path = "collimators/magdalena-collimator-1.egsinp"
 [[simulations]]
 name = "Magdalena - 10mm Beam"
 summary = "Magdalena's original collimator with a 10mm electron beam."
-beam-height = 0.5
+beam-height = 1.0
 [simulations.collimator]
 path = "collimators/magdalena-collimator-1.egsinp"
 
@@ -89,9 +89,8 @@ target-shape = "point"
 [[simulations]]
 name = "Diverging - 1 row - 2mm hole - 0.2mm Septa - 1cm Lesion"
 summary = "Diverging version of stamped collimator. Single row, 2mm hole width, and a 0.2mm septa."
+beam-height = 0.2
 [simulations.collimator]
 septa = 0.02
 hole-width = 0.2
 target-shape = "circle"
-
-

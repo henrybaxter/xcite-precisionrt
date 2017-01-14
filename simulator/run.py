@@ -35,14 +35,14 @@ async def main():
     for sim in simulations:
         sim['server'] = local['server']
         if sim['beam-height'] != local['beam-height']:
-            logger.warning('Skipping {} because beam height is {} not {}'.format(
-                sim['name'], sim['beam-height'], args.beam_height))
+            logger.warning('Skipping (beam height != {}) {}'.format(
+                local['beam-height'], sim['name']))
             continue
         if not claim(sim) and not args.force:
-            logger.warning('Skipping {} because it is claimed'.format(sim['name']))
+            logger.warning('Skipping (claimed) {}'.format(sim['name']))
             continue
         if args.directory and sim['directory'] != args.directory:
-            logger.warning('Skipping {} because {} has been specified'.format(sim['directory']))
+            logger.warning('Skipping (not specified) {}'.format(sim['name']))
         logger.warning('Starting {}'.format(sim['name']))
         await run_simulation(sim)
         upload_report(sim)
@@ -53,6 +53,7 @@ def read_local():
         local = toml.load(f)
     assert local['server']
     assert local['beam-height'] in [0.2, 0.5, 1.0]
+    return local
 
 
 def configure_logging():
