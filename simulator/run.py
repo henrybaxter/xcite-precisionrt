@@ -332,7 +332,7 @@ async def generate_contours(sim, combined):
     )
     contour_futures = []
     for slug, path in combined['dose'].items():
-        contour_futures.append(dose_contours.plot(sim['phantom'], path, target, sim['directory'], slug))
+        contour_futures.append(dose_contours.plot(sim['phantom'], path, target, slug))
     logger.info('Waiting for dose contours to finish')
     contours = await asyncio.gather(*contour_futures)
     logger.info('Regrouping contour plots')

@@ -1,5 +1,7 @@
 import os
 import platform
+import json
+import hashlib
 
 import matplotlib
 if platform.system() == 'Darwin':
@@ -111,7 +113,15 @@ def get_manual2(possibles):
 DEFAULT_LEVELS = [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
 
 
-async def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels=DEFAULT_LEVELS):
+async def plot(egsphant_path, dose_path, target, base_slug, levels=DEFAULT_LEVELS):
+    """
+    base = hashlib.md5(json.dumps({
+        'egsphant': egsphant_path,
+        'dose': dose_path,
+        'target': target
+    }).encode('utf-8')).hexdigest()
+    path = base + '.pdf'
+    """
     dose = py3ddose.read_3ddose(dose_path)
     phantom = py3ddose.read_egsphant(egsphant_path)
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
@@ -181,20 +191,14 @@ async def plot(egsphant_path, dose_path, target, output_dir, output_slug, levels
                     points.append(vv[0])
                 paths.append(points)
         plt.clabel(cs, fontsize=8, fmt='%2.0f')
-        slug = 'contour_{}_{}'.format(x_name, y_name)
-        filename = slug + '.pdf'
-        relfolder = os.path.join('dose', output_slug)
-        folder = os.path.join(output_dir, relfolder)
-        os.makedirs(folder, exist_ok=True)
-        relpath = os.path.join(relfolder, filename)
-        path = os.path.join(output_dir, relpath)
+        slug = '{}_contour_{}_{}'.format(base_slug, x_name, y_name)
+
         plt.savefig(path)
         plane = x_name + y_name
         plots.append({
-            'output_slug': output_slug,
             'plane': plane,
             'slug': slug,
-            'path': relpath,
+            'path': path,
             'name': '{} {}'.format(output_slug.replace('_', ' ').title(), plane.upper())
         })
     return plots
