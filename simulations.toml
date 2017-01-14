@@ -92,6 +92,6 @@ summary = "Diverging version of stamped collimator. Single row, 2mm hole width, 
 [simulations.collimator]
 septa = 0.02
 hole-width = 0.2
-target-shape = "lesion"
+target-shape = "circle"
 
 
