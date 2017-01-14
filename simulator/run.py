@@ -19,7 +19,7 @@ from . import grace
 from . import simulate
 from . import dose_contours
 from . import build
-from .utils import run_command, copy, read_3ddose, force_symlink
+from .utils import run_command, read_3ddose, force_symlink
 from . import report
 
 logger = logging.getLogger(__name__)
@@ -30,16 +30,29 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 async def main():
     configure_logging()
     args = parse_args()
-    simulations = read_simulations(args.simulations, args.default_simulation, args.histories, args.single_op)
-    for simulation in simulations:
-        if simulation['beam-height'] != args.beam_height:
-            logger.warning('Skipping {} because beam height is {} not {}'.format(simulation['name'], simulation['beam-height'], args.beam_height))
+    local = read_local()
+    simulations = read_simulations(args)
+    for sim in simulations:
+        sim['server'] = local['server']
+        if sim['beam-height'] != local['beam-height']:
+            logger.warning('Skipping {} because beam height is {} not {}'.format(
+                sim['name'], sim['beam-height'], args.beam_height))
             continue
-        if claim(simulation) or args.force:
-            await run_simulation(simulation)
-            upload_report(simulation)
-            if args.single_op:
-                break
+        if not claim(sim) and not args.force:
+            logger.warning('Skipping {} because it is claimed'.format(sim['name']))
+            continue
+        if args.directory and sim['directory'] != args.directory:
+            logger.warning('Skipping {} because {} has been specified'.format(sim['directory']))
+        logger.warning('Starting {}'.format(sim['name']))
+        await run_simulation(sim)
+        upload_report(sim)
+
+
+def read_local():
+    with open('local.toml') as f:
+        local = toml.load(f)
+    assert local['server']
+    assert local['beam-height'] in [0.2, 0.5, 1.0]
 
 
 def configure_logging():
@@ -53,6 +66,8 @@ def configure_logging():
     logging.getLogger().addHandler(console_handler)
     logging.getLogger().addHandler(file_handler)
     logging.getLogger().setLevel(logging.DEBUG)
+    for name in ['boto3', 'botocore', 'nose', 's3transfer']:
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def parse_args():
@@ -60,24 +75,24 @@ def parse_args():
     parser.add_argument('--default-simulation', default='simulation.defaults.toml')
     parser.add_argument('--simulations', default='simulations.toml')
     parser.add_argument('--force', action='store_true')
-    parser.add_argument('-n', '--histories', type=float)
-    parser.add_argument('-s', '--single-op', action='store_true')
-    parser.add_argument('--beam-height', type=float, default=0.2, help='Simulation types to run')
+    parser.add_argument('--directory')
+    parser.add_argument('--histories', type=float)
+    parser.add_argument('--single', action='store_true')
     return parser.parse_args()
 
 
-def read_simulations(simulations, default_simulation, histories, single_op):
-    with open(simulations) as f:
+def read_simulations(args):
+    with open(args.simulations) as f:
         overrides = toml.load(f)['simulations']
-    with open(default_simulation) as f:
+    with open(args.default_simulation) as f:
         defaults = toml.load(f)
     simulations = []
     for override in overrides:
         simulation = defaults.copy()
         simulation.update(override)
-        if histories:
-            simulation['total-histories'] = histories
-        simulation['single-op'] = single_op
+        if args.histories:
+            simulation['total-histories'] = args.histories
+        simulation['single-op'] = args.single
         simulations.append(simulation)
     return [verify_sim(sim) for sim in simulations]
 
@@ -126,7 +141,8 @@ async def sample_combine(beamlets, reflect, desired=int(1e7)):
     combined_path = 'combined/{}.egsphsp'.format(md5.hexdigest())
     if not os.path.exists(combined_path):
         logger.info('Combining {} beamlets into {}'.format(len(beamlets), temp_path))
-        await run_command(['beamdpr', 'sample-combine', '--rate', str(rate), '-o', temp_path] + paths)
+        command = ['beamdpr', 'sample-combine', '--rate', str(rate), '-o', temp_path]
+        await run_command(command + paths)
         if reflect:
             original_path = temp_path.replace('.egsphsp1', '.original.egsphsp1')
             reflected_path = temp_path.replace('.egsphsp1', '.reflected.egsphsp1')
