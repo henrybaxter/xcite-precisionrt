@@ -183,6 +183,7 @@ async def combine_doses(sim, doses):
     how do we weight the arc dose?
     """
     logger.info('Combining doses')
+    print(doses)
     result = {}
     sz = len(doses['stationary'])
     coeffs = np.polyfit([0, sz // 2, sz - 1], [4, 1, 4], 2)
@@ -240,16 +241,10 @@ def verify_sim(sim):
     return sim
 
 
-async def run_simulation(sim):
-    logger.info('Starting simulation {}'.format(sim['name']))
-    start = time.time()
-    y_values = generate_y(sim['target-length'], sim['beam-width'] + sim['beam-gap'], sim['reflect'])
-    histories = sim['total-histories'] // len(y_values)
-    if sim['reflect']:
-        histories //= 2
+async def get_templates(sim):
     stages = ['source', 'filter', 'collimator', 'dose']
     templates = {stage: template for stage, template in zip(stages, await asyncio.gather(*[
-        build.build_source(sim, histories),
+        build.build_source(sim),
         build.build_filter(sim),
         build.build_collimator(sim)
     ]))}
@@ -257,6 +252,17 @@ async def run_simulation(sim):
         templates['stationary_dose'] = f.read()
     with open(sim['arc-dose-template']) as f:
         templates['arc_dose'] = f.read()
+    return templates
+
+
+async def run_simulations(sim, templates):
+    y_values = generate_y(sim['target-length'], sim['beam-width'] + sim['beam-gap'], sim['reflect'])
+    sim['beamlet-count'] = len(y_values)
+    sim['beamlet-histories'] = sim['total-histories'] // sim['beamlet-count']
+    if sim['reflect']:
+        sim['beamlet-histories'] //= 2
+        sim['beamlet-count'] *= 2
+    sim['electrons'] = sim['beamlet-count'] * sim['beamlet-histories']
     simulations = []
     for i, y in enumerate(y_values):
         if sim['reflect']:
@@ -267,14 +273,20 @@ async def run_simulation(sim):
         if sim['single-op']:
             break
     simulations = await asyncio.gather(*simulations)
-    logger.info('All simulations finished, combining')
-    beamlets = {
-        'source': [s['source'] for s in simulations],
-        'filter': [s['filter'] for s in simulations],
-        'collimator': [s['collimator'] for s in simulations],
-    }
+
+
+def regroup(ls):
+    """
+    Takes a list of dictionaries and turns it into a dictionary of lists
+    """
+    if not ls:
+        return {}
+    return {key: [item[key] for item in ls] for key in ls[0]}
+
+
+def group_doses(doses, reflect):
     doses = {}
-    if sim['reflect']:
+    if reflect:
         # dose calculations were put into tuples
         for key in ['stationary', 'arc']:
             full = []
@@ -290,21 +302,15 @@ async def run_simulation(sim):
                 full.append(simulation['dose'][key])
             doses[key] = full
 
-    combined = {stage: result for stage, result in zip(stages, await asyncio.gather(*[
-        sample_combine(beamlets['source'], sim['reflect']),
-        sample_combine(beamlets['filter'], sim['reflect']),
-        sample_combine(beamlets['collimator'], sim['reflect']),
-        combine_doses(sim, doses)
-    ]))}
 
-    logger.info('Linking combined phase space files')
+def link_combined(combined, directory):
     for key in ['source', 'filter', 'collimator']:
         source = os.path.abspath(combined[key])
-        link_name = os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))
+        link_name = os.path.join(directory, 'sampled_{}.egsphsp'.format(key))
         force_symlink(source, link_name)
 
-    # plots
-    logger.info('Loading grace configuration')
+
+async def generate_grace(sim, combined):
     with open(sim['grace']) as f:
         plots = toml.load(f)['plots']
     grace_plots = await grace.make_plots(combined, plots)
@@ -318,14 +324,8 @@ async def run_simulation(sim):
                 plot['path'] = relpath
                 force_symlink(source, link_name)
 
-    # scads
-    logger.info('Generating scad visualizations')
-    # first we need to generate the scad using beamviz
-    # then we need to use scad on it
-    # we'll run this every time for now, it's not that bad
 
-
-    logger.info('Starting dose contour plots')
+async def generate_contours(sim, combined):
     target = py3ddose.Target(
         np.array(sim['phantom-isocenter']),
         sim['lesion-diameter'] / 2
@@ -341,6 +341,41 @@ async def run_simulation(sim):
         for contour in [c for cs in contours for c in cs]:
             if contour['output_slug'] == stage:
                 contour_plots.setdefault(contour['plane'], []).append(contour)
+    return contour_plots
+
+
+async def run_simulation(sim):
+    logger.info('Starting simulation {}'.format(sim['name']))
+    start = time.time()
+    templates = get_templates(sim)
+    simulations = regroup(await run_simulations(sim, templates))
+    logger.info('All simulations finished, combining')
+    doses = group_doses(simulations['dose'], sim['reflect'])
+
+    stages = ['source', 'filter', 'collimator', 'dose']
+    combined = {stage: result for stage, result in zip(stages, await asyncio.gather(*[
+        sample_combine(beamlets['source'], sim['reflect']),
+        sample_combine(beamlets['filter'], sim['reflect']),
+        sample_combine(beamlets['collimator'], sim['reflect']),
+        combine_doses(sim, doses)
+    ]))}
+    logger.info('Linking combined phase space files')
+    link_combined(combined, sim['directory'])
+
+    # plots
+    logger.info('Loading grace configuration')
+    grace_plots = await generate_grace(sim, combined)
+
+    # scads
+    logger.info('Generating scad visualizations')
+    # first we need to generate the scad using beamviz
+    # then we need to use scad on it
+    # we'll run this every time for now, it's not that bad
+
+
+    logger.info('Starting dose contour plots')
+    contour_plots = generate_contours(sim, combined)
+
     logger.info('Generating conformity and target to skin ratios')
     conformity = {}
     target_to_skin = {}
@@ -362,7 +397,7 @@ async def run_simulation(sim):
         'skin_distance': sim['collimator']['lesion-distance'] - abs(sim['phantom-isocenter'][2]),
         'ci': conformity,
         'ts': target_to_skin,
-        'electrons': histories * len(y_values),
+        'electrons': sim['electrons'],
         'photons': photons
     }
     report.generate(data, sim)
