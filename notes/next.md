@@ -1,5 +1,10 @@
 NEXT
 
+- fix the dosing. i think it might be to do with phi/theta or distance
+- need to login to a server and run the dose calculations over and over
+- combination takes a long time, so fix that first
+
+
 - describe the collimator better
 - show quantitative results
 - show in a realistic CT
