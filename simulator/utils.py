@@ -23,6 +23,13 @@ executor = ProcessPoolExecutor()
 XCITE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
+def regroup(ls):
+    if not ls:
+        return {}
+    return {key: [item[key] for item in ls] for key in ls[0]}
+
+
+
 def run_async(future):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(future)
@@ -36,6 +43,8 @@ def force_symlink(source, link_name):
         if e.errno == errno.EEXIST:
             os.remove(link_name)
             os.symlink(source, link_name)
+        else:
+            raise
 
 
 def remove(path):

@@ -1,266 +1,301 @@
+import json
+import logging
+import os
 import asyncio
 import math
-import os
-import logging
 import hashlib
-import json
+import shutil
+from collections import OrderedDict
 
-from . import egsinp
-from .utils import run_command, read_3ddose, copy, remove, XCITE_DIR
+import pytoml as toml
+import numpy as np
+from beamviz import visualize
+
+from . import py3ddose
+from . import dose_contours
+from . import build
+from .utils import run_command, read_3ddose, force_symlink, regroup
+from . import beamlet
+from . import scad
+
+from . import collimator_analyzer
+from . import grace
+from . import report
+
 
 logger = logging.getLogger(__name__)
 
 
-async def simulate(sim, templates, index, y):
-    source_beamlet = await simulate_source(sim, templates['source'], y)
-    logger.info('{} - simulated source'.format(index))
-    filtered_beamlet = await filter_source(sim, templates['filter'], source_beamlet)
-    logger.info('{} - simulated filter'.format(index))
-    collimated_beamlet = await collimate(sim, templates['collimator'], filtered_beamlet)
-    logger.info('{} - simulated collimator'.format(index))
-    if sim['reflect']:
-        reflected_beamlet = await reflect(collimated_beamlet)
-        dose = await asyncio.gather(*[
-            simulate_doses(sim, templates, reflected_beamlet, index[0]),
-            simulate_doses(sim, templates, collimated_beamlet, index[1])
-        ])
-    else:
-        dose = await simulate_doses(sim, templates, collimated_beamlet, index)
-    result = {
-        'source': source_beamlet,
-        'filter': filtered_beamlet,
-        'collimator': collimated_beamlet,
-        'dose': dose,
+async def run_simulation(sim):
+    target = py3ddose.Target(np.array(sim['phantom-isocenter']), sim['lesion-diameter'] / 2)
+
+    # figure out the source situation
+    y_values = generate_y(sim['target-length'], sim['beam-width'] + sim['beam-gap'], sim['reflect'])
+    sim['beamlet-count'] = len(y_values) * (2 if sim['reflect'] else 1)
+    sim['beamlet-histories'] = sim['desired-histories'] // sim['beamlet-count']
+    sim['total-histories'] = sim['beamlet-histories'] * sim['beamlet-count']
+
+    # generate the templates that will be used by every simulation
+    templates = await generate_templates(sim)
+
+    # generate all simulations
+    beamlets = await run_beamlets(sim, templates, y_values)
+
+    os.makedirs(sim['directory'], exist_ok=True)
+    collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
+    force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
+    scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
+
+    # combine beamlets
+    phsp, doses = await asyncio.gather(*[
+        combine_phsp(beamlets, sim['reflect']),
+        combine_dose(beamlets)
+    ])
+    futures = {
+        'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
+        'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
+        'visualizations': scad.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
+        'ci': generate_conformity(doses, target),
+        'ts': generate_target_to_skin(doses, target),
     }
-    logger.info('{} - simulated doses'.format(index))
+
+    context = {
+        'templates': templates,
+        'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
+        'simulation': sim,
+        'photons': count_photons(beamlets),
+    }
+
+    # turn futures into our context
+    for key, future in futures.items():
+        assert key not in context
+        context[key] = await future
+
+    # symlink the combined data, beamlets, charts, etc
+    await link_supporting_files(sim, context, phsp, doses)
+
+    report.generate(sim, context)
+
+
+async def sample_combine(beamlets, reflect, desired=int(1e7)):
+    logger.info('Sampling and combining {} beamlets'.format(len(beamlets)))
+    paths = [beamlet['phsp'] for beamlet in beamlets]
+    particles = sum([beamlet['stats']['total_particles'] for beamlet in beamlets])
+    if reflect:
+        desired // 2
+    rate = math.ceil(particles / desired)
+    logger.info('Found {} particles, want {}, sample rate is {}'.format(particles, desired, rate))
+    s = 'rate={}&reflecty={}'.format(rate, reflect) + ''.join([beamlet['hash'].hexdigest() for beamlet in beamlets])
+    md5 = hashlib.md5(s.encode('utf-8'))
+    os.makedirs('combined', exist_ok=True)
+    temp_path = 'combined/{}.egsphsp1'.format(md5.hexdigest())
+    combined_path = 'combined/{}.egsphsp'.format(md5.hexdigest())
+    if not os.path.exists(combined_path):
+        logger.info('Combining {} beamlets into {}'.format(len(beamlets), temp_path))
+        command = ['beamdpr', 'sample-combine', '--rate', str(rate), '-o', temp_path]
+        await run_command(command + paths)
+        if reflect:
+            original_path = temp_path.replace('.egsphsp1', '.original.egsphsp1')
+            reflected_path = temp_path.replace('.egsphsp1', '.reflected.egsphsp1')
+            os.rename(temp_path, original_path)
+            await run_command(['beamdpr', 'reflect', '-y', '1', original_path, reflected_path])
+            await run_command(['beamdpr', 'combine', original_path, reflected_path, '-o', temp_path])
+        logger.info('Randomizing {}'.format(temp_path))
+        await run_command(['beamdpr', 'randomize', temp_path])
+        os.rename(temp_path, combined_path)
+    return combined_path
+
+
+def generate_y(target_length, spacing, reflect):
+    logger.info('Generating beam positions')
+    offset = spacing / 2
+    y = offset
+    ymax = target_length / 2
+    i = 0
+    result = []
+    while y < ymax:
+        result.append(y)
+        i += 1
+        y = i * spacing + offset
+    if not reflect:
+        # need to reflect y values if not using reflection optimization
+        for y in result[:]:
+            result.insert(0, -y)
     return result
 
-
-async def reflect(original):
-    folder = os.path.dirname(original['phsp'])
-
-    md5 = original['hash'].copy()
-    md5.update('reflect=y'.encode('utf-8'))
-    base = md5.hexdigest()
-
-    beamlet = {
-        'egsinp': original['egsinp'],  # note that this is NOT reflected
-        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
-        'hash': md5,
-        'stats': original['stats']
-    }
-    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
-
-    if not os.path.exists(beamlet['phsp']):
-        remove(temp_phsp)
-        await run_command(['beamdpr', 'reflect', '-y', '1', original['phsp'], temp_phsp])
-        os.rename(temp_phsp, beamlet['phsp'])
-
-    return beamlet
+async def optimize_stationary(sim, doses):
+    sz = len(doses['stationary'])
+    coeffs = np.polyfit([0, sz // 2, sz - 1], [4, 1, 4], 2)
+    w = np.polyval(coeffs, np.arange(0, sz))
 
 
-async def simulate_source(sim, template, y):
-    folder = os.path.join(sim['egs-home'], 'BEAM_RFLCT')
-    # calculate
-    theta = math.atan(y / sim['target-distance'])
-    cos_x = -math.cos(theta)
-    cos_y = math.copysign(math.sqrt(1 - cos_x * cos_x), y)
-
-    # prepare template
-    template['uinc'] = cos_x
-    template['vinc'] = cos_y
-
-    # hash
-    egsinp_str = egsinp.unparse_egsinp(template)
-    md5 = hashlib.md5(egsinp_str.encode('utf-8'))
-    base = md5.hexdigest()
-
-    # beamlet properties
-    beamlet = {
-        'egsinp': os.path.join(folder, '{}.egsinp'.format(base)),
-        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
-        'hash': md5
-    }
-    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
-
-    if not os.path.exists(beamlet['phsp']):
-        # simulate
-        remove(temp_phsp)
-        with open(beamlet['egsinp'], 'w') as f:
-            f.write(egsinp_str)
-        command = ['BEAM_RFLCT', '-p', sim['pegs4'], '-i', os.path.basename(beamlet['egsinp'])]
-        await run_command(command, cwd=folder)
-        # translate
-        await run_command(['beamdpr', 'translate', '-i', temp_phsp, '-y', '({})'.format(y)])
-        # rotate
-        angle = str(math.pi / 2)
-        await run_command(['beamdpr', 'rotate', '-i', temp_phsp, '-a', angle])
-        os.rename(temp_phsp, beamlet['phsp'])
-
-    # stats
-    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    beamlet['stats'] = json.loads(await run_command(command))
-
-    return beamlet
+async def generate_templates(sim):
+    stages = ['source', 'filter', 'collimator']
+    templates = dict(zip(stages, await asyncio.gather(*[
+        build.build_source(sim),
+        build.build_filter(sim),
+        build.build_collimator(sim)
+    ])))
+    with open(sim['stationary-dose-template']) as f:
+        templates['stationary_dose'] = f.read()
+    with open(sim['arc-dose-template']) as f:
+        templates['arc_dose'] = f.read()
+    return templates
 
 
-async def filter_source(sim, template, source_beamlet):
-    folder = os.path.join(sim['egs-home'], 'BEAM_FILTR')
-    # prepare template
-    template['ncase'] = source_beamlet['stats']['total_particles']
-    template['spcnam'] = os.path.join('../', 'BEAM_RFLCT', os.path.basename(source_beamlet['phsp']))
+async def link_supporting_files(sim, context, phsp, doses):
+    # combined phase space files, which should go in their onwn...
+    # or we could walk it and symlink it...
+    # no.
+    # we use the path they gave us (a relpath)
+    for key, path in phsp.items():
+        source = os.path.abspath(path)
+        link_name = os.path.join(sim['directory'], os.path.basename(path))
+    try:
+        shutil.rmtree(os.path.join(sim['directory'], 'contours'))
+    except OSError:
+        pass
+    shutil.copytree('contours', os.path.join(sim['directory'], 'contours'))
 
-    # hash
-    egsinp_str = egsinp.unparse_egsinp(template)
-    md5 = source_beamlet['hash'].copy()
-    md5.update(egsinp_str.encode('utf-8'))
-    base = md5.hexdigest()
+    os.makedirs(os.path.join(sim['directory'], 'grace'), exist_ok=True)
+    for plot_type, plots in context['grace_plots'].items():
+        for plot in plots:
+            for typ in ['grace', 'eps']:
+                plot['path'] = os.path.join('grace', plot['slug'])
+                source = os.path.abspath(plot[typ])
+                link_name = os.path.join(sim['directory'], 'grace', plot['slug'] + '.' + typ)
+                print(source, link_name)
+                force_symlink(source, link_name)
+    return
 
-    # beamlet properties
-    beamlet = {
-        'egsinp': os.path.join(folder, '{}.egsinp'.format(base)),
-        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
-        'hash': md5
-    }
-    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
-
-    if not os.path.exists(beamlet['phsp']):
-        # simulate
-        remove(temp_phsp)
-        with open(beamlet['egsinp'], 'w') as f:
-            f.write(egsinp_str)
-        command = ['BEAM_FILTR', '-p', sim['pegs4'], '-i', os.path.basename(beamlet['egsinp'])]
-        await run_command(command, cwd=folder)
-        os.rename(temp_phsp, beamlet['phsp'])
-
-    # stats
-    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    beamlet['stats'] = json.loads(await run_command(command))
-
-    return beamlet
-
-
-async def collimate(sim, template, source_beamlet):
-    name = 'BEAM_{}'.format(template['title'])
-    folder = os.path.join(sim['egs-home'], name)
-
-    # prepare template
-    template['ncase'] = source_beamlet['stats']['total_particles']
-    template['spcnam'] = '../BEAM_FILTR/' + os.path.basename(source_beamlet['phsp'])
-
-    # hash
-    egsinp_str = egsinp.unparse_egsinp(template)
-    md5 = source_beamlet['hash'].copy()
-    md5.update(egsinp_str.encode('utf-8'))
-    base = md5.hexdigest()
-
-    # beamlet properties
-    beamlet = {
-        'egsinp': os.path.join(folder, '{}.egsinp'.format(base)),
-        'phsp': os.path.join(folder, '{}.egsphsp'.format(base)),
-        'hash': md5
-    }
-    temp_phsp = os.path.join(folder, '{}.egsphsp1'.format(base))
-
-    if not os.path.exists(beamlet['phsp']):
-        # simulate
-        remove(beamlet['phsp'])
-        with open(beamlet['egsinp'], 'w') as f:
-            f.write(egsinp_str)
-        command = [name, '-p', sim['pegs4'], '-i', os.path.basename(beamlet['egsinp'])]
-        await run_command(command, cwd=folder)
-        os.rename(temp_phsp, beamlet['phsp'])
-
-    # stats
-    command = ['beamdpr', 'stats', '--format=json', beamlet['phsp']]
-    beamlet['stats'] = json.loads(await run_command(command))
-
-    return beamlet
-
-
-async def simulate_doses(sim, templates, beamlet, index):
-    context = {
-        'egsphant_path': os.path.join(XCITE_DIR, sim['phantom']),
-        'phsp_path': beamlet['phsp'],
-        'ncase': beamlet['stats']['total_photons'] * (sim['dose-recycle'] + 1),
-        'nrcycl': sim['dose-recycle'],
-        'n_split': sim['dose-photon-splitting'],
-        'dsource': sim['collimator']['lesion-distance'],
-        'phicol': 90,
-        'x': sim['phantom-isocenter'][0],
-        'y': sim['phantom-isocenter'][1],
-        'z': sim['phantom-isocenter'][2],
-        'idat': 1,
-        'theta': 180,
-    }
-
-    doses = {'arc': []}
-
-    # stationary
-    context['phi'] = 0
-    egsinp_str = templates['stationary_dose'].format(**context)
     for subfolder in ['dose/stationary', 'dose/arc']:
         os.makedirs(os.path.join(sim['directory'], subfolder), exist_ok=True)
-    path = os.path.join(sim['directory'], 'dose/stationary/stationary{}.3ddose.npz'.format(index))
-    doses['stationary'] = simulate_dose(sim, beamlet, egsinp_str, path)
+    logger.info('Linking combined phase space files')
+    for key in ['source', 'filter', 'collimator']:
+        source = os.path.abspath(combined[key])
+        link_name = os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))
+        force_symlink(source, link_name)
 
-    # arc
-    for phimin, phimax in dose_angles(sim):
-        context['nang'] = 1
-        context['phimin'] = phimin
-        context['phimax'] = phimax
-        egsinp_str = templates['arc_dose'].format(**context)
-        path = os.path.join(sim['directory'], 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
-        doses['arc'].append(simulate_dose(sim, beamlet, egsinp_str, path))
-        if sim['single-op']:
-            break
-    futures = [doses['stationary']] + doses['arc']
-    doses['stationary'], *doses['arc'] = await asyncio.gather(*futures)
-    return doses
+    logger.info('Loading grace configuration')
+
+    os.makedirs(os.path.join(sim['directory'], 'grace'), exist_ok=True)
+    for plot_type, plots in grace_plots.items():
+        for plot in plots:
+            for ext in ['grace', 'eps']:
+                source = os.path.abspath(plot[ext])
+                relpath = os.path.join('grace', plot['slug'] + '.' + ext)
+                link_name = os.path.join(sim['directory'], relpath)
+                plot['path'] = relpath
+                force_symlink(source, link_name)
+    path = os.path.join(sim['directory'], 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
 
 
-async def simulate_dose(sim, beamlet, egsinp_str, path):
-    folder = os.path.join(sim['egs-home'], 'dosxyznrc')
-    # hash
-    md5 = beamlet['hash'].copy()
-    md5.update(egsinp_str.encode('utf-8'))
-    base = md5.hexdigest()
+async def generate_conformity(doses, target):
+    conformity = {}
+    for slug, path in doses.items():
+        dose = py3ddose.read_3ddose(path)
+        conformity[slug] = py3ddose.paddick(dose, target)
+    return conformity
 
-    # dose properties
-    dose = {
-        'egsinp': os.path.join(folder, '{}.egsinp'.format(base)),
-        '3ddose': os.path.join(folder, '{}.3ddose'.format(base)),
-        'npz': os.path.join(folder, '{}.3ddose.npz'.format(base)),
-        'egslst': os.path.join(folder, '{}.egslst'.format(base))
+
+async def generate_target_to_skin(doses, target):
+    target_to_skin = {}
+    for slug, path in doses.items():
+        dose = py3ddose.read_3ddose(path)
+        target_to_skin[slug] = py3ddose.target_to_skin(dose, target)
+    return target_to_skin
+
+
+async def generate_contour_plots(doses, phantom, target):
+    os.makedirs('contours', exist_ok=True)
+    futures = []
+    for slug, path in doses.items():
+        futures.append(dose_contours.plot(phantom, path, target, slug))
+    contours = await asyncio.gather(*futures)
+    contour_plots = OrderedDict()
+    for key in doses.keys():
+        for contour in [c for cs in contours for c in cs]:
+            if contour['output_slug'] == key:
+                contour_plots.setdefault(contour['plane'], []).append(contour)
+    return contour_plots
+
+
+def count_photons(beamlets):
+    photons = {}
+    for stage in ['source', 'filter', 'collimator']:
+        photons[stage] = sum(beamlet['stats']['total_photons'] for beamlet in beamlets[stage])
+    return photons
+
+
+
+
+async def combine_phsp(beamlets, reflect):
+    operations = {
+        'source': sample_combine(beamlets['source'], reflect),
+        'filter': sample_combine(beamlets['filter'], reflect),
+        'collimator': sample_combine(beamlets['collimator'], reflect)
     }
+    return {name: await future for name, future in operations.items()}
 
-    if not os.path.exists(dose['npz']):
-        # simulate
-        remove(dose['3ddose'])
-        with open(dose['egsinp'], 'w') as f:
-            f.write(egsinp_str)
-        command = ['dosxyznrc', '-p', sim['pegs4'], '-i', os.path.basename(dose['egsinp'])]
-        out = await run_command(command, cwd=folder)
-        if 'Warning' in out:
-            logger.info('Warning in {}'.format(dose['egslst']))
-        with open(dose['egslst'], 'w') as f:
-            f.write(out)
+async def dose_combine(doses):
+    # ok we need to take the hash of each, eg 3ddose path
+    base = hashlib.md5(('combined' + json.dumps([d['3ddose'] for d in doses])).encode('utf-8')).hexdigest()
+    os.makedirs('combined', exist_ok=True)
+    path = os.path.join('combined', base + '.3ddose.npz')
+    if not os.path.exists(path):
+        _dose = None
+        _doses = []
+        for dose in doses:
+            if 'dose' not in dose:
+                dose['dose'] = py3ddose.read_3ddose(dose['npz'])
+            _doses.append(dose['dose'].doses)
+            _dose =dose['dose']
+        combined = np.array(_doses).sum(axis=0)
+        result = py3ddose.Dose(_dose.boundaries, combined, _dose.errors)
+        py3ddose.write_npz(path, result)
+    return path
 
-        # generate npz file
-        await read_3ddose(dose['3ddose'])  # use side effect of generating npz
-        remove(dose['3ddose'])  # save some space now we have npz
-    await copy(dose['npz'], path)
-    return dose
+async def optimize_stationary(doses):
+    return await dose_combine(doses)
 
 
-def dose_angles(args):
-    # recall that 180 theta is center
-    # and we do (theta, phi)
-    # we just want pairs of phimin and phimax
-    angular_increment = 5  # degrees
-    angular_sweep = 120  # degrees
-    n_angles = angular_sweep // angular_increment
-    angles = []
-    for i in range(n_angles):
-        angles.append((120 + i * angular_increment, 120 + (i + 1) * angular_increment))
-    return angles
+async def optimize_arc(doses):
+    return await dose_combine(flatten(doses))
+
+def flatten(ls):
+    result = []
+    for l in ls:
+        result.extend(l)
+    return result
+
+async def combine_dose(beamlets):
+    return {
+        'stationary': await dose_combine(beamlets['stationary']),
+        'arc': await dose_combine(flatten(beamlets['arc'])),
+        'stationary-weighted': await optimize_stationary(beamlets['stationary']),
+        'arc-weighted': await optimize_arc(beamlets['arc'])
+    }
+    
+
+
+async def run_beamlets(sim, templates, y_values):
+    beamlets = []
+    for i, y in enumerate(y_values):
+        if sim['reflect']:
+            index = (len(y_values) - i - 1, i + len(y_values))
+        else:
+            index = i
+        beamlets.append(beamlet.simulate(sim, templates, index, y))
+        if sim['single-operation']:
+            break
+    simulations = regroup(await asyncio.gather(*beamlets))
+    if sim['reflect']:
+        # dose calculations were put into tuples
+        # so flatten them, respecting position
+        for key in ['stationary', 'arc']:
+            flat = []
+            for from_reflected, from_original in simulations[key]:
+                flat.insert(0, from_reflected)
+                flat.append(from_original)
+            simulations[key] = flat
+    return simulations

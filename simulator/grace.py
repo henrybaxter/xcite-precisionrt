@@ -47,7 +47,7 @@ files, and json configuration, and then it's all set.
 """
 
 
-async def make_plots(phsp_paths, plots):
+async def make_plots(plots, phsp_paths):
     slugs = set()
     for plot in plots:
         if plot['slug'] in slugs:

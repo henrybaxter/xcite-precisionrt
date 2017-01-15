@@ -225,6 +225,9 @@ def read_3ddose(path):
         np.savez_compressed(npz_path, **_read_3ddose(path)._asdict())
     return Dose(**np.load(npz_path))
 
+def write_npz(path, dose):
+    np.savez_compressed(path, **dose._asdict())
+
 
 def write_3ddose(path, dose):
     assert len(dose.doses.shape) == 3, "Doses must be 3d array"

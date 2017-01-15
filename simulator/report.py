@@ -55,9 +55,7 @@ def get_env():
     return env
 
 
-def generate(data, sim):
-    context = data.copy()
-    context['sim'] = sim
+def generate(sim, context):
     report = get_env().get_template('templates/report.tex').render(context)
     with open(os.path.join(sim['directory'], 'report.tex'), 'w') as f:
         f.write(report)

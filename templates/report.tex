@@ -34,17 +34,17 @@
 \subsection{X-ray source}
 \begin{itemize}
 	\item Tungsten target
-	\item Target angle: \ang{((( sim['target-angle'] )))}
-	\item Distance from electron gun to target: \SI{((( sim['target-distance'] )))}{\cm}
-	\item Electron beam size: \SI{((( sim['beam-height'] * 10 )))}{\mm}
-	\item Incident electrons simulated (histories): ((( electrons )))
-	\item Target length: \SI{((( sim['target-length'] )))}{\cm}
-	\item Gap between simulated electron beams: \SI{((( sim['beam-gap'] )))}{\cm}
+	\item Target angle: \ang{((( simulation['target-angle'] )))}
+	\item Distance from electron gun to target: \SI{((( simulation['target-distance'] )))}{\cm}
+	\item Electron beam size: \SI{((( simulation['beam-height'] * 10 )))}{\mm}
+	\item Incident electrons simulated (histories): ((( simulation['total-histories'] )))
+	\item Target length: \SI{((( simulation['target-length'] )))}{\cm}
+	\item Gap between simulated electron beams: \SI{((( simulation['beam-gap'] )))}{\cm}
 \end{itemize}
 
 \subsection{Filter}
 \begin{itemize}
-	((* for slab in _filter['cms'][0]['slabs'] *))
+	((* for slab in templates['filter']['cms'][0]['slabs'] *))
 	\item \SI{((( slab['zthick'] )))}{\cm} of ((( slab['medium']|medium )))
 	((* endfor *))
 \end{itemize}
@@ -70,8 +70,8 @@
 
 \subsection{Dosing}
 \begin{itemize}
-	\item Lesion diameter: \SI{((( sim['collimator']['lesion-diameter']  )))}{\cm}
-	\item Target depth: \SI{((( sim['phantom-isocenter'][2] | abs )))}{\cm}
+	\item Lesion diameter: \SI{((( simulation['collimator']['lesion-diameter']  )))}{\cm}
+	\item Target depth: \SI{((( simulation['phantom-isocenter'][2] | abs )))}{\cm}
 	\item Distance from collimator to skin: \SI{((( skin_distance )))}{\cm}
 \end{itemize}
 
@@ -108,13 +108,13 @@
 \section{Results}
 
 \subsection{Efficiency}
-The overall efficiency was ((( (photons['collimator'] / electrons * 100) | f )))\%.
+The overall efficiency was ((( (photons['collimator'] / simulation['total-histories'] * 100) | f )))\%.
 \begin{table}[H]
 \begin{tabular}{l l l}
 	& Particles & Reduction factor \\
 	\hline
-	Electron gun & ((( electrons ))) & \\
-	Photons generated & ((( photons['source'] ))) & ((( (electrons / photons['source']) | f ))) \\
+	Electron gun & ((( simulation['total-histories'] ))) & \\
+	Photons generated & ((( photons['source'] ))) & ((( (simulation['total-histories'] / photons['source']) | f ))) \\
 	Filtered X-rays & ((( photons['filter'] ))) & ((( (photons['source'] / photons['filter']) | f ))) \\
 	Collimated X-rays & ((( photons['collimator'] ))) & ((( (photons['filter'] / photons['collimator']) | f )))
 \end{tabular}
@@ -125,8 +125,8 @@ The overall efficiency was ((( (photons['collimator'] / electrons * 100) | f )))
 \begin{tabular}{l l l l l}
 	& Stationary & Weighted & Arc & Weighted Arc \\
 	\hline
-	CI & ((( ci['stationary']|f ))) & ((( ci['stationary_weighted']|f ))) & ((( ci['arc']|f ))) & ((( ci['arc_weighted']|f ))) \\
-	Skin-to-Target & ((( ts['stationary']|f ))) & ((( ts['stationary_weighted']|f ))) & ((( ts['arc']|f ))) & ((( ts['arc_weighted']|f )))
+	CI & ((( ci['stationary']|f ))) & ((( ci['stationary-weighted']|f ))) & ((( ci['arc']|f ))) & ((( ci['arc-weighted']|f ))) \\
+	Skin-to-Target & ((( ts['stationary']|f ))) & ((( ts['stationary-weighted']|f ))) & ((( ts['arc']|f ))) & ((( ts['arc-weighted']|f )))
 \end{tabular}
 \end{table}
 

@@ -103,10 +103,10 @@ async def build_filter(sim):
     return template
 
 
-async def build_source(sim, histories):
+async def build_source(sim):
     logger.info('Building source')
     template = get_egsinp(sim['beamnrc-template'])
-    template['ncase'] = histories
+    template['ncase'] = sim['beamlet-histories']
     template['ybeam'] = sim['beam-width'] / 2
     template['zbeam'] = sim['beam-height'] / 2
     xtube = template['cms'][0]

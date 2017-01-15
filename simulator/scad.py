@@ -15,6 +15,9 @@ if platform.system() == 'Darwin':
 
 async def make_screenshot(conf, scad_path):
     # need to make the damn scad path too
+    print(conf)
+    print(scad_path)
+    print(os.path.splitext(scad_path))
     img_path = os.path.splitext(scad_path)[0] + '.{}.png'.format(conf['name'])
     camera = conf['translation'] + conf['rotation'] + [conf['distance']]
     camera = list(map(str, camera))
@@ -29,8 +32,8 @@ async def make_screenshot(conf, scad_path):
     return conf
 
 
-async def make_screenshots(shots, egsinp):
-    futures = [make_screenshot(shot, args.scad) for shot in shots]
+async def make_screenshots(shots, scad_path):
+    futures = [make_screenshot(shot, scad_path) for shot in shots]
     return await asyncio.gather(*futures)
 
 async def main():
