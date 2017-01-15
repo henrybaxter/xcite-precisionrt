@@ -28,17 +28,22 @@ async def main():
             logger.warning('Skipping (beam height != {}) {}'.format(
                 local['beam-height'], sim['name']))
             continue
+        if os.path.basename(args.directory) == os.path.basename(sim['directory']):
+            await go(sim)
+            continue
         if not claim(sim) and not args.force:
             logger.warning('Skipping (claimed) {}'.format(sim['name']))
             continue
-        if args.directory and sim['directory'] != args.directory:
-            logger.warning('Skipping (not specified) {}'.format(sim['name']))
-        start = time.time()
-        logger.warning('Starting {}'.format(sim['name']))
-        await simulate.run_simulation(sim)
-        logger.info('Finished in {:.2f} seconds'.format(time.time() - start))
-        logger.info('Output in {}'.format(sim['directory']))
-        upload_report(sim)
+        await go(sim)
+        
+
+async def go(sim):
+    start = time.time()
+    logger.warning('Starting {}'.format(sim['name']))
+    await simulate.run_simulation(sim)
+    logger.info('Finished in {:.2f} seconds'.format(time.time() - start))
+    logger.info('Output in {}'.format(sim['directory']))
+    upload_report(sim)
 
 
 def read_local():
