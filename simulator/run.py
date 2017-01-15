@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument('--force', action='store_true')
     parser.add_argument('--directory')
     parser.add_argument('--histories', type=float)
-    parser.add_argument('--single', action='store_true')
+    parser.add_argument('--operations',type=int, default=None)
     return parser.parse_args()
 
 
@@ -86,7 +86,7 @@ def read_simulations(args):
         simulation.update(override)
         if args.histories:
             simulation['desired-histories'] = args.histories
-        simulation['single-operation'] = args.single
+        simulation['operations'] = args.operations
         simulations.append(simulation)
     return [verify_sim(sim) for sim in simulations]
 

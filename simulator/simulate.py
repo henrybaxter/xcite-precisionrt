@@ -154,7 +154,8 @@ async def link_supporting_files(sim, context, phsp, doses):
     # we use the path they gave us (a relpath)
     for key, path in phsp.items():
         source = os.path.abspath(path)
-        link_name = os.path.join(sim['directory'], os.path.basename(path))
+        link_name = os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))
+        force_symlink(source, link_name)
     try:
         shutil.rmtree(os.path.join(sim['directory'], 'contours'))
     except OSError:
@@ -168,10 +169,12 @@ async def link_supporting_files(sim, context, phsp, doses):
                 plot['path'] = os.path.join('grace', plot['slug'])
                 source = os.path.abspath(plot[typ])
                 link_name = os.path.join(sim['directory'], 'grace', plot['slug'] + '.' + typ)
-                print(source, link_name)
                 force_symlink(source, link_name)
+    for key, path in doses.items():
+        source = os.path.abspath(path)
+        link_name = os.path.join(sim['directory'], '{}.3ddose.npz'.format(key))
+        force_symlink(source, link_name)
     return
-
     for subfolder in ['dose/stationary', 'dose/arc']:
         os.makedirs(os.path.join(sim['directory'], subfolder), exist_ok=True)
     logger.info('Linking combined phase space files')
@@ -284,7 +287,7 @@ async def run_beamlets(sim, templates, y_values):
         else:
             index = i
         beamlets.append(beamlet.simulate(sim, templates, index, y))
-        if sim['single-operation']:
+        if i == sim['operations']:
             break
     simulations = regroup(await asyncio.gather(*beamlets))
     if sim['reflect']:

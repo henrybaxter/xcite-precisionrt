@@ -205,14 +205,14 @@ async def simulate_doses(sim, templates, beamlet, index):
     doses['stationary'] = simulate_dose(sim, beamlet, egsinp_str, index)
 
     # arc
-    for phimin, phimax in dose_angles(sim):
+    for i, (phimin, phimax) in enumerate(dose_angles(sim)):
         context['nang'] = 1
         context['phimin'] = phimin
         context['phimax'] = phimax
         egsinp_str = templates['arc_dose'].format(**context)
         dose = simulate_dose(sim, beamlet, egsinp_str, index, phimin, phimax)
         doses['arc'].append(dose)
-        if sim['single-operation']:
+        if i == sim['operations']:
             break
     futures = [doses['stationary']] + doses['arc']
     doses['stationary'], *doses['arc'] = await asyncio.gather(*futures)

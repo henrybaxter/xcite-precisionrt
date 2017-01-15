@@ -94,3 +94,24 @@ beam-height = 0.2
 septa = 0.02
 hole-width = 0.2
 target-shape = "circle"
+
+
+[[simulations]]
+name = "Diverging - with caps - 1 row - 2mm hole - 0.2mm Septa - 1cm Lesion"
+summary = "Diverging version of stamped collimator. Single row, 2mm hole width, and a 0.2mm septa."
+beam-height = 0.2
+[simulations.collimator]
+septa = 0.02
+hole-width = 0.2
+target-shape = "circle"
+rowcaps = true
+
+[[simulations]]
+name = "Diverging - with caps - 1 row - 3mm hole - 0.2mm Septa - 1cm Lesion"
+summary = "Diverging version of stamped collimator. Single row, 2mm hole width, and a 0.2mm septa."
+beam-height = 0.2
+[simulations.collimator]
+septa = 0.02
+hole-width = 0.3
+target-shape = "circle"
+rowcaps = true
