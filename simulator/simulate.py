@@ -16,7 +16,7 @@ from . import dose_contours
 from . import build
 from .utils import run_command, read_3ddose, force_symlink, regroup
 from . import beamlet
-from . import scad
+from . import screenshots
 
 from . import collimator_analyzer
 from . import grace
@@ -54,16 +54,20 @@ async def run_simulation(sim):
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
         'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
-        'visualizations': scad.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
+        #'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
         'ci': generate_conformity(doses, target),
         'ts': generate_target_to_skin(doses, target),
     }
+
+    photons = {}
+    for key in ['source', 'filter', 'collimator']:
+        photons[key] = sum(bm['stats']['total_photons'] for bm in beamlets[key]) * (2 if sim['reflect'] else 1)
 
     context = {
         'templates': templates,
         'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
         'simulation': sim,
-        'photons': count_photons(beamlets),
+        'photons': photons
     }
 
     # turn futures into our context
@@ -219,12 +223,6 @@ async def generate_contour_plots(doses, phantom, target):
                 contour_plots.setdefault(contour['plane'], []).append(contour)
     return contour_plots
 
-
-def count_photons(beamlets):
-    photons = {}
-    for stage in ['source', 'filter', 'collimator']:
-        photons[stage] = sum(beamlet['stats']['total_photons'] for beamlet in beamlets[stage])
-    return photons
 
 
 

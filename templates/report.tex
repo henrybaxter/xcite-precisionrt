@@ -59,12 +59,12 @@
 \end{itemize}
 
 \subsection{Visualization}
-((* for image in scad_images *))
-	\subsubsection{(((image.description)))}
+((* for shot in screenshots *))
+	\subsubsection{(((shot.description)))}
 	\begin{figure}[H]
 	\centering
-	\includegraphics{(((image.path|strip_extension)))}
-	\caption{(((image.description)))}
+	\includegraphics[resolution=300]{(((shot.path)))}
+	\caption{(((shot.description)))}
 	\end{figure}
 ((* endfor *))
 
@@ -108,7 +108,7 @@
 \section{Results}
 
 \subsection{Efficiency}
-The overall efficiency was ((( (photons['collimator'] / simulation['total-histories'] * 100) | f )))\%.
+
 \begin{table}[H]
 \begin{tabular}{l l l}
 	& Particles & Reduction factor \\

@@ -14,11 +14,7 @@ if platform.system() == 'Darwin':
 
 
 async def make_screenshot(conf, scad_path):
-    # need to make the damn scad path too
-    print(conf)
-    print(scad_path)
-    print(os.path.splitext(scad_path))
-    img_path = os.path.splitext(scad_path)[0] + '.{}.png'.format(conf['name'])
+    img_path = os.path.splitext(scad_path)[0] + '-{}.png'.format(conf['name'])
     camera = conf['translation'] + conf['rotation'] + [conf['distance']]
     camera = list(map(str, camera))
     await run_command([
