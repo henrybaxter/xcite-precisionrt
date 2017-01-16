@@ -238,7 +238,7 @@ def make_phantom_cylinder(length, radius, voxel):
     n_y = int(np.ceil((y_max - y_min) / voxel))
     n_z = int(np.ceil((z_max - z_min) / voxel))
     print(n_x, n_y, n_z)
-    output.append('{} {} {}'.format(n_x, n_y, n_z))
+    output.append('  {} {} {}'.format(n_x, n_y, n_z))
     def ok(f):
         return '{:.8f}'.format(f)
     x_boundaries = np.linspace(x_min, x_max, n_x + 1)
@@ -254,7 +254,6 @@ def make_phantom_cylinder(length, radius, voxel):
     y_centers = (y_boundaries[1:] + y_boundaries[:-1]) / 2
     z_centers = (z_boundaries[1:] + z_boundaries[:-1]) / 2
     xx, yy, zz = np.meshgrid(x_centers, y_centers, z_centers)
-    print(xx)
     # ok now we need to average
     r2 = np.square(radius - voxel)
     # now we need to find anything inside the cylinder, and we assume anything along y is, so
@@ -267,6 +266,7 @@ def make_phantom_cylinder(length, radius, voxel):
     for z in range(n_z):
         for x in range(n_x):
             output.append(''.join(map(str, mediums[x, :, z])))
+        output.append('')
     for z in range(n_z):
         for x in range(n_x):
             densities = [media_densities[i-1] for i in mediums[x, :, z]]
