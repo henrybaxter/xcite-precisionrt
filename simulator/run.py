@@ -40,10 +40,14 @@ async def main():
 async def go(sim):
     start = time.time()
     logger.warning('Starting {}'.format(sim['name']))
-    await simulate.run_simulation(sim)
-    logger.info('Finished in {:.2f} seconds'.format(time.time() - start))
-    logger.info('Output in {}'.format(sim['directory']))
-    upload_report(sim)
+    try:
+        await simulate.run_simulation(sim)
+    except Exception as e:
+        logger.error(e)
+    else:
+        logger.info('Finished in {:.2f} seconds'.format(time.time() - start))
+        logger.info('Output in {}'.format(sim['directory']))
+        upload_report(sim)
 
 
 def read_local():
