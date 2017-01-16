@@ -23,7 +23,7 @@ Row/Block 6 — error values array (relative errors, nxnynz values)
 
 
 Dose = namedtuple('Dose', ['boundaries', 'doses', 'errors'])
-Phantom = namedtuple('Phantom', ['medium_types', 'boundaries', 'medium_indices', 'densities'])
+Phantom = namedtuple('Phantom', ['medias', 'boundaries', 'indices', 'densities'])
 Target = namedtuple('Target', ['isocenter', 'radius'])
 
 logger = logging.getLogger(__name__)
@@ -356,49 +356,61 @@ def write_3ddose(path, dose):
         # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
         # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
         for boundary in boundaries:
-            f.write(' '.join(map(fmt, boundary)) + '\n')
+            f.write(' '.join('{:.4f}'.format(v) for v in boundary + '\n'))
         f.write(' '.join(['{:.4E}'.format(v) for v in dose.doses.swapaxes(0, 2).reshape(-1)]) + '\n')
         f.write(' '.join(['{:.16f}'.format(v) for v in dose.errors.swapaxes(0, 2).reshape(-1)]) + '\n')
 
 ESTEPE = 0
 
 
-# egsphant? read it in and dose it so
 def read_egsphant(path):
     with open(path) as f:
-        values = iter_values(f)
-        medium_types = list(islice(values, int(next(values))))
-        estepes = islice(values, len(medium_types))  # skip ESTEPE dummy values
-        for estepe in estepes:
-            assert int(float(estepe)) == ESTEPE
-        shape = np.fromiter(values, np.int32, 3)
-        size = np.prod(shape)
-        boundaries = [np.fromiter(values, np.float32, n + 1) for n in shape]
-
-        def medium_indices(values, shape):
-            # just read it in and reshape it
-            # read in shape[0] * shape[1] lines
-            n_lines = int(shape[0] * shape[1])
-            for xline in islice(values, n_lines):
-                for index in xline:
-                    yield index
-        medium_indices = np.fromiter(medium_indices(values, shape), np.int32, size).reshape(shape)
-        densities = np.fromiter(values, np.float32, size).reshape(shape)
-        return Phantom(medium_types, boundaries, medium_indices, densities)
+        n_medias = int(f.readline())
+        medias = []
+        for i in range(n_medias):
+            medias.append(f.readline().strip())
+        for i in range(n_medias):
+            f.readline()  # skip ESTEPE
+        shape = np.fromstring(f.readline(), np.int32, sep=' ')
+        boundaries = [np.fromstring(f.readline(), np.float32, sep=' ') for i in range(3)]
+        indices = []
+        for z in range(shape[2]):
+            f.readline()  # skip a line
+            slices = []
+            for y in range(shape[1]):
+                slices.append(np.array(list(map(int, f.readline().strip()))))
+            indices.append(slices)
+        densities = []
+        for z in range(shape[2]):
+            f.readline()
+            slices = []
+            for y in range(shape[1]):
+                slices.append(np.fromstring(f.readline(), np.float32, sep=' '))
+            densities.append(slices)
+        indices = np.array(indices).reshape(shape[::-1]).swapaxes(0, 2)
+        densities = np.array(densities).reshape(shape[::-1]).swapaxes(0, 2)
+        return Phantom(medias, boundaries, indices, densities)
 
 
 def write_egsphant(path, phantom):
     with open(path, 'w') as f:
-        f.write(str(len(phantom.medium_types)) + '\n')
-        for medium in phantom.medium_types:
-            f.write(medium + '\n')
-        f.write(' '.join([ESTEPE for i in range(len(phantom.medium_types))]) + '\n')
-        f.write(' '.join([str(len(boundary) - 1) for boundary in phantom.boundaries]) + '\n')
+        f.write(' ' + str(len(phantom.medias)) + '\n')
+        for media in phantom.medias:
+            f.write(media + '\n')
+        for media in phantom.medias:
+            f.write('  {:.6f}'.format(ESTEPE) + '\n')
+        f.write('  ' + ' '.join(str(n) for n in phantom.indices.shape) + '\n')
         for boundary in phantom.boundaries:
             f.write(' '.join(['{:.6f}'.format(b) for b in boundary]) + '\n')
-        for zslice in phantom.medium_indices:
+        for zslice in phantom.indices.swapaxes(0, 2):
+            f.write('\n')
             for y in zslice:
                 f.write(''.join([str(x) for x in y]) + '\n')
+        for zslice in phantom.densities.swapaxes(0, 2):
+            f.write('\n')
+            for y in zslice:
+                f.write(' '.join('{:.4E}'.format(x) for x in y) + '\n')
+        f.write('\n\n')
 
 
 
@@ -452,8 +464,10 @@ if __name__ == '__main__':
     parser.add_argument('output', nargs='?')
     args = parser.parse_args()
     #write_3ddose(args.output, read_3ddose(args.input))
-    target = Target(np.array([0, 10, -10]), 4)
-    dose = read_3ddose('reports/Stamped-1-row-0.2mm-Septa/dose/arc.3ddose')
-    print(paddick(dose, target))
+    #target = Target(np.array([0, 10, -10]), 4)
+    #dose = read_3ddose('reports/Stamped-1-row-0.2mm-Septa/dose/arc.3ddose')
+    phant = read_egsphant(args.input)
+    write_egsphant(args.output, phant)
+    #print(paddick(dose, target))
     #print(dvh(dose, target))
 
