@@ -314,15 +314,12 @@ def _read_3ddose(path):
     with open(path) as f:
         # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
         shape = np.fromstring(f.readline(), np.int32, sep=' ')
-        print(shape)
         # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
         # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
         # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
         boundaries = [np.fromstring(f.readline(), np.float32, sep=' ') for n in shape]
-        print(boundaries)
         # Row/Block 5 — dose values array (nxnynz values)
         doses = np.fromstring(f.readline(), np.float32, sep=' ')
-        print(doses)
         doses = doses.reshape(shape[::-1]).swapaxes(0, 2)
         # Row/Block 6 — error values array (relative errors, nxnynz values)
         errors = np.fromstring(f.readline(), np.float32, sep=' ').reshape(shape[::-1]).swapaxes(0, 2)
@@ -347,8 +344,6 @@ def write_npz(path, dose):
 
 def write_3ddose(path, dose):
     print('Writing {}'.format(path))
-    print(dose.doses.shape)
-    print(dose.errors.shape)
     assert len(dose.doses.shape) == 3, "Doses must be 3d array"
     assert len(dose.errors.shape) == 3, "Errors must be 3d array"
     with open(path, 'w') as f:

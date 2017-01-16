@@ -101,3 +101,12 @@ septa = 0.02
 hole-height = 1.0
 target-shape = "circle"
 
+# test!
+[[simulations]]
+name = "Test"
+summary = "Test (converging collimator with 0.2mm septa)."
+beam-height = 0.2
+[simulations.collimator]
+septa = 0.02
+hole-width = 0.2
+target-shape = "point"

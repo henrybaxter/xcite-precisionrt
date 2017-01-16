@@ -29,7 +29,7 @@ lesion-diameter = 1.0
 
 dose-recycle = 99
 dose-photon-splitting = 20
-phantom-isocenter = [0, 20, -10]
+phantom-isocenter = [0, 10, 0]
 phantom = "phantoms/20cm-2mm-cylinder.egsphant"
 
 beamnrc-template = "templates/template.egsinp"
