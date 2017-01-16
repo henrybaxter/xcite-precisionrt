@@ -36,5 +36,3 @@ phantom = "phantoms/20cm-2mm-cylinder.egsphant"
 beamnrc-template = "templates/template.egsinp"
 stationary-dose-template = "templates/dose_template.egsinp"
 arc-dose-template = "templates/arc_dose_template.egsinp"
-
-no-dose = true

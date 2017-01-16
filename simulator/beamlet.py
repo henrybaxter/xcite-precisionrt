@@ -18,12 +18,6 @@ async def simulate(sim, templates, index, y):
     logger.info('{} - simulated filter'.format(index))
     collimated_beamlet = await collimate(sim, templates['collimator'], filtered_beamlet)
     logger.info('{} - simulated collimator'.format(index))
-    if sim['no-dose']:
-        return {
-            'source': source_beamlet,
-            'filter': filtered_beamlet,
-            'collimator': collimated_beamlet,
-        }
     if sim['reflect']:
         reflected_beamlet = await reflect(collimated_beamlet)
         dose = regroup(await asyncio.gather(*[
