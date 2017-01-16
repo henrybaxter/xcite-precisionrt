@@ -114,7 +114,9 @@ DEFAULT_LEVELS = [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
 
 
 async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEVELS):
-    inputs = [egsphant_path, dose_path, target, output_slug, levels]
+    iso = target.isocenter.tolist()
+    rad = target.radius
+    inputs = [egsphant_path, dose_path, iso, rad, output_slug, levels]
     base = hashlib.md5(json.dumps(inputs).encode('utf-8')).hexdigest()
     # this actually generates three files. let's make it functional? or what...
     dose = py3ddose.read_3ddose(dose_path)

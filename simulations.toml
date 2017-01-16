@@ -52,6 +52,8 @@ name = "Stamped - 1 row - 0.2mm Septa - detailed"
 summary = "Similar to stamped collimator, using a single row, with 0.2mm septa, and a detailed phantom."
 beam-height = 0.2
 phantom = "phantoms/20cm-1mm-cylinder.egsphant"
+dose-recycle = 99
+phantom-isocenter = [0, 10, -10]
 [simulations.collimator]
 septa = 0.02
 hole-width = 0.2

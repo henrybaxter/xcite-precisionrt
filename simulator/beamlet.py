@@ -165,7 +165,7 @@ async def collimate(sim, template, source_beamlet):
 
     if not os.path.exists(beamlet['phsp']):
         # simulate
-        remove(beamlet['phsp'])
+        remove(temp_phsp)
         with open(beamlet['egsinp'], 'w') as f:
             f.write(egsinp_str)
         command = [name, '-p', sim['pegs4'], '-i', os.path.basename(beamlet['egsinp'])]
