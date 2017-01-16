@@ -272,6 +272,7 @@ def make_phantom_cylinder(length, radius, voxel):
         for x in range(n_x):
             densities = [media_densities[i-1] for i in mediums[x, :, z]]
             output.append(' '.join(densities))
+        output.append('')
     output.append('')
     output.append('')
     open('test.egsphant', 'w').write("\n".join(output))
@@ -513,7 +514,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.input = natsorted(args.input)
     if args.phantom:
-        make_phantom_cylinder(20, 10, .2)
+        make_phantom_cylinder(20, 10, .1)
     elif args.dvh:
         dose = read_3ddose(args.input[0])
         target = Target(np.array([0, 20, -10]), 1)
