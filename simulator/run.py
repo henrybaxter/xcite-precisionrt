@@ -43,7 +43,7 @@ async def go(sim):
     try:
         await simulate.run_simulation(sim)
     except Exception as e:
-        logger.error(e)
+        logger.exception(e)
     else:
         logger.info('Finished in {:.2f} seconds'.format(time.time() - start))
         logger.info('Output in {}'.format(sim['directory']))
@@ -54,7 +54,7 @@ def read_local():
     with open('local.toml') as f:
         local = toml.load(f)
     assert local['server']
-    assert local['beam-height'] in [0.2, 0.5, 1.0]
+    assert local['beam-height'] in [0.2, 1.0]
     return local
 
 
@@ -105,12 +105,13 @@ def claim(simulation):
     s3 = boto3.resource('s3')
     key = os.path.join(os.path.basename(simulation['directory']), 'claimed.toml')
     try:
-        s3.Object('xcite-simulations', key).get()
+        remote = toml.loads(s3.Object('xcite-simulations', key).get()['Body'].read())
     except BotoClientError:
         body = io.BytesIO(toml.dumps(simulation).encode('utf-8'))
         s3.Object('xcite-simulations', key).put(Body=body)
         return True
-    return False
+    else:
+        return simulation['server'] == remote['server']
 
 
 def upload_report(sim):
@@ -167,4 +168,6 @@ def verify_sim(sim):
     for key in reserved:
         if key in sim:
             raise KeyError('{} is a reserved keyword'.format(key))
+    sim['collimator']['lesion-distance'] = sim['lesion-distance']
+    sim['collimator']['lesion-diameter'] = sim['lesion-diameter']
     return sim

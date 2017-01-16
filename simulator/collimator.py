@@ -102,6 +102,7 @@ def calculate_dx(conf, ingress, center, egress, iterations=1000):
 
 
 def make_blocks(conf):
+    assert 'lesion-diameter' in conf
     if conf['rows'] % 2 == 0:
         raise ValueError('Only an odd number of rows is supported')
     conf['septa-x'] = conf.get('septa-x', conf.get('septa'))
