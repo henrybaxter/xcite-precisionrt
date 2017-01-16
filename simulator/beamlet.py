@@ -6,7 +6,7 @@ import hashlib
 import json
 
 from . import egsinp
-from .utils import run_command, read_3ddose, copy, remove, XCITE_DIR, regroup
+from .utils import run_command, read_3ddose, remove, XCITE_DIR, regroup
 
 logger = logging.getLogger(__name__)
 
@@ -249,7 +249,7 @@ async def simulate_dose(sim, beamlet, egsinp_str, index, phimin=0, phimax=0):
         with open(dose['egslst'], 'w') as f:
             f.write(out)
         # use side effect to generate npz
-        dose['dose'] = await read_3ddose(dose['3ddose'])  
+        dose['dose'] = await read_3ddose(dose['3ddose'])
         remove(dose['3ddose'])  # save some space now we have npz
 
     return dose
