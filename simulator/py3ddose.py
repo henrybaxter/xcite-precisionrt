@@ -83,7 +83,7 @@ def optimize_stt(paths, target, output):
     print('skin indices shape', skin_indices)
     skin_indices = np.ravel_multi_index(skin_indices, dims=[100, 100, 100])
     print('skin indices shape', skin_indices.shape)
-    
+
     centers = [(b[1:] + b[:-1]) / 2 for b in boundaries]
     translated = centers - target.isocenter[:, np.newaxis]
     d2 = reduce(np.add.outer, np.square(translated))
@@ -125,7 +125,7 @@ def optimize_stt(paths, target, output):
 
     print(list(final_weights))
     logger.info('Have final weights, now applying them')
-    
+
     logger.info('Done')
 
 
@@ -166,6 +166,112 @@ def optimize_stt_(paths, target):
 
 # what about total dose to skin over total dose to target?
 # or what about maximum normalized skin dose to maximum target dose?
+
+def dose_to_grays(dose, minutes=30, milliamps=200):
+    # what about number of electrons though?
+    seconds = float(minutes) * 60
+    amps = float(milliamps) / 1000
+    return dose * amps * seconds / (1.602176 * np.power(10, -19.0))
+
+
+def dvh(dose, target):
+    """
+    Assumptions:
+
+        - dose.boundaries is x, y, z
+        - dose.doses is z, y, x
+        - target.isocenter is x, y, z
+        - target.radius
+    """
+    # temporary hack for bad 3ddose read/writing, we swap x and z to fix it
+    doses = np.swapaxes(dose.doses, 0, 2)
+    centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
+    translated = centers - target.isocenter[:, np.newaxis]
+    v = volumes(dose.boundaries)
+    d2 = reduce(np.add.outer, np.square(translated))
+    r2 = np.square(target.radius)
+    in_target = d2 < r2
+    # target_volume = np.sum(v[np.where(in_target)])
+    print(dose_to_grays(np.mean(doses[np.where(in_target)])) / (74 * 24))
+    print(dose_to_grays(np.min(doses[np.where(in_target)])) / (74 * 24))
+    print(dose_to_grays(np.max(doses[np.where(in_target)])) / (74 * 24))
+
+    # so we take the minimum? the max? take the max
+    BINS = 1000
+    # more than 0 grays, 100% of volume
+    # more than 1 grays, 99% of volume...
+    # ok so then we find
+    # more than 0 grays
+    # more than 1 grays
+    # more than 2 grays..
+    max_dose = np.max(doses)
+    dose_increment = max_dose / (BINS - 1)
+    target_volume = np.sum(v[np.where(in_target)])
+    result = []
+    for i in range(BINS):
+        current = i * dose_increment
+        greater_than_current = doses > current
+        should_count = np.logical_and(in_target, greater_than_current)
+        percent_vol = np.sum(v[np.where(should_count)]) / target_volume
+        print(current, percent_vol)
+        result.append((dose_to_grays(current) / (74 * 24), percent_vol))
+    return result
+
+
+def make_phantom_cylinder(length, radius, voxel):
+    # two layers of voxels that are not air
+    y_max = length / 2
+    y_min = -y_max
+    x_max = radius
+    x_min = -x_max
+    z_max = radius
+    z_min = -z_max
+    output = []
+    media_types = ['Air_516kV', 'ICRUTISSUE516']
+    media_densities = ['1.240000e-03', '1']
+    output.append(str(len(media_types)))
+    for media in media_types:
+        output.append(media)
+    for media in media_types:
+        output.append('0.000000')
+    n_x = int(np.ceil((x_max - x_min) / voxel))
+    n_y = int(np.ceil((y_max - y_min) / voxel))
+    n_z = int(np.ceil((z_max - z_min) / voxel))
+    print(n_x, n_y, n_z)
+    output.append('{} {} {}'.format(n_x, n_y, n_z))
+    def ok(f):
+        return '{:.8f}'.format(f)
+    x_boundaries = np.linspace(x_min, x_max, n_x + 1)
+    output.append(' '.join(map(ok, x_boundaries)))
+    y_boundaries = np.linspace(y_min, y_max, n_y + 1)
+    output.append(' '.join(map(ok, y_boundaries)))
+    z_boundaries = np.linspace(z_min, z_max, n_z + 1)
+    output.append(' '.join(map(ok, z_boundaries)))
+    # ok now we check to see if it's in the cylinder.
+    # we assume the cylinder stretches the whole length, but we miss two voxels on either side (or .8mm?)
+    # no, two voxels.
+    x_centers = (x_boundaries[1:] + x_boundaries[:-1]) / 2
+    y_centers = (y_boundaries[1:] + y_boundaries[:-1]) / 2
+    z_centers = (z_boundaries[1:] + z_boundaries[:-1]) / 2
+    xx, yy, zz = np.meshgrid(x_centers, y_centers, z_centers)
+    print(xx)
+    # ok now we need to average
+    r2 = np.square(radius - voxel)
+    # now we need to find anything inside the cylinder, and we assume anything along y is, so
+    # x = np.square(x_centers) <= r2h
+    # z = np.square(z_centers) <= r2h
+    in_cylinder = np.square(xx) + np.square(zz) <= r2
+    mediums = np.ones((n_x, n_y, n_z), dtype=np.int32)
+    mediums[in_cylinder] = 2
+    # print(mediums)
+    for z in range(n_z):
+        for x in range(n_x):
+            output.append(''.join(map(str, mediums[x, :, z])))
+    for z in range(n_z):
+        for x in range(n_x):
+            densities = [media_densities[i-1] for i in mediums[x, :, z]]
+            output.append(' '.join(densities))
+    open('test.egsphant', 'w').write("\n".join(output))
 
 
 def paddick(dose, target):
@@ -387,6 +493,8 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='+')
+    parser.add_argument('--dvh', action='store_true')
+    parser.add_argument('--phantom', action='store_true')
     parser.add_argument('--test-3ddose', action='store_true')
     parser.add_argument('--test-egsphant', action='store_true')
     parser.add_argument('--dose')
@@ -401,7 +509,13 @@ if __name__ == '__main__':
     parser.add_argument('--optimize-stt', action='store_true')
     args = parser.parse_args()
     args.input = natsorted(args.input)
-    if args.compress:
+    if args.phantom:
+        make_phantom_cylinder(20, 10, .1)
+    elif args.dvh:
+        dose = read_3ddose(args.input[0])
+        target = Target(np.array([0, 20, -10]), 1)
+        dvh(dose, target)
+    elif args.compress:
         read_3ddose(args.input[0])
         os.remove(args.input[0])
     elif args.decompress:

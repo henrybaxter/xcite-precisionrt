@@ -108,11 +108,17 @@ def make_blocks(conf):
     conf['septa-y'] = conf.get('septa-y', conf.get('septa'))
     if conf['septa-x'] < 0 or conf['septa-y'] < 0:
         raise ValueError('Only non-negative septa values are supported')
-    x_radius = conf['hole-width'] / 2
-    if 'hole-height' in conf:
+    if 'hole-width' in conf and 'hole-height' in conf:
+        x_radius = conf['hole-width'] / 2
         y_radius = conf['hole-height'] / 2
-    else:
+    elif 'hole-width' in conf:
+        x_radius = conf['hole-width'] / 2
         y_radius = x_radius * 2 / np.sqrt(3)
+    elif 'hole-height' in conf:
+        y_radius = conf['hole-height'] / 2
+        x_radius = y_radius * np.sqrt(3) / 2
+    else:
+        raise KeyError('hole-width or hole-height or both required')
     ingress = np.array([
         # the order matters for ease of constructing the endcaps
         (-x_radius, -y_radius / 2),

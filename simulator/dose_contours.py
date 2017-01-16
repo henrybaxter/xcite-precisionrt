@@ -1,5 +1,7 @@
 import os
 import platform
+import hashlib
+import json
 
 import matplotlib
 if platform.system() == 'Darwin':
@@ -112,6 +114,9 @@ DEFAULT_LEVELS = [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
 
 
 async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEVELS):
+    inputs = [egsphant_path, dose_path, target, output_slug, levels]
+    base = hashlib.md5(json.dumps(inputs).encode('utf-8')).hexdigest()
+    # this actually generates three files. let's make it functional? or what...
     dose = py3ddose.read_3ddose(dose_path)
     phantom = py3ddose.read_egsphant(egsphant_path)
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
@@ -150,10 +155,10 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
 
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
-        
+
         slug = 'contour_{}_{}'.format(x_name, y_name)
 
-        
+
         # bottom axis is Y
         X = centers[x_axis]
         Y = centers[y_axis]
@@ -182,7 +187,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
                     points.append(vv[0])
                 paths.append(points)
         plt.clabel(cs, fontsize=8, fmt='%2.0f')
-        
+
         filename = slug + '.pdf'
         subfolder = os.path.join('contours', output_slug)
         os.makedirs(subfolder, exist_ok=True)
