@@ -220,8 +220,8 @@ def dvh(dose, target):
 
 def make_phantom_cylinder(length, radius, voxel):
     # two layers of voxels that are not air
-    y_max = length / 2
-    y_min = -y_max
+    y_max = length
+    y_min = 0
     x_max = radius
     x_min = -x_max
     z_max = radius
@@ -229,24 +229,24 @@ def make_phantom_cylinder(length, radius, voxel):
     output = []
     media_types = ['Air_516kV', 'ICRUTISSUE516']
     media_densities = ['1.240000e-03', '1']
-    output.append(str(len(media_types)))
+    output.append(' {}'.format(len(media_types)))
     for media in media_types:
         output.append(media)
     for media in media_types:
-        output.append('0.000000')
+        output.append('  0.000000')
     n_x = int(np.ceil((x_max - x_min) / voxel))
     n_y = int(np.ceil((y_max - y_min) / voxel))
     n_z = int(np.ceil((z_max - z_min) / voxel))
     print(n_x, n_y, n_z)
     output.append('  {} {} {}'.format(n_x, n_y, n_z))
     def ok(f):
-        return '{:.8f}'.format(f)
+        return '{:.6f}'.format(f)
     x_boundaries = np.linspace(x_min, x_max, n_x + 1)
-    output.append(' '.join(map(ok, x_boundaries)))
+    output.append('  '.join(map(ok, x_boundaries)))
     y_boundaries = np.linspace(y_min, y_max, n_y + 1)
-    output.append(' '.join(map(ok, y_boundaries)))
+    output.append('  '.join(map(ok, y_boundaries)))
     z_boundaries = np.linspace(z_min, z_max, n_z + 1)
-    output.append(' '.join(map(ok, z_boundaries)))
+    output.append('  '.join(map(ok, z_boundaries)))
     # ok now we check to see if it's in the cylinder.
     # we assume the cylinder stretches the whole length, but we miss two voxels on either side (or .8mm?)
     # no, two voxels.
@@ -263,6 +263,7 @@ def make_phantom_cylinder(length, radius, voxel):
     mediums = np.ones((n_x, n_y, n_z), dtype=np.int32)
     mediums[in_cylinder] = 2
     # print(mediums)
+    output.append('')
     for z in range(n_z):
         for x in range(n_x):
             output.append(''.join(map(str, mediums[x, :, z])))
@@ -271,6 +272,8 @@ def make_phantom_cylinder(length, radius, voxel):
         for x in range(n_x):
             densities = [media_densities[i-1] for i in mediums[x, :, z]]
             output.append(' '.join(densities))
+    output.append('')
+    output.append('')
     open('test.egsphant', 'w').write("\n".join(output))
 
 
@@ -510,7 +513,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.input = natsorted(args.input)
     if args.phantom:
-        make_phantom_cylinder(20, 10, .1)
+        make_phantom_cylinder(20, 10, .2)
     elif args.dvh:
         dose = read_3ddose(args.input[0])
         target = Target(np.array([0, 20, -10]), 1)
