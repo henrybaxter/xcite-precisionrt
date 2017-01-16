@@ -314,12 +314,16 @@ def _read_3ddose(path):
     with open(path) as f:
         # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
         shape = np.fromstring(f.readline(), np.int32, sep=' ')
+        print(shape)
         # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
         # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
         # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
         boundaries = [np.fromstring(f.readline(), np.float32, sep=' ') for n in shape]
+        print(boundaries)
         # Row/Block 5 — dose values array (nxnynz values)
-        doses = np.fromstring(f.readline(), np.float32, sep=' ').reshape(shape[::-1]).swapaxes(0, 2)
+        doses = np.fromstring(f.readline(), np.float32, sep=' ')
+        print(doses)
+        doses = doses.reshape(shape[::-1]).swapaxes(0, 2)
         # Row/Block 6 — error values array (relative errors, nxnynz values)
         errors = np.fromstring(f.readline(), np.float32, sep=' ').reshape(shape[::-1]).swapaxes(0, 2)
         return Dose(boundaries, doses, errors)
@@ -356,8 +360,10 @@ def write_3ddose(path, dose):
         # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
         # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
         for boundary in boundaries:
-            f.write(' '.join('{:.4f}'.format(v) for v in boundary + '\n'))
+            f.write(' '.join(['{:.4f}'.format(v) for v in boundary]) + '\n')
+        # Row/Block 5 — dose values array (nxnynz values)
         f.write(' '.join(['{:.4E}'.format(v) for v in dose.doses.swapaxes(0, 2).reshape(-1)]) + '\n')
+        # Row/Block 6 — error values array (relative errors, nxnynz values)
         f.write(' '.join(['{:.16f}'.format(v) for v in dose.errors.swapaxes(0, 2).reshape(-1)]) + '\n')
 
 ESTEPE = 0
@@ -460,14 +466,23 @@ def normalize_3ddose(path, output_path):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument('input')
-    parser.add_argument('output', nargs='?')
+    parser.add_argument('input', nargs='+')
+    parser.add_argument('--decompress', '-x', action='store_true')
+    parser.add_argument('--output', '-o')
     args = parser.parse_args()
+    if args.decompress:
+        for inp in args.input:
+            dose = read_3ddose(inp)
+            write_3ddose(inp.replace('.npz', ''), dose)
     #write_3ddose(args.output, read_3ddose(args.input))
     #target = Target(np.array([0, 10, -10]), 4)
     #dose = read_3ddose('reports/Stamped-1-row-0.2mm-Septa/dose/arc.3ddose')
-    phant = read_egsphant(args.input)
-    write_egsphant(args.output, phant)
+    else:
+        dose = read_3ddose(args.input[0])
+        write_3ddose(args.output, dose)
+
+    #    phant = read_egsphant(args.input)
+    #    write_egsphant(args.output, phant)
     #print(paddick(dose, target))
     #print(dvh(dose, target))
 
