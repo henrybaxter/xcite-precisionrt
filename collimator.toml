@@ -1,16 +1,6 @@
-precision = 0.01
-length = 10.0
-rows = 1
-diameter = 75.0
-rowcaps = false
-rmax = 50.0
-blocks = 10
-septa = 0.0
-lesion-distance = 40.0
+septa = 0.02
+hole-width = 0.2
+target-shape = "point"
 lesion-diameter = 1.0
-
-target-distribution = "center"
-target-shape = "circle"
-
-hole-width = 0.4
-# hole-height = 0.8
+lesion-distance = 40.0
+rows = 5

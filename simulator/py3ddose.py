@@ -1,14 +1,11 @@
 import os
 import argparse
 import logging
-import filecmp
-from itertools import islice, chain
 from collections import namedtuple
-from functools import reduce, partial
+from functools import reduce
 
 import numpy as np
 import scipy.optimize as optimize
-from natsort import natsorted
 
 """
 http://nrc-cnrc.github.io/EGSnrc/doc/pirs794-dosxyznrc.pdf
@@ -46,6 +43,8 @@ def volumes(boundaries):
 
 def target_to_skin(dose, target):
     # skin based on first medium density change?
+    # if we knew the area of skin affected?
+    # how do we choose it? how about we use 2cmx2cmx4mm
     skin_indices = [[2] * 25, list(range(48, 53)) * 5, list(range(48, 53)) * 5]
     skin_mean = np.sum(dose.doses[skin_indices]) / 25
     logger.info('Found skin mean {}'.format(skin_mean))
@@ -122,8 +121,6 @@ def optimize_stt(paths, target, output):
     # generate a weighted 3ddose file
     weight_3ddose(paths, output, final_weights)
 
-
-    print(list(final_weights))
     logger.info('Have final weights, now applying them')
 
     logger.info('Done')
@@ -412,7 +409,6 @@ def write_egsphant(path, phantom):
             for y in zslice:
                 f.write(' '.join('{:.4E}'.format(x) for x in y) + '\n')
         f.write('\n\n')
-
 
 
 def combine_3ddose(paths, output_path):

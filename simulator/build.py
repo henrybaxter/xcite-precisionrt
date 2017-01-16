@@ -144,11 +144,7 @@ async def build_collimator(sim):
     template = get_egsinp(sim['beamnrc-template'])
     template['cms'] = []
     if 'path' in sim['collimator']:
-        collimator = get_egsinp(sim['collimator']['path'])
-        cms = [cm for cm in collimator['cms'] if cm['type'] == 'BLOCK']
-        if 'lesion-distance' not in sim['collimator']:
-            sim['collimator']['lesion-distance'] = cms[0]['zfocus'] - cms[0]['zmin'] - cms[-1]['zmax']
-            logger.warning('Inferred lesion distance of {}'.format(sim['collimator']['lesion-distance']))
+        raise NotImplementedError('No longer implemented, should do it though')
     else:
         # this one sets the lesion distance too
         collimator = make_collimator(template, sim['collimator'])

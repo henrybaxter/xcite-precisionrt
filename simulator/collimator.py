@@ -153,7 +153,7 @@ def make_blocks(conf):
 
     # now add the rows
     for center, ingress, egress in rows[:]:
-        for i in range(conf['rows'] // 2 + 1):
+        for i in range(1, conf['rows'] // 2 + 1):
             xy = i * dy + (i % 2) * dx / 2
             rows.append((center + xy, ingress + xy, make_egress(conf, ingress + xy, center + xy)))
         i += 1
@@ -164,15 +164,15 @@ def make_blocks(conf):
             rows.append((center + xy, ingress[:3] + xy, make_egress(conf, ingress[:3] + xy, center[:3] + xy)))
 
     # finally reflect around y, BUT skip the first row
-    pairs = []
-    for xy, ingress, egress in rows:
-        pairs.append((ingress, egress))
-
     for xy, ingress, egress in rows[columns:]:
         xy, ingress, egress = np.copy(xy), np.copy(ingress), np.copy(egress)
         xy[1] *= -1
         ingress[:, 1] *= -1
         egress[:, 1] *= -1
+        rows.append((xy, ingress, egress))
+
+    pairs = []
+    for xy, ingress, egress in rows:
         pairs.append((ingress, egress))
 
     # now let's build some rows.
@@ -190,7 +190,7 @@ def make_blocks(conf):
             # egress is at z = conf['length']
             # need to find the point between
             # now since the
-            regions.append(interpolate(ingress, egress, (i + 0.5) * block_length, conf['length']))
+            regions.append(interpolate(ingress, egress, i * block_length, conf['length']))
             # here we need to interpolate between them
         blocks.append({
             'zmin': z,

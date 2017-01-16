@@ -26,6 +26,7 @@ target-length = 75.0
 target-angle = 45.0
 
 lesion-diameter = 1.0
+lesion-distance = 40.0
 
 dose-recycle = 99
 dose-photon-splitting = 20
@@ -36,3 +37,4 @@ beamnrc-template = "templates/template.egsinp"
 stationary-dose-template = "templates/dose_template.egsinp"
 arc-dose-template = "templates/arc_dose_template.egsinp"
 
+no-dose = true

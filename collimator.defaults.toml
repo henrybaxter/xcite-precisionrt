@@ -7,11 +7,7 @@ rmax = 50.0
 blocks = 10
 septa-x = 0.0
 septa-y = 0.0
-lesion-distance = 40.0
-lesion-diameter = 1.0
-
 target-distribution = "center"
-target-shape = "circle"
 
 # hole-width = 0.4
 # hole-height = 0.8
