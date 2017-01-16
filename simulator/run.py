@@ -28,7 +28,7 @@ async def main():
             logger.warning('Skipping (beam height != {}) {}'.format(
                 local['beam-height'], sim['name']))
             continue
-        if os.path.basename(args.directory) == os.path.basename(sim['directory']):
+        if args.directory and os.path.basename(args.directory) == os.path.basename(sim['directory']):
             await go(sim)
             continue
         if not claim(sim) and not args.force:
