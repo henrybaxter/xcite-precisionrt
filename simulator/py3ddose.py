@@ -184,7 +184,6 @@ def dvh(dose, target):
         - target.radius
     """
     # temporary hack for bad 3ddose read/writing, we swap x and z to fix it
-    doses = np.swapaxes(dose.doses, 0, 2)
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
     translated = centers - target.isocenter[:, np.newaxis]
     v = volumes(dose.boundaries)
@@ -192,29 +191,29 @@ def dvh(dose, target):
     r2 = np.square(target.radius)
     in_target = d2 < r2
     # target_volume = np.sum(v[np.where(in_target)])
-    print(dose_to_grays(np.mean(doses[np.where(in_target)])) / (74 * 24))
-    print(dose_to_grays(np.min(doses[np.where(in_target)])) / (74 * 24))
-    print(dose_to_grays(np.max(doses[np.where(in_target)])) / (74 * 24))
+    print(dose_to_grays(np.mean(dose.doses[np.where(in_target)])) / (74 * 24))
+    print(dose_to_grays(np.min(dose.doses[np.where(in_target)])) / (74 * 24))
+    print(dose_to_grays(np.max(dose.doses[np.where(in_target)])) / (74 * 24))
 
     # so we take the minimum? the max? take the max
-    BINS = 1000
+    BINS = 100
     # more than 0 grays, 100% of volume
     # more than 1 grays, 99% of volume...
     # ok so then we find
     # more than 0 grays
     # more than 1 grays
     # more than 2 grays..
-    max_dose = np.max(doses)
+    max_dose = np.max(dose.doses)
     dose_increment = max_dose / (BINS - 1)
     target_volume = np.sum(v[np.where(in_target)])
     result = []
     for i in range(BINS):
         current = i * dose_increment
-        greater_than_current = doses > current
+        greater_than_current = dose.doses > current
         should_count = np.logical_and(in_target, greater_than_current)
         percent_vol = np.sum(v[np.where(should_count)]) / target_volume
-        print(current, percent_vol)
-        result.append((dose_to_grays(current) / (74 * 24), percent_vol))
+        # print(current, percent_vol)
+        result.append((dose_to_grays(current), percent_vol))
     return result
 
 
@@ -282,22 +281,27 @@ def paddick(dose, target):
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
     translated = centers - target.isocenter[:, np.newaxis]
     index = np.argmin(np.abs(translated), axis=1)
-    reference_dose = dose.doses[tuple(index)]
+    print(index)
+    print('boundaries', dose.boundaries[0][index[0]], dose.boundaries[1][index[1]], dose.boundaries[2][index[2]])
+    reference_dose = np.max(dose.doses)
     normalized = dose.doses / reference_dose
+    print('max normalized', np.max(normalized))
     # get target volume
     # by finding indices of all points in a volume and finding their volume
     v = volumes(dose.boundaries)
     d2 = reduce(np.add.outer, np.square(translated))
     r2 = np.square(target.radius)
     in_target = d2 < r2
-    in_dosed = normalized >= reference_dose * .8
+    in_dosed = dose.doses >= 1e-19
     in_both = np.logical_and(in_target, in_dosed)
     target_volume = np.sum(v[np.where(in_target)])
+    print('target volume', target_volume)
     dosed_volume = np.sum(v[np.where(in_dosed)])
+    print('dosed volume', dosed_volume)
     both_volume = np.sum(v[np.where(in_both)])
     # print('target volume', target_volume)
     # print('dosed volume', dosed_volume)
-    # print('both volume', both_volume)
+    print('both volume', both_volume)
     underdosed = both_volume / target_volume
     overdosed = both_volume / dosed_volume
     # higher is better
@@ -308,22 +312,16 @@ def paddick(dose, target):
 
 def _read_3ddose(path):
     with open(path) as f:
-        values = iter_values(f)
         # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
-        shape = np.fromiter(values, np.int32, 3)  # shape in x, y, z
+        shape = np.fromstring(f.readline(), np.int32, sep=' ')
         # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
         # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
         # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
-        boundaries = np.flipud([np.fromiter(values, np.float32, n + 1) for n in shape])
-        shape = np.flipud(shape)
-        size = np.prod(shape)
-        # print(boundaries)
+        boundaries = [np.fromstring(f.readline(), np.float32, sep=' ') for n in shape]
         # Row/Block 5 — dose values array (nxnynz values)
-        doses = np.fromiter(values, np.float32, size).reshape(shape)
-        # print(doses)
+        doses = np.fromstring(f.readline(), np.float32, sep=' ').reshape(shape[::-1]).swapaxes(0, 2)
         # Row/Block 6 — error values array (relative errors, nxnynz values)
-        errors = np.fromiter(values, np.float32, size).reshape(shape)
-        # print(errors)
+        errors = np.fromstring(f.readline(), np.float32, sep=' ').reshape(shape[::-1]).swapaxes(0, 2)
         return Dose(boundaries, doses, errors)
 
 
@@ -331,9 +329,12 @@ def read_3ddose(path):
     if path.endswith('.npz'):
         path = ''.join(path.rsplit('.npz', 1))
     npz_path = path + '.npz'
-    if not os.path.exists(npz_path):
-        np.savez_compressed(npz_path, **_read_3ddose(path)._asdict())
-    return Dose(**np.load(npz_path))
+    if os.path.exists(npz_path):
+        return Dose(**np.load(npz_path))
+    else:
+        dose = _read_3ddose(path)
+        write_npz(npz_path, dose)
+        return dose
 
 
 def write_npz(path, dose):
@@ -341,21 +342,23 @@ def write_npz(path, dose):
 
 
 def write_3ddose(path, dose):
+    print('Writing {}'.format(path))
+    print(dose.doses.shape)
+    print(dose.errors.shape)
     assert len(dose.doses.shape) == 3, "Doses must be 3d array"
     assert len(dose.errors.shape) == 3, "Errors must be 3d array"
     with open(path, 'w') as f:
-        boundaries = np.flipud(dose.boundaries)
+        boundaries = dose.boundaries
+
         # Row/Block 1 — number of voxels in x,y,z directions (e.g., nx, ny, nz)
-        write_lines(f, [len(boundary) - 1 for boundary in boundaries], 'integer')
+        f.write(' '.join(map(str, np.array(dose.doses.shape))) + '\n')
         # Row/Block 2 — voxel boundaries (cm) in x direction(nx +1 values)
         # Row/Block 3 — voxel boundaries (cm) in y direction (ny +1 values)
         # Row/Block 4 — voxel boundaries (cm) in z direction(nz +1 values)
         for boundary in boundaries:
-            write_lines(f, boundary, 'float')
-        # Row/Block 5 — dose values array (nxnynz values)
-        write_lines(f, np.nditer(dose.doses), 'scientific')
-        # Row/Block 6 — error values array (relative errors, nxnynz values)
-        write_lines(f, np.nditer(dose.errors), 'scientific')
+            f.write(' '.join(map(fmt, boundary)) + '\n')
+        f.write(' '.join(['{:.4E}'.format(v) for v in dose.doses.swapaxes(0, 2).reshape(-1)]) + '\n')
+        f.write(' '.join(['{:.16f}'.format(v) for v in dose.errors.swapaxes(0, 2).reshape(-1)]) + '\n')
 
 ESTEPE = 0
 
@@ -397,57 +400,6 @@ def write_egsphant(path, phantom):
             for y in zslice:
                 f.write(''.join([str(x) for x in y]) + '\n')
 
-
-def write_lines(f, values, typ=None):
-    values = iter(values)
-    if typ == 'integer':
-        def fmt(v):
-            return str(v)
-    elif typ == 'float':
-        def fmt(v):
-            v = float(v)
-            s = '{:.4f}'.format(v)
-            if v < 0:
-                return s[:7]
-            else:
-                return s[:6]
-    elif typ == 'scientific':
-        def fmt(v):
-            return '{:.4E}'.format(float(v))
-    else:
-        def fmt(v):
-            return str(v)
-
-    while True:
-        to_write = [fmt(v) for v in islice(values, 5)]
-        if not to_write:
-            break
-        f.write(' '.join(to_write) + '\n')
-
-
-def iter_values(f):
-    return chain(*[line.split() for line in f])
-
-
-def apply_dose(phantom):
-    # for now assume dosing of 1 and sphere of size 5 starting at the origin
-    radius = 2
-    radius_2 = radius * radius
-    origin = np.array([-10, 20, 0])
-    doses = np.zeros(phantom.medium_indices.shape)
-    errors = np.zeros(phantom.medium_indices.shape)
-    errors.fill(0.1)
-    for x in range(len(phantom.boundaries[0]) - 1):
-        for y in range(len(phantom.boundaries[1]) - 1):
-            for z in range(len(phantom.boundaries[2]) - 1):
-                corner = np.array([phantom.boundaries[0][x], phantom.boundaries[1][y], phantom.boundaries[2][z]])
-                vector = corner - origin
-                r_2 = np.square(vector).sum()
-                if r_2 < radius_2:
-                    doses[x, y, z] = 1
-                    # drop off is exponential and zero after radius
-                    # doses[x, y, z] = 1 - np.power(norm / radius, 10)
-    return Dose(phantom.boundaries, doses, errors)
 
 
 def combine_3ddose(paths, output_path):
@@ -496,86 +448,12 @@ def normalize_3ddose(path, output_path):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument('input', nargs='+')
-    parser.add_argument('--dvh', action='store_true')
-    parser.add_argument('--phantom', action='store_true')
-    parser.add_argument('--test-3ddose', action='store_true')
-    parser.add_argument('--test-egsphant', action='store_true')
-    parser.add_argument('--dose')
-    parser.add_argument('--combine')
-    parser.add_argument('--normalize')
-    parser.add_argument('--weight')
-    parser.add_argument('--errors', action='store_true')
-    parser.add_argument('--describe', action='store_true')
-    parser.add_argument('--compress', action='store_true')
-    parser.add_argument('--decompress', action='store_true')
-    parser.add_argument('--paddick', action='store_true')
-    parser.add_argument('--optimize-stt', action='store_true')
+    parser.add_argument('input')
+    parser.add_argument('output', nargs='?')
     args = parser.parse_args()
-    args.input = natsorted(args.input)
-    if args.phantom:
-        make_phantom_cylinder(20, 10, .1)
-    elif args.dvh:
-        dose = read_3ddose(args.input[0])
-        target = Target(np.array([0, 20, -10]), 1)
-        dvh(dose, target)
-    elif args.compress:
-        read_3ddose(args.input[0])
-        os.remove(args.input[0])
-    elif args.decompress:
-        for path in args.input:
-            dose = read_3ddose(path)
-            write_3ddose(path.replace('.npz', ''), dose)
-    elif args.errors:
-        dose = read_3ddose(args.input[0])
-        print('{} unique error values'.format(np.unique(dose.errors).size))
-    elif args.combine:
-        combine_3ddose(args.input, args.combine)
-    elif args.weight:
-        weight_3ddose(args.input, args.weight, np.ones(len(args.input)))
-    elif args.describe:
-        assert len(args.input) == 1
-        path = args.input[0]
-        if path.endswith('.3ddose'):
-            dose = read_3ddose(args.input[0])
-        elif path.endswith('.egsphant'):
-            phantom = read_egsphant(args.input[0])
-            for axis, label in enumerate(['x', 'y', 'z']):
-                print('{} [{}, {}]'.format(label, phantom.boundaries[axis][0], phantom.boundaries[axis][-1]))
-        else:
-            raise ValueError("Cannot describe {} files".format(path.split('.')[1]))
-    elif args.normalize:
-        assert len(args.input) == 1
-        normalize_3ddose(args.input[0], args.normalize)
-    elif args.test_3ddose:
-        test_path = args.input + '.test'
-        write_3ddose(test_path, read_3ddose(args.input))
-        if not filecmp.cmp(args.input, test_path):
-            print('Files {} and {} differ'.format(args.input, test_path))
-    elif args.test_egsphant:
-        test_path = args.input + '.test'
-        write_egsphant(test_path, read_egsphant(args.input))
-        if not filecmp.cmp(args.input, test_path):
-            print('Files {} and {} differ'.format(args.input, test_path))
-    elif args.dose:
-        phantom = read_egsphant(args.input[0])
-        dose = apply_dose(phantom)
-        write_3ddose(args.dose, dose)
-    elif args.paddick:
-        dose = read_3ddose(args.input[0])
-        # target is in x, y, z coordinates
-        target_origin = np.array([-10, 20, 0])
-        target_radius = 2
-        target = Target(target_origin, target_radius)
-        print('paddick', paddick(dose, target))
-        print('skin to target ratio', stt(dose, target))
-    elif args.optimize_stt:
-        target_origin = np.array([-10, 20, 0])
-        target_radius = 1
-        target = Target(target_origin, target_radius)
-        optimize_stt(args.input, target, args.optimize_stt)
-    else:
-        dose1 = read_3ddose(args.input)
-        dose2 = read_3ddose(args.input)
-        result = dose2.doses - dose1.doses
-        print(result)
+    #write_3ddose(args.output, read_3ddose(args.input))
+    target = Target(np.array([0, 10, -10]), 4)
+    dose = read_3ddose('reports/Stamped-1-row-0.2mm-Septa/dose/arc.3ddose')
+    print(paddick(dose, target))
+    #print(dvh(dose, target))
+

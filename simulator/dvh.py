@@ -27,10 +27,10 @@ def plot_dvh(data):
     Assumes data is a 2d array of shape
     """
     x, y = zip(*data)
+    print('x', x)
+    print('y', y)
     x = np.array(x)
     y = np.array(y)
-    xnew = np.linspace(x.min(), y.max(), 300)
-    ysmooth = spline(x, y, xnew)
     plt.plot(x, y)
     plt.ylabel('some numbers')
     plt.show()
@@ -41,6 +41,6 @@ if __name__ == '__main__':
     parser.add_argument('input', nargs='+')
     args = parser.parse_args()
     dose = read_3ddose(args.input[0])
-    target = Target(np.array([0, 20, -10]), 1)
+    target = Target(np.array([0, 10, -10]), 1)
     result = dvh(dose, target)
     plot_dvh(result)

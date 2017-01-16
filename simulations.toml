@@ -1,67 +1,40 @@
-# this is the master document of all simulations
-# ideally all of them are completely defined by this file
-# for ease of development/fixes, there are sub components that are largely separate:
-# - simulations can run using a simulation.toml
-# - grace plots can be generated using grace.toml
-# - collimators can be generated using collimator.toml
-# - collimators can be used directly with collimator = "path.egsinp"
-# - scad screenshots can be used directly with scad.toml
+# magdalena's
+# .2mm to .5mm septa
+# 1 row vs 5 rows
+# converging vs diverging
 
 
 # magdalena's
 
 [[simulations]]
 name = "Magdalena - 2mm Beam"
-summary = "Magdalena's original collimator with a 2mm electron beam."
+summary = "Magdalena's collimator with a 2mm electron beam."
 beam-height = 0.2
 [simulations.collimator]
 path = "collimators/magdalena-collimator-1.egsinp"
 
-
-[[simulations]]
-name = "Magdalena - 5mm Beam"
-summary = "Magdalena's original collimator with a 5mm electron beam."
-beam-height = 0.5
-[simulations.collimator]
-path = "collimators/magdalena-collimator-1.egsinp"
-
-
-
 [[simulations]]
 name = "Magdalena - 10mm Beam"
-summary = "Magdalena's original collimator with a 10mm electron beam."
+summary = "Magdalena's collimator with a 10mm electron beam."
 beam-height = 1.0
 [simulations.collimator]
 path = "collimators/magdalena-collimator-1.egsinp"
 
 
-# stamped
+# septas
 
 [[simulations]]
-name = "Stamped - 1 row - 0.2mm Septa"
-summary = "Similar to stamped collimator, using a single row, with 0.2mm septa."
+name = "Converging - 0.2mm Septa"
+summary = "Converging collimator with 0.2mm septa."
 beam-height = 0.2
 [simulations.collimator]
 septa = 0.02
 hole-width = 0.2
 target-shape = "point"
 
-
 [[simulations]]
-name = "Stamped - 1 row - 0.2mm Septa - detailed"
-summary = "Similar to stamped collimator, using a single row, with 0.2mm septa, and a detailed phantom."
-beam-height = 0.2
-phantom = "phantoms/20cm-1mm-cylinder.egsphant"
-dose-recycle = 99
-phantom-isocenter = [0, 10, -10]
-[simulations.collimator]
-septa = 0.02
-hole-width = 0.2
-target-shape = "point"
-
-[[simulations]]
-name = "Stamped - 1 row - 0.3mm Septa"
-summary = "Similar to stamped collimator, using a single row, with 0.3mm septa."
+name = "Converging - 0.3mm Septa"
+summary = "Converging collimator with 0.3mm septa."
 beam-height = 0.2
 [simulations.collimator]
 septa = 0.03
@@ -69,8 +42,8 @@ hole-width = 0.2
 target-shape = "point"
 
 [[simulations]]
-name = "Stamped - 1 row - 0.4mm Septa"
-summary = "Similar to stamped collimator, using a single row, with 0.4mm septa."
+name = "Converging - 0.4mm Septa"
+summary = "Converging collimator with 0.4mm septa."
 beam-height = 0.2
 [simulations.collimator]
 septa = 0.04
@@ -78,90 +51,53 @@ hole-width = 0.2
 target-shape = "point"
 
 [[simulations]]
-name = "Stamped - 1 row - 0.5mm Septa"
-summary = "Similar to stamped collimator, using a single row, with 0.5mm septa."
+name = "Converging - 0.5mm Septa"
+summary = "Converging collimator with 0.5mm septa."
 beam-height = 0.2
 [simulations.collimator]
 septa = 0.05
 hole-width = 0.2
 target-shape = "point"
 
+# multiple row
+
 [[simulations]]
-name = "Stamped - 5 row - 0.2mm Septa"
-summary = "Similar to stampled collimator, using five rows, 10mm beam, and a 0.2mm septa."
+name = "Converging - 5 row - 0.5mm Septa"
+summary = "Converging collimator, using five rows, 10mm beam, and a 0.5mm septa."
 beam-height = 1.0
 [simulations.collimator]
-septa = 0.02
+septa = 0.05
 rows = 5
-hole-width = 0.2
+hole-height = 0.2
 target-shape = "point"
 
 
 # diverging
 
 [[simulations]]
-name = "Diverging - 1 row - 2mm hole - 0.2mm Septa - 1cm Lesion"
-summary = "Diverging version of stamped collimator. Single row, 2mm hole width, and a 0.2mm septa."
-beam-height = 0.2
-[simulations.collimator]
-septa = 0.02
-hole-width = 0.2
-target-shape = "circle"
-
-
-[[simulations]]
-name = "Diverging - with caps - 1 row - 2mm hole - 0.2mm Septa - 1cm Lesion"
-summary = "Diverging version of stamped collimator. Single row, 2mm hole width, and a 0.2mm septa."
-beam-height = 0.2
-[simulations.collimator]
-septa = 0.02
-hole-width = 0.2
-target-shape = "circle"
-rowcaps = true
-
-[[simulations]]
-name = "Diverging - with caps - 1 row - 3mm hole - 0.2mm Septa - 1cm Lesion"
-summary = "Diverging version of stamped collimator. Single row, 2mm hole width, and a 0.2mm septa."
-beam-height = 0.2
-[simulations.collimator]
-septa = 0.02
-hole-width = 0.3
-target-shape = "circle"
-rowcaps = true
-
-
-[[simulations]]
-name = "Diverging - 5 rows"
-summary = "Diverging version of collimator with 5 rows, 2mm hole width, 0.2mm septa, at a 1cm lesion."
+name = "Diverging - 1cm Lesion"
+summary = "Diverging collimator. Single row, 2mm hole width, and a 0.2mm septa."
 beam-height = 1.0
-phantom = "phantoms/20cm-2mm-cylinder.egsphant"
 [simulations.collimator]
 septa = 0.02
-rows = 5
-hole-width = 0.2
+hole-height = 1.0
 target-shape = "circle"
 
 [[simulations]]
-name = "Stamped - 5 rows"
-summary = "Stamped version of collimator with 5 rows, 2mm hole width, 0.2mm septa, at a 1cm lesion."
+name = "Diverging - 2cm Lesion"
+summary = "Diverging collimator. Single row, 4mm hole width, and a 0.2mm septa."
 beam-height = 1.0
-phantom = "phantoms/20cm-2mm-cylinder.egsphant"
 [simulations.collimator]
 septa = 0.02
-rows = 5
-hole-width = 0.2
-target-shape = "point"
-
-# larger lesions
-[[simulations]]
-name = "Diverging - 4cm lesion"
-summary = "Some stuff"
-beam-height = 1.0
-phantom = "phantoms/20cm-2mm-cylinder.egsphant"
-lesion-diameter = 4
-[simulations.colimator]
-septa = 0.02
-rows = 1
-hole-width = 1.0
+hole-height = 1.0
 target-shape = "circle"
-lesion-diameter = 4
+
+[[simulations]]
+name = "Diverging - 4cm Lesion"
+summary = "Diverging collimator. Single row, 8mm hole width, and a 0.2mm septa."
+beam-height = 1.0
+[simulations.collimator]
+septa = 0.02
+hole-height = 1.0
+target-shape = "circle"
+
