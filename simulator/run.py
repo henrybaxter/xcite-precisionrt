@@ -35,7 +35,7 @@ async def main():
             logger.warning('Skipping (claimed) {}'.format(sim['name']))
             continue
         await go(sim)
-        
+
 
 async def go(sim):
     start = time.time()
@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument('--force', action='store_true')
     parser.add_argument('--directory')
     parser.add_argument('--histories', type=float)
-    parser.add_argument('--operations',type=int, default=None)
+    parser.add_argument('--operations', type=int, default=None)
     return parser.parse_args()
 
 
@@ -111,18 +111,29 @@ def claim(simulation):
 
 def upload_report(sim):
     s3 = boto3.client('s3')
-    path = os.path.join(sim['directory'], 'report.pdf')
+    report_path = os.path.join(sim['directory'], 'report.pdf')
     slug = os.path.basename(sim['directory'])
-    key = os.path.join(slug, slug + '.pdf')
-    with open(path, 'rb') as f:
+    report_key = os.path.join(slug, slug + '.pdf')
+    with open(report_path, 'rb') as f:
         s3.put_object(
             Bucket='xcite-simulations',
-            Key=key,
+            Key=report_key,
             Body=f,
             ACL='public-read'
         )
-    url = 'https://s3-us-west-2.amazonaws.com/xcite-simulations/' + key
+    url = 'https://s3-us-west-2.amazonaws.com/xcite-simulations/' + report_key
     logger.info('Report uploaded to {}'.format(url))
+    for filename in os.listdir(os.path.join(sim['directory'], 'dose')):
+        path = os.path.join(sim['directory'], 'dose', filename)
+        logger.info('Uploading {}'.format(path))
+        dose_key = os.path.join(os.path.basename(sim['directory']), 'dose', os.path.basename(path))
+        with open(path, 'rb') as f:
+            s3.put_object(
+                Bucket='xcite-simulations',
+                Key=dose_key,
+                Body=f,
+                ACL='public-read'
+            )
 
 
 def verify_sim(sim):

@@ -14,7 +14,7 @@ from beamviz import visualize
 from . import py3ddose
 from . import dose_contours
 from . import build
-from .utils import run_command, read_3ddose, force_symlink, regroup
+from .utils import run_command, force_symlink, regroup
 from . import beamlet
 from . import screenshots
 
@@ -44,7 +44,7 @@ async def run_simulation(sim):
     os.makedirs(sim['directory'], exist_ok=True)
     collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
     force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
-    scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
+    # scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
 
     # combine beamlets
     phsp, doses = await asyncio.gather(*[
@@ -54,7 +54,7 @@ async def run_simulation(sim):
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
         'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
-        #'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
+        # 'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
         'ci': generate_conformity(doses, target),
         'ts': generate_target_to_skin(doses, target),
     }
@@ -76,7 +76,11 @@ async def run_simulation(sim):
         context[key] = await future
 
     # symlink the combined data, beamlets, charts, etc
-    await link_supporting_files(sim, context, phsp, doses)
+    link_phsp(sim['directory'], phsp)
+    link_doses(sim['directory'], doses)
+    link_doselets(sim['directory'], beamlets)
+    link_contours(sim['directory'], context['contour_plots'])
+    link_grace(sim['directory'], context['grace_plots'])
 
     report.generate(sim, context)
 
@@ -127,10 +131,13 @@ def generate_y(target_length, spacing, reflect):
             result.insert(0, -y)
     return result
 
+
+"""
 async def optimize_stationary(sim, doses):
     sz = len(doses['stationary'])
     coeffs = np.polyfit([0, sz // 2, sz - 1], [4, 1, 4], 2)
     w = np.polyval(coeffs, np.arange(0, sz))
+"""
 
 
 async def generate_templates(sim):
@@ -147,54 +154,63 @@ async def generate_templates(sim):
     return templates
 
 
-async def link_supporting_files(sim, context, phsp, doses):
-    # combined phase space files, which should go in their onwn...
-    # or we could walk it and symlink it...
-    # no.
-    # we use the path they gave us (a relpath)
+def link_phsp(output_dir, phsp):
+    folder = os.path.join(output_dir, 'phsp')
+    os.makedirs(folder, exist_ok=True)
     for key, path in phsp.items():
         source = os.path.abspath(path)
-        link_name = os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))
+        link_name = os.path.join(folder, 'sampled_{}.egsphsp'.format(key))
         force_symlink(source, link_name)
+
+
+def link_contours(output_dir, contours):
+    folder = os.path.join(output_dir, 'contours')
     try:
-        shutil.rmtree(os.path.join(sim['directory'], 'contours'))
+        shutil.rmtree(folder)
     except OSError:
         pass
-    shutil.copytree('contours', os.path.join(sim['directory'], 'contours'))
+    shutil.copytree('contours', folder)
 
-    os.makedirs(os.path.join(sim['directory'], 'grace'), exist_ok=True)
-    for plot_type, plots in context['grace_plots'].items():
+
+def link_grace(output_dir, grace_plots):
+    # symlink grace plots
+    folder = os.path.join(output_dir, 'grace')
+    os.makedirs(folder, exist_ok=True)
+    for plot_type, plots in grace_plots.items():
         for plot in plots:
             for typ in ['grace', 'eps']:
                 plot['path'] = os.path.join('grace', plot['slug'])
                 source = os.path.abspath(plot[typ])
-                link_name = os.path.join(sim['directory'], 'grace', plot['slug'] + '.' + typ)
+                link_name = os.path.join(folder, plot['slug'] + '.' + typ)
                 force_symlink(source, link_name)
+
+
+def link_doses(output_dir, doses):
+    folder = os.path.join(output_dir, 'dose')
+    os.makedirs(folder, exist_ok=True)
     for key, path in doses.items():
         source = os.path.abspath(path)
-        link_name = os.path.join(sim['directory'], '{}.3ddose.npz'.format(key))
-        force_symlink(source, link_name)
-    return
-    for subfolder in ['dose/stationary', 'dose/arc']:
-        os.makedirs(os.path.join(sim['directory'], subfolder), exist_ok=True)
-    logger.info('Linking combined phase space files')
-    for key in ['source', 'filter', 'collimator']:
-        source = os.path.abspath(combined[key])
-        link_name = os.path.join(sim['directory'], 'sampled_{}.egsphsp'.format(key))
+        link_name = os.path.join(folder, '{}.3ddose.npz'.format(key))
         force_symlink(source, link_name)
 
-    logger.info('Loading grace configuration')
 
-    os.makedirs(os.path.join(sim['directory'], 'grace'), exist_ok=True)
-    for plot_type, plots in grace_plots.items():
-        for plot in plots:
-            for ext in ['grace', 'eps']:
-                source = os.path.abspath(plot[ext])
-                relpath = os.path.join('grace', plot['slug'] + '.' + ext)
-                link_name = os.path.join(sim['directory'], relpath)
-                plot['path'] = relpath
-                force_symlink(source, link_name)
-    path = os.path.join(sim['directory'], 'dose/arc/arc{}_{}_{}.3ddose.npz'.format(index, phimin, phimax))
+def link_doselets(output_dir, beamlets):
+    folder = os.path.join(output_dir, 'doselets')
+    os.makedirs(folder, exist_ok=True)
+    keys = ['stationary', 'arc']
+    for key in keys:
+        doselets = beamlets[key]
+        if key == 'arc':
+            doselets = flatten(doselets)
+        os.makedirs(os.path.join(folder, key), exist_ok=True)
+        for doselet in doselets:
+            source = doselet['npz']
+            if 'phimin' in doselet:
+                slug = '{}-{}-{}'.format(doselet['index'], doselet['phimin'], doselet['phimax'])
+            else:
+                slug = str(doselet['index'])
+            link_name = os.path.join(folder, key, slug + '.3ddose.npz')
+            force_symlink(source, link_name)
 
 
 async def generate_conformity(doses, target):
@@ -227,9 +243,6 @@ async def generate_contour_plots(doses, phantom, target):
     return contour_plots
 
 
-
-
-
 async def combine_phsp(beamlets, reflect):
     operations = {
         'source': sample_combine(beamlets['source'], reflect),
@@ -238,23 +251,27 @@ async def combine_phsp(beamlets, reflect):
     }
     return {name: await future for name, future in operations.items()}
 
+
 async def dose_combine(doses):
     # ok we need to take the hash of each, eg 3ddose path
     base = hashlib.md5(('combined' + json.dumps([d['3ddose'] for d in doses])).encode('utf-8')).hexdigest()
     os.makedirs('combined', exist_ok=True)
-    path = os.path.join('combined', base + '.3ddose.npz')
-    if not os.path.exists(path):
+    npz_path = os.path.join('combined', base + '.3ddose.npz')
+    # dose_path = os.path.join('combined', base + '.3ddose')
+    if not os.path.exists(npz_path):
         _dose = None
         _doses = []
         for dose in doses:
             if 'dose' not in dose:
                 dose['dose'] = py3ddose.read_3ddose(dose['npz'])
             _doses.append(dose['dose'].doses)
-            _dose =dose['dose']
+            _dose = dose['dose']
         combined = np.array(_doses).sum(axis=0)
         result = py3ddose.Dose(_dose.boundaries, combined, _dose.errors)
-        py3ddose.write_npz(path, result)
-    return path
+        # py3ddose.write_3ddose(dose_path, result)
+        py3ddose.write_npz(npz_path, result)
+    return npz_path
+
 
 async def optimize_stationary(doses):
     return await dose_combine(doses)
@@ -263,11 +280,13 @@ async def optimize_stationary(doses):
 async def optimize_arc(doses):
     return await dose_combine(flatten(doses))
 
+
 def flatten(ls):
     result = []
     for l in ls:
         result.extend(l)
     return result
+
 
 async def combine_dose(beamlets):
     return {
@@ -276,7 +295,6 @@ async def combine_dose(beamlets):
         'stationary-weighted': await optimize_stationary(beamlets['stationary']),
         'arc-weighted': await optimize_arc(beamlets['arc'])
     }
-    
 
 
 async def run_beamlets(sim, templates, y_values):

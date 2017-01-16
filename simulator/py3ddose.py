@@ -225,6 +225,7 @@ def read_3ddose(path):
         np.savez_compressed(npz_path, **_read_3ddose(path)._asdict())
     return Dose(**np.load(npz_path))
 
+
 def write_npz(path, dose):
     np.savez_compressed(path, **dose._asdict())
 
@@ -395,7 +396,7 @@ if __name__ == '__main__':
     parser.add_argument('--errors', action='store_true')
     parser.add_argument('--describe', action='store_true')
     parser.add_argument('--compress', action='store_true')
-    parser.add_argument('--uncompress', action='store_true')
+    parser.add_argument('--decompress', action='store_true')
     parser.add_argument('--paddick', action='store_true')
     parser.add_argument('--optimize-stt', action='store_true')
     args = parser.parse_args()
@@ -403,9 +404,10 @@ if __name__ == '__main__':
     if args.compress:
         read_3ddose(args.input[0])
         os.remove(args.input[0])
-    elif args.uncompress:
-        dose = read_3ddose(args.input[0])
-        write_3ddose(args.input[0].replace('.npz', ''), dose)
+    elif args.decompress:
+        for path in args.input:
+            dose = read_3ddose(path)
+            write_3ddose(path.replace('.npz', ''), dose)
     elif args.errors:
         dose = read_3ddose(args.input[0])
         print('{} unique error values'.format(np.unique(dose.errors).size))
