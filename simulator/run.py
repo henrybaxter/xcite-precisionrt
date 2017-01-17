@@ -128,9 +128,9 @@ def upload_report(sim):
         )
     url = 'https://s3-us-west-2.amazonaws.com/xcite-simulations/' + report_key
     logger.info('Report uploaded to {}'.format(url))
-    for subfolder in ['dose', 'doselets/arc', 'doselets/stationary']:
+    for subfolder in ['dose']: #, 'doselets/arc', 'doselets/stationary']:
         for filename in os.listdir(os.path.join(sim['directory'], subfolder)):
-            path = os.path.join(sim['directory'], 'dose', filename)
+            path = os.path.join(sim['directory'], subfolder, filename)
             logger.info('Uploading {}'.format(path))
             dose_key = os.path.join(os.path.basename(sim['directory']), subfolder, os.path.basename(path))
             with open(path, 'rb') as f:
