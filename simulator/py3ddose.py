@@ -491,11 +491,16 @@ if __name__ == '__main__':
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--output', '-o')
     parser.add_argument('--max', action='store_true')
+    parser.add_argument('--sum', action='store_true')
     args = parser.parse_args()
     if args.max:
         for inp in args.input:
             dose = read_3ddose(inp)
             print(np.max(dose.doses))
+    elif args.sum:
+        for inp in args.input:
+            dose = read_3ddose(inp)
+            print(np.sum(dose.doses))
     elif args.decompress:
         for inp in args.input:
             dose = read_3ddose(inp)
