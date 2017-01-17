@@ -128,17 +128,18 @@ def upload_report(sim):
         )
     url = 'https://s3-us-west-2.amazonaws.com/xcite-simulations/' + report_key
     logger.info('Report uploaded to {}'.format(url))
-    for filename in os.listdir(os.path.join(sim['directory'], 'dose')):
-        path = os.path.join(sim['directory'], 'dose', filename)
-        logger.info('Uploading {}'.format(path))
-        dose_key = os.path.join(os.path.basename(sim['directory']), 'dose', os.path.basename(path))
-        with open(path, 'rb') as f:
-            s3.put_object(
-                Bucket='xcite-simulations',
-                Key=dose_key,
-                Body=f,
-                ACL='public-read'
-            )
+    for subfolder in ['dose', 'doselets/arc', 'doselets/stationary']:
+        for filename in os.listdir(os.path.join(sim['directory'], subfolder)):
+            path = os.path.join(sim['directory'], 'dose', filename)
+            logger.info('Uploading {}'.format(path))
+            dose_key = os.path.join(os.path.basename(sim['directory']), subfolder, os.path.basename(path))
+            with open(path, 'rb') as f:
+                s3.put_object(
+                    Bucket='xcite-simulations',
+                    Key=dose_key,
+                    Body=f,
+                    ACL='public-read'
+                )
 
 
 def verify_sim(sim):
