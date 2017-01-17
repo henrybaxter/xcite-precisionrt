@@ -14,7 +14,7 @@
 \usepackage{mhchem}
 \usepackage{subfig}
 
-\title{Simulation (((sim['name'])))}
+\title{Simulation Report - (((simulation['name'])))}
 \author{
         Henry Baxter \\
                 Department of Physics and Astronomy\\
@@ -58,6 +58,7 @@
 	\item Total area of holes at exit: \SI{((( collimator_stats['exit_area'] | f )))}{\cm\squared}
 \end{itemize}
 
+((* if screenshots *))
 \subsection{Visualization}
 ((* for shot in screenshots *))
 	\subsubsection{(((shot.description)))}
@@ -67,12 +68,13 @@
 	\caption{(((shot.description)))}
 	\end{figure}
 ((* endfor *))
+((* endif *))
 
 \subsection{Dosing}
 \begin{itemize}
 	\item Lesion diameter: \SI{((( simulation['collimator']['lesion-diameter']  )))}{\cm}
-	\item Target depth: \SI{((( simulation['phantom-isocenter'][2] | abs )))}{\cm}
-	\item Distance from collimator to skin: \SI{((( skin_distance )))}{\cm}
+	\item Target depth: \SI{10.0}{\cm}
+	\item Distance from collimator to skin: \SI{40.0}{\cm}
 \end{itemize}
 
 \section{Pre-Dosing Plots}

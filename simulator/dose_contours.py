@@ -187,6 +187,8 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         subfolder = os.path.join('contours', output_slug)
         os.makedirs(subfolder, exist_ok=True)
         path = os.path.join(subfolder, filename)
+        plt.xlabel(x_name + ' (cm)')
+        plt.ylabel(y_name + ' (cm)')
         plt.savefig(path)
         plane = x_name + y_name
         plots.append({
