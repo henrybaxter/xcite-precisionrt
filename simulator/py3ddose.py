@@ -490,8 +490,13 @@ if __name__ == '__main__':
     parser.add_argument('--decompress', '-x', action='store_true')
     parser.add_argument('--stats', action='store_true')
     parser.add_argument('--output', '-o')
+    parser.add_argument('--max', action='store_true')
     args = parser.parse_args()
-    if args.decompress:
+    if args.max:
+        for inp in args.input:
+            dose = read_3ddose(inp)
+            print(np.max(dose.doses))
+    elif args.decompress:
         for inp in args.input:
             dose = read_3ddose(inp)
             write_3ddose(inp.replace('.npz', ''), dose)

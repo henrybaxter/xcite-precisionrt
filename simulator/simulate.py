@@ -55,7 +55,7 @@ async def run_simulation(sim):
     # combine beamlets
     phsp, doses = await asyncio.gather(*[
         combine_phsp(beamlets, sim['reflect']),
-        combine_dose(beamlets)
+        combine_dose(sim, beamlets)
     ])
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
@@ -232,6 +232,7 @@ async def generate_contour_plots(doses, phantom, target):
     os.makedirs('contours', exist_ok=True)
     futures = []
     for slug, path in doses.items():
+        print(slug, path)
         futures.append(dose_contours.plot(phantom, path, target, slug))
     contours = await asyncio.gather(*futures)
     contour_plots = OrderedDict()
@@ -253,11 +254,15 @@ async def combine_phsp(beamlets, reflect):
 
 async def dose_combine(doses, weights=None):
     # ok we need to take the hash of each, eg 3ddose path
-    base = hashlib.md5(('combined' + json.dumps([d['3ddose'] for d in doses])).encode('utf-8')).hexdigest()
+    inputs = [d['3ddose'] for d in doses]
+    if weights is not None:
+        inputs += list(weights)
+    s = 'combined' + json.dumps(inputs)
+    base = hashlib.md5(s.encode('utf-8')).hexdigest()
     os.makedirs('combined', exist_ok=True)
     npz_path = os.path.join('combined', base + '.3ddose.npz')
     # dose_path = os.path.join('combined', base + '.3ddose')
-    if not os.path.exists(npz_path):
+    if not os.path.exists(npz_path) or weights is not None:
         _dose = None
         _doses = []
         for dose in doses:
@@ -266,9 +271,10 @@ async def dose_combine(doses, weights=None):
             _doses.append(dose['dose'].doses)
             _dose = dose['dose']
         _doses = np.array(_doses)
-        print(weights)
-        if weights:
-            _doses *= weights
+        if weights is not None:
+            result = (_doses.T * weights).T
+        else:
+            result = _doses
         result = py3ddose.Dose(_dose.boundaries, _doses.sum(axis=0), _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
         py3ddose.write_npz(npz_path, result)
@@ -293,11 +299,11 @@ def flatten(ls):
     return result
 
 
-async def combine_dose(beamlets):
+async def combine_dose(sim, beamlets):
     return {
         'stationary': await dose_combine(beamlets['stationary']),
         'arc': await dose_combine(flatten(beamlets['arc'])),
-        'stationary-weighted': await optimize_stationary(beamlets['stationary']),
+        'stationary-weighted': await optimize_stationary(sim, beamlets['stationary']),
         'arc-weighted': await optimize_arc(beamlets['arc'])
     }
 

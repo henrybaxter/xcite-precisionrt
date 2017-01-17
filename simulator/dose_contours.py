@@ -16,15 +16,6 @@ from scipy.spatial.distance import pdist
 from . import py3ddose
 
 
-def dose_paths():
-    paths = []
-    d = 'henry-2-1e10'
-    for i in range(374):
-        path = os.path.join(d, 'dose{}.3ddose'.format(i))
-        paths.append(path)
-    return paths
-
-
 def get_beam_doses():
     beams = []
     for path in dose_paths():
@@ -114,12 +105,14 @@ DEFAULT_LEVELS = [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
 
 
 async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEVELS):
+    print('Plotting at dose path', dose_path, output_slug)
     iso = target.isocenter.tolist()
     rad = target.radius
     inputs = [egsphant_path, dose_path, iso, rad, output_slug, levels]
     base = hashlib.md5(json.dumps(inputs).encode('utf-8')).hexdigest()
     # this actually generates three files. let's make it functional? or what...
     dose = py3ddose.read_3ddose(dose_path)
+    print('max dose is', np.max(dose.doses))
     phantom = py3ddose.read_egsphant(egsphant_path)
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
     isocenter = np.argmin(np.abs(centers - target.isocenter[:, np.newaxis]), axis=1)
