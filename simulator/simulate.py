@@ -17,6 +17,7 @@ from . import build
 from .utils import run_command, force_symlink, regroup
 from . import beamlet
 from . import screenshots
+from . import dvh
 
 from . import collimator_analyzer
 from . import grace
@@ -50,19 +51,21 @@ async def run_simulation(sim):
 
     collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
     force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
-    # scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
+    scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
 
     # combine beamlets
     phsp, doses = await asyncio.gather(*[
         combine_phsp(beamlets, sim['reflect']),
         combine_dose(sim, beamlets)
     ])
+
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
         'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
-        # 'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
+        'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
         'ci': generate_conformity(doses, target),
         'ts': generate_target_to_skin(doses, target),
+        'dvh': dvh.plot_dvh(py3ddose.dvh(py3ddose.read_3ddose(doses['arc-weighted']), target))
     }
 
     photons = {}

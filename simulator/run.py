@@ -140,6 +140,18 @@ def upload_report(sim):
                     Body=f,
                     ACL='public-read'
                 )
+    for filename in os.listdir(os.path.join(sim['directory'])):
+        if 'generated' in filename:
+            path = os.path.join(sim['directory'], filename)
+            logger.info('Uploading {}'.format(path))
+            key = os.path.join(os.path.basename(sim['directory']), filename)
+            with open(path, 'rb') as f:
+                s3.put_object(
+                    Bucket='xcite-simulations',
+                    Key=key,
+                    Body=f,
+                    ACL='public-read'
+                )
 
 
 def verify_sim(sim):
