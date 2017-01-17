@@ -262,7 +262,7 @@ async def dose_combine(doses, weights=None):
     os.makedirs('combined', exist_ok=True)
     npz_path = os.path.join('combined', base + '.3ddose.npz')
     # dose_path = os.path.join('combined', base + '.3ddose')
-    if not os.path.exists(npz_path) or weights is not None:
+    if not os.path.exists(npz_path):
         _dose = None
         _doses = []
         for dose in doses:
@@ -275,7 +275,7 @@ async def dose_combine(doses, weights=None):
             result = (_doses.T * weights).T
         else:
             result = _doses
-        result = py3ddose.Dose(_dose.boundaries, _doses.sum(axis=0), _dose.errors)
+        result = py3ddose.Dose(_dose.boundaries, result.sum(axis=0), _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
         py3ddose.write_npz(npz_path, result)
     return npz_path
@@ -288,8 +288,23 @@ async def optimize_stationary(sim, doses):
     return await dose_combine(doses, weights)
 
 
-async def optimize_arc(doses):
-    return await dose_combine(flatten(doses))
+async def optimize_arc(sim, doses):
+    futures = []
+    for _doses in doses:
+        print('optimize_arc step')
+        sz = len(_doses)
+        coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['x-max'], sim['x-min'], sim['x-max']], 2)
+        weights = np.polyval(coeffs, np.arange(0, sz))
+        futures.append(dose_combine(_doses, weights))
+    paths = await asyncio.gather(*futures)
+    sz = len(paths)
+    coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['arc-max'], sim['arc-min'], sim['arc-max']], 2)
+    weights = np.polyval(coeffs, np.arange(0, sz))
+    base = hashlib.md5(json.dumps(paths).encode('utf-8')).hexdigest()
+    path = 'combined/{}.3ddose'.format(base)
+    py3ddose.weight_3ddose(paths, path, weights)
+    py3ddose.read_3ddose(path)
+    return path + '.npz'
 
 
 def flatten(ls):
@@ -304,7 +319,7 @@ async def combine_dose(sim, beamlets):
         'stationary': await dose_combine(beamlets['stationary']),
         'arc': await dose_combine(flatten(beamlets['arc'])),
         'stationary-weighted': await optimize_stationary(sim, beamlets['stationary']),
-        'arc-weighted': await optimize_arc(beamlets['arc'])
+        'arc-weighted': await optimize_arc(sim, beamlets['arc'])
     }
 
 
