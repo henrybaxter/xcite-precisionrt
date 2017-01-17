@@ -141,7 +141,7 @@ def upload_report(sim):
                     ACL='public-read'
                 )
     for filename in os.listdir(os.path.join(sim['directory'])):
-        if 'generated' in filename:
+        if filename in ['collimator.scad']:
             path = os.path.join(sim['directory'], filename)
             logger.info('Uploading {}'.format(path))
             key = os.path.join(os.path.basename(sim['directory']), filename)

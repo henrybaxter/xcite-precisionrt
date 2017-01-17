@@ -31,9 +31,10 @@ def plot_dvh(sim, data):
     print('x', x)
     print('y', y)
     x = np.array(x)
-    y = np.array(y)
+    y = np.array(y) / (74 * 24)
     plt.plot(x, y)
-    plt.ylabel('some numbers')
+    plt.ylabel('Fractional target volume')
+    plt.ylabel('Grays in 30 minutes')
     path = os.path.join(sim['directory'], 'dvh.pdf')
     plt.savefig(path)
     return path

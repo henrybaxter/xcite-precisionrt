@@ -62,10 +62,9 @@ async def run_simulation(sim):
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
         'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
-        'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
+        #'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
         'ci': generate_conformity(doses, target),
         'ts': generate_target_to_skin(doses, target),
-        'dvh': dvh.plot_dvh(py3ddose.dvh(py3ddose.read_3ddose(doses['arc-weighted']), target))
     }
 
     photons = {}
@@ -77,7 +76,8 @@ async def run_simulation(sim):
         'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
         'simulation': sim,
         'photons': photons,
-        'doses': py3ddose.dose_stats(py3ddose.read_3ddose(doses['arc-weighted']), target)
+        'doses': py3ddose.dose_stats(py3ddose.read_3ddose(doses['arc-weighted']), target),
+        'dvh': dvh.plot_dvh(sim, py3ddose.dvh(py3ddose.read_3ddose(doses['arc-weighted']), target))
     }
 
     # turn futures into our context
