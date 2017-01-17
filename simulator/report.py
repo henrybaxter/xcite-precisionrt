@@ -40,6 +40,10 @@ def format_float(f):
     return '{:.2f}'.format(f)
 
 
+def percent(f):
+    return '{}\%'.format(int(f * 100))
+
+
 def get_env():
     env = Environment(loader=FileSystemLoader('.'))
     env.block_start_string = '((*'
@@ -52,6 +56,7 @@ def get_env():
     env.filters['medium'] = translate_medium
     env.filters['strip_extension'] = strip_extension
     env.filters['f'] = format_float
+    env.filters['percent'] = percent
     return env
 
 
