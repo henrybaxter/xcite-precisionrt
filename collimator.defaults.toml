@@ -5,8 +5,6 @@ diameter = 75.0
 rowcaps = false
 rmax = 50.0
 blocks = 10
-septa-x = 0.0
-septa-y = 0.0
 target-distribution = "center"
 
 # hole-width = 0.4
