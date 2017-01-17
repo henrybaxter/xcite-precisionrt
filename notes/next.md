@@ -1,5 +1,23 @@
 NEXT
 
+(1) dose table
+	(1a) dmin/dmax (in target)
+	(1b) d90, d95, d100 (% of target)
+(2) dvh plot
+(3) beam profile plot
+	(3a) with depth
+	(4a) with width (both ways)
+(4) weighting
+	(4a) stationary
+	(4b) arc
+(5) skin to target
+	2cmx2cmx4mm (of skin!)
+(6) screenshots
+	3 shots in report OR STL file with tikz
+(7) realistic CT
+
+DROP the conformity index
+
 - describe the collimator better
 - show quantitative results
 - show in a realistic CT

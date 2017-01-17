@@ -67,7 +67,8 @@ async def run_simulation(sim):
         'templates': templates,
         'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
         'simulation': sim,
-        'photons': photons
+        'photons': photons,
+        'doses': py3ddose.dose_stats(py3ddose.read_3ddose(doses['arc-weighted']), target)
     }
 
     # turn futures into our context

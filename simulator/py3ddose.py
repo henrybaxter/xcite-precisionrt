@@ -171,6 +171,35 @@ def dose_to_grays(dose, minutes=30, milliamps=200):
     return dose * amps * seconds / (1.602176 * np.power(10, -19.0))
 
 
+def dose_stats(dose, target):
+    centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
+    translated = centers - target.isocenter[:, np.newaxis]
+    # v = volumes(dose.boundaries)
+    d2 = reduce(np.add.outer, np.square(translated))
+    r2 = np.square(target.radius)
+    in_target = d2 < r2
+    # minimum dose to 90% of the
+    # find all, flatten, sort, then find top 90%, etc
+    sorted_doses = np.sort(dose.doses[np.where(in_target)].reshape(-1))
+    absolute = {
+        'max': np.max(dose.doses[np.where(in_target)]),
+        'min': np.min(dose.doses[np.where(in_target)]),
+        'mean': np.mean(dose.doses[np.where(in_target)]),
+        '90': np.min(sorted_doses[-int(sorted_doses.size*.9):]),
+        '95': np.min(sorted_doses[-int(sorted_doses.size*.95):]),
+        '100': np.min(dose.doses[np.where(in_target)])
+    }
+    percent = {}
+    for key, value in absolute.items():
+        percent[key] = absolute[key] / absolute['max']
+    for key, value in absolute.items():
+        absolute[key] = dose_to_grays(absolute[key]) / (74 * 24)
+    return {
+        'percent': percent,
+        'absolute': absolute
+    }
+
+
 def dvh(dose, target):
     """
     Assumptions:
@@ -459,6 +488,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='+')
     parser.add_argument('--decompress', '-x', action='store_true')
+    parser.add_argument('--stats', action='store_true')
     parser.add_argument('--output', '-o')
     args = parser.parse_args()
     if args.decompress:
@@ -468,6 +498,13 @@ if __name__ == '__main__':
     #write_3ddose(args.output, read_3ddose(args.input))
     #target = Target(np.array([0, 10, -10]), 4)
     #dose = read_3ddose('reports/Stamped-1-row-0.2mm-Septa/dose/arc.3ddose')
+    elif args.stats:
+        for inp in args.input:
+            print(inp)
+            dose = read_3ddose(inp)
+            target = Target(np.array([0, 10, 0]), 1)
+            import pprint
+            pprint.pprint(dose_stats(dose, target))
     else:
         dose = read_3ddose(args.input[0])
         write_3ddose(args.output, dose)

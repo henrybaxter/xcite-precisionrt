@@ -36,6 +36,8 @@ def status(sim):
 
 def download(sim):
     for item in bucket.objects.filter(Prefix=sim['directory']):
+        if 'doselets' in item.key:
+            continue
         folder = os.path.join('reports', os.path.dirname(item.key))
         os.makedirs(folder, exist_ok=True)
         with open(os.path.join('reports', item.key), 'wb') as f:
