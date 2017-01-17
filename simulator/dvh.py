@@ -7,6 +7,7 @@ target zone, and ignore those that are not. Then we bin by dose amount
 into 100 bins (for smoothness), and find those matching that predicate.
 
 """
+import os
 import platform
 import argparse
 import numpy as np
@@ -22,7 +23,7 @@ import matplotlib.cm as cm
 from .py3ddose import dvh, read_3ddose, Target
 
 
-def plot_dvh(data):
+def plot_dvh(sim, data):
     """
     Assumes data is a 2d array of shape
     """
@@ -33,7 +34,9 @@ def plot_dvh(data):
     y = np.array(y)
     plt.plot(x, y)
     plt.ylabel('some numbers')
-    plt.show()
+    path = os.path.join(sim['directory'], 'dvh.pdf')
+    plt.savefig(path)
+    return path
 
 
 if __name__ == '__main__':
