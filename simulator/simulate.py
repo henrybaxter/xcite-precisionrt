@@ -27,6 +27,13 @@ logger = logging.getLogger(__name__)
 
 
 async def run_simulation(sim):
+
+    try:
+        shutil.rmtree(sim['directory'])
+    except OSError:
+        logger.warning('Could not remove {}'.format(sim['directory']))
+    os.makedirs(sim['directory'])
+
     target = py3ddose.Target(np.array(sim['phantom-isocenter']), sim['lesion-diameter'] / 2)
 
     # figure out the source situation
@@ -41,7 +48,6 @@ async def run_simulation(sim):
     # generate all simulations
     beamlets = await run_beamlets(sim, templates, y_values)
 
-    os.makedirs(sim['directory'], exist_ok=True)
     collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
     force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
     # scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
@@ -131,14 +137,6 @@ def generate_y(target_length, spacing, reflect):
         for y in result[:]:
             result.insert(0, -y)
     return result
-
-
-"""
-async def optimize_stationary(sim, doses):
-    sz = len(doses['stationary'])
-    coeffs = np.polyfit([0, sz // 2, sz - 1], [4, 1, 4], 2)
-    w = np.polyval(coeffs, np.arange(0, sz))
-"""
 
 
 async def generate_templates(sim):
@@ -253,7 +251,7 @@ async def combine_phsp(beamlets, reflect):
     return {name: await future for name, future in operations.items()}
 
 
-async def dose_combine(doses):
+async def dose_combine(doses, weights=None):
     # ok we need to take the hash of each, eg 3ddose path
     base = hashlib.md5(('combined' + json.dumps([d['3ddose'] for d in doses])).encode('utf-8')).hexdigest()
     os.makedirs('combined', exist_ok=True)
@@ -267,15 +265,21 @@ async def dose_combine(doses):
                 dose['dose'] = py3ddose.read_3ddose(dose['npz'])
             _doses.append(dose['dose'].doses)
             _dose = dose['dose']
-        combined = np.array(_doses).sum(axis=0)
-        result = py3ddose.Dose(_dose.boundaries, combined, _dose.errors)
+        _doses = np.array(_doses)
+        print(weights)
+        if weights:
+            _doses *= weights
+        result = py3ddose.Dose(_dose.boundaries, _doses.sum(axis=0), _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
         py3ddose.write_npz(npz_path, result)
     return npz_path
 
 
-async def optimize_stationary(doses):
-    return await dose_combine(doses)
+async def optimize_stationary(sim, doses):
+    sz = len(doses)
+    coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['x-max'], sim['x-min'], sim['x-max']], 2)
+    weights = np.polyval(coeffs, np.arange(0, sz))
+    return await dose_combine(doses, weights)
 
 
 async def optimize_arc(doses):
