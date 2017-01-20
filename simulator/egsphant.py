@@ -20,6 +20,7 @@ def make_phantom_cylinder(length, radius, voxel):
     n_x = int(np.ceil((x_max - x_min) / voxel))
     n_y = int(np.ceil((y_max - y_min) / voxel))
     n_z = int(np.ceil((z_max - z_min) / voxel))
+    print('Total voxels: {}'.format(n_x * n_y * n_z))
     x_boundaries = np.linspace(x_min, x_max, n_x + 1)
     y_boundaries = np.linspace(y_min, y_max, n_y + 1)
     z_boundaries = np.linspace(z_min, z_max, n_z + 1)

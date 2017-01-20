@@ -1,6 +1,5 @@
-rows = 5
-septa = 0.05
+rows = 1
+septa-x = 0.0
+septa-y = 0.0
 hole-width = 0.2
 target-shape = "point"
-lesion-diameter = 1.0
-lesion-distance = 40.0

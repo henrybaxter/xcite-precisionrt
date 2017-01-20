@@ -85,19 +85,22 @@ def parse_args():
 
 
 def read_simulations(args):
-    with open(args.simulations) as f:
-        overrides = toml.load(f)['simulations']
-    with open(args.default_simulation) as f:
-        defaults = toml.load(f)
-    simulations = []
-    for override in overrides:
-        simulation = defaults.copy()
-        simulation.update(override)
+    with open(args.simulations) as fp:
+        simulations = toml.load(fp)['simulations']
+    with open(args.default_simulation) as fp:
+        defaults = toml.load(fp)
+    results = []
+    for sim in simulations:
+        result = defaults.copy()
+        collimator = result['collimator']
+        collimator.update(sim['collimator'])
+        result.update(sim)
+        result['collimator'] = collimator
         if args.histories:
-            simulation['desired-histories'] = args.histories
-        simulation['operations'] = args.operations
-        simulations.append(simulation)
-    return [verify_sim(sim) for sim in simulations]
+            result['desired-histories'] = args.histories
+        result['operations'] = args.operations
+        results.append(result)
+    return [verify_sim(sim) for sim in results]
 
 
 def claim(simulation):
@@ -172,7 +175,7 @@ def verify_sim(sim):
     ints = [
         'desired-histories', 'dose-recycle', 'dose-photon-splitting'
     ]
-    sim['phantom-isocenter'] = list(map(float, sim['phantom-isocenter']))
+    sim['isocenter'] = list(map(float, sim['isocenter']))
     for key in floats:
         sim[key] = float(sim[key])
     for key in ints:
@@ -181,6 +184,4 @@ def verify_sim(sim):
     for key in reserved:
         if key in sim:
             raise KeyError('{} is a reserved keyword'.format(key))
-    sim['collimator']['lesion-distance'] = sim['lesion-distance']
-    sim['collimator']['lesion-diameter'] = sim['lesion-diameter']
     return sim

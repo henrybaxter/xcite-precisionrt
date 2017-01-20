@@ -186,11 +186,14 @@ async def simulate_doses(sim, templates, beamlet, index):
         'ncase': beamlet['stats']['total_photons'] * (sim['dose-recycle'] + 1),
         'nrcycl': sim['dose-recycle'],
         'n_split': sim['dose-photon-splitting'],
-        'dsource': sim['collimator']['lesion-distance'],
+        # careful now. this is the distance from the end of the collimator to the isocenter
+        # the isocenter may not be where the lesion is, depending on how we're trying to do things
+        # so we want the bore diameter, nothing to do with the lesion
+        'dsource': sim['bore-diameter'] / 2,
         'phicol': 0,
-        'x': sim['phantom-isocenter'][0],
-        'y': sim['phantom-isocenter'][1],
-        'z': sim['phantom-isocenter'][2],
+        'x': sim['isocenter'][0],
+        'y': sim['isocenter'][1],
+        'z': sim['isocenter'][2],
         'idat': 1,
         'theta': 180,
     }
