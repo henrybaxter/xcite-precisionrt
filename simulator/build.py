@@ -146,8 +146,9 @@ async def build_collimator(sim):
     if 'path' in sim['collimator']:
         raise NotImplementedError('No longer implemented, should do it though')
     else:
-        # this one sets the lesion distance too
+        logger.info('Constructing collimator geometry')
         collimator = make_collimator(template, sim['collimator'])
+        logger.info('Collimator geometry complete')
         cms = [cm for cm in collimator['cms'] if cm['type'] == 'BLOCK']
     if not cms:
         raise ValueError('No CMs found in collimator')

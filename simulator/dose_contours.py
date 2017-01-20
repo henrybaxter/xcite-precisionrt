@@ -1,34 +1,14 @@
 import os
-import platform
 import hashlib
 import json
 
-import matplotlib
-if platform.system() == 'Darwin':
-    matplotlib.use('Qt5Agg')
-else:
-    matplotlib.use('Agg')
+from . import matplotlibstub  # NOQA
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 from scipy.spatial.distance import pdist
 
 from . import py3ddose
-
-
-def get_beam_doses():
-    beams = []
-    for path in dose_paths():
-        dose = py3ddose.read_3ddose(path)
-        beams.append(dose)
-    return beams
-
-
-def get_combined():
-    doses = []
-    for dose in get_beam_doses():
-        doses.append(dose.doses)
-    return np.array(doses).sum(axis=0)
 
 
 def maximally_distant(points, n):
@@ -123,36 +103,35 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
 
     Z_AXIS, Y_AXIS, X_AXIS = range(3)
     axis_names = {
-        Z_AXIS: 'z',
+        X_AXIS: 'x',
         Y_AXIS: 'y',
-        X_AXIS: 'x'
+        Z_AXIS: 'z'
     }
     plots = []
     for i, z_axis in enumerate([X_AXIS, Y_AXIS, Z_AXIS]):
         if z_axis == X_AXIS:
             x_axis = Y_AXIS
             y_axis = Z_AXIS
-            invert_y = True
-            D = normalized[:, :, isocenter[z_axis]:isocenter[z_axis] + 1]
-            densities = phantom.densities[:, :, isocenter[z_axis]]
+            z = isocenter[z_axis]
+            D = normalized[z:z + 1:, :, :]
+            densities = phantom.densitie[z:z + 1:, :, :]
         elif z_axis == Y_AXIS:
             x_axis = Z_AXIS
             y_axis = X_AXIS
-            invert_y = True
-            D = normalized[:, isocenter[z_axis]:isocenter[z_axis] + 1, :].T
-            densities = phantom.densities[:, isocenter[z_axis], :]
+            z = isocenter[z_axis]
+            D = normalized[:, z:z + 1, :]
+            densities = phantom.densities[:, z:z + 1, :]
         elif z_axis == Z_AXIS:
             x_axis = X_AXIS
             y_axis = Y_AXIS
-            invert_y = True
-            D = normalized[isocenter[z_axis]:isocenter[z_axis] + 1, :, :]
-            densities = phantom.densities[isocenter[z_axis], :, :]
+            z = isocenter[z_axis]
+            D = normalized[:, :, z:z + 1]
+            densities = phantom.densities[:, :, z:z + 1]
 
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
 
         slug = 'contour_{}_{}'.format(x_name, y_name)
-
 
         # bottom axis is Y
         X = centers[x_axis]
@@ -171,8 +150,8 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         plt.imshow(densities,
                    extent=extents, cmap='gray', vmin=0.2, vmax=1.5,
                    interpolation='nearest')
-        if invert_y:
-            plt.gca().invert_yaxis()
+        # if invert_y:
+        #    plt.gca().invert_yaxis()
         cs = plt.contour(X, Y, D, levels=levels, cmap=cm.jet, linewidths=1)
         paths = []
         for i, cc in enumerate(cs.collections):

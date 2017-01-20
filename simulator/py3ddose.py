@@ -20,7 +20,6 @@ Row/Block 6 — error values array (relative errors, nxnynz values)
 
 
 Dose = namedtuple('Dose', ['boundaries', 'doses', 'errors'])
-Phantom = namedtuple('Phantom', ['medias', 'boundaries', 'indices', 'densities'])
 Target = namedtuple('Target', ['isocenter', 'radius'])
 
 logger = logging.getLogger(__name__)
@@ -216,6 +215,7 @@ def dvh(dose, target):
     d2 = reduce(np.add.outer, np.square(translated))
     r2 = np.square(target.radius)
     in_target = d2 < r2
+    print(dose.doses[np.where(in_target)])
     # target_volume = np.sum(v[np.where(in_target)])
     print(dose_to_grays(np.mean(dose.doses[np.where(in_target)])) / (74 * 24))
     print(dose_to_grays(np.min(dose.doses[np.where(in_target)])) / (74 * 24))
@@ -241,66 +241,6 @@ def dvh(dose, target):
         # print(current, percent_vol)
         result.append((dose_to_grays(current), percent_vol))
     return result
-
-
-def make_phantom_cylinder(length, radius, voxel):
-    # two layers of voxels that are not air
-    y_max = length
-    y_min = 0
-    x_max = radius
-    x_min = -x_max
-    z_max = radius
-    z_min = -z_max
-    output = []
-    media_types = ['Air_516kV', 'ICRUTISSUE516']
-    media_densities = ['1.240000e-03', '1']
-    output.append(' {}'.format(len(media_types)))
-    for media in media_types:
-        output.append(media)
-    for media in media_types:
-        output.append('  0.000000')
-    n_x = int(np.ceil((x_max - x_min) / voxel))
-    n_y = int(np.ceil((y_max - y_min) / voxel))
-    n_z = int(np.ceil((z_max - z_min) / voxel))
-    print(n_x, n_y, n_z)
-    output.append('  {} {} {}'.format(n_x, n_y, n_z))
-    def ok(f):
-        return '{:.6f}'.format(f)
-    x_boundaries = np.linspace(x_min, x_max, n_x + 1)
-    output.append('  '.join(map(ok, x_boundaries)))
-    y_boundaries = np.linspace(y_min, y_max, n_y + 1)
-    output.append('  '.join(map(ok, y_boundaries)))
-    z_boundaries = np.linspace(z_min, z_max, n_z + 1)
-    output.append('  '.join(map(ok, z_boundaries)))
-    # ok now we check to see if it's in the cylinder.
-    # we assume the cylinder stretches the whole length, but we miss two voxels on either side (or .8mm?)
-    # no, two voxels.
-    x_centers = (x_boundaries[1:] + x_boundaries[:-1]) / 2
-    y_centers = (y_boundaries[1:] + y_boundaries[:-1]) / 2
-    z_centers = (z_boundaries[1:] + z_boundaries[:-1]) / 2
-    xx, yy, zz = np.meshgrid(x_centers, y_centers, z_centers)
-    # ok now we need to average
-    r2 = np.square(radius - voxel)
-    # now we need to find anything inside the cylinder, and we assume anything along y is, so
-    # x = np.square(x_centers) <= r2h
-    # z = np.square(z_centers) <= r2h
-    in_cylinder = np.square(xx) + np.square(zz) <= r2
-    mediums = np.ones((n_x, n_y, n_z), dtype=np.int32)
-    mediums[in_cylinder] = 2
-    # print(mediums)
-    output.append('')
-    for z in range(n_z):
-        for x in range(n_x):
-            output.append(''.join(map(str, mediums[x, :, z])))
-        output.append('')
-    for z in range(n_z):
-        for x in range(n_x):
-            densities = [media_densities[i-1] for i in mediums[x, :, z]]
-            output.append(' '.join(densities))
-        output.append('')
-    output.append('')
-    output.append('')
-    open('test.egsphant', 'w').write("\n".join(output))
 
 
 def paddick(dose, target):
@@ -386,58 +326,6 @@ def write_3ddose(path, dose):
         f.write(' '.join(['{:.4E}'.format(v) for v in dose.doses.swapaxes(0, 2).reshape(-1)]) + '\n')
         # Row/Block 6 — error values array (relative errors, nxnynz values)
         f.write(' '.join(['{:.16f}'.format(v) for v in dose.errors.swapaxes(0, 2).reshape(-1)]) + '\n')
-
-ESTEPE = 0
-
-
-def read_egsphant(path):
-    with open(path) as f:
-        n_medias = int(f.readline())
-        medias = []
-        for i in range(n_medias):
-            medias.append(f.readline().strip())
-        for i in range(n_medias):
-            f.readline()  # skip ESTEPE
-        shape = np.fromstring(f.readline(), np.int32, sep=' ')
-        boundaries = [np.fromstring(f.readline(), np.float32, sep=' ') for i in range(3)]
-        indices = []
-        for z in range(shape[2]):
-            f.readline()  # skip a line
-            slices = []
-            for y in range(shape[1]):
-                slices.append(np.array(list(map(int, f.readline().strip()))))
-            indices.append(slices)
-        densities = []
-        for z in range(shape[2]):
-            f.readline()
-            slices = []
-            for y in range(shape[1]):
-                slices.append(np.fromstring(f.readline(), np.float32, sep=' '))
-            densities.append(slices)
-        indices = np.array(indices).reshape(shape[::-1]).swapaxes(0, 2)
-        densities = np.array(densities).reshape(shape[::-1]).swapaxes(0, 2)
-        return Phantom(medias, boundaries, indices, densities)
-
-
-def write_egsphant(path, phantom):
-    with open(path, 'w') as f:
-        f.write(' ' + str(len(phantom.medias)) + '\n')
-        for media in phantom.medias:
-            f.write(media + '\n')
-        for media in phantom.medias:
-            f.write('  {:.6f}'.format(ESTEPE) + '\n')
-        f.write('  ' + ' '.join(str(n) for n in phantom.indices.shape) + '\n')
-        for boundary in phantom.boundaries:
-            f.write(' '.join(['{:.6f}'.format(b) for b in boundary]) + '\n')
-        for zslice in phantom.indices.swapaxes(0, 2):
-            f.write('\n')
-            for y in zslice:
-                f.write(''.join([str(x) for x in y]) + '\n')
-        for zslice in phantom.densities.swapaxes(0, 2):
-            f.write('\n')
-            for y in zslice:
-                f.write(' '.join('{:.4E}'.format(x) for x in y) + '\n')
-        f.write('\n\n')
 
 
 def combine_3ddose(paths, output_path):

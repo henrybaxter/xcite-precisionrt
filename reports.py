@@ -35,13 +35,20 @@ def status(sim):
 
 
 def download(sim):
+    urls = []
     for item in bucket.objects.filter(Prefix=sim['directory']):
-        if 'doselets' in item.key:
+        if 'dose' in item.key:
             continue
         folder = os.path.join('reports', os.path.dirname(item.key))
         os.makedirs(folder, exist_ok=True)
         with open(os.path.join('reports', item.key), 'wb') as f:
             f.write(item.get()['Body'].read())
+        url = 'https://s3-us-west-2.amazonaws.com/xcite-simulations/' + item.key
+        urls.append(url)
+    print(sim['name'])
+    for url in urls:
+        print('\t' + url)
+    print()
 
 
 with open('simulations.toml') as f:
@@ -50,5 +57,7 @@ with open('simulations.toml') as f:
 
 for sim in simulations:
     sim['directory'] = sim['name'].replace(' - ', '-').replace(' ', '-')
-    print(sim['name'], status(sim))
-    download(sim)
+    s = status(sim)
+    print(sim['name'], s)
+    if s == 'downloading':
+        download(sim)

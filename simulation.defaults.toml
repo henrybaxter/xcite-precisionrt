@@ -7,12 +7,12 @@ pegs4 = "allkV"
 rmax = 50.0
 
 # reflect instead of simulating both sides
-
 reflect = true
 
+# roughly the number of incident electron
 desired-histories = 1e10
 
-# y in cm
+# y in cm in the simulation, but x in cm in the report (after )
 beam-width = 1.0
 # z in cm
 # beam-height = 0.5
@@ -25,18 +25,33 @@ target-distance = 50.0
 target-length = 75.0
 target-angle = 45.0
 
+# these can be used to draw the lesion onto the plot
 lesion-diameter = 1.0
-lesion-distance = 40.0
+lesion = [0, 0, 10]
+
+# this can be used for the dsource
+bore-diameter = 80.0
+
 
 dose-recycle = 99
 dose-photon-splitting = 20
-phantom-isocenter = [0, 10, 0]
-phantom = "phantoms/20cm-2mm-cylinder.egsphant"
+
+# this is used to tell dosxyz where the isocenter is
+# and for example, one could change this to get the isocenter
+# just 'above' the focus of the collimator
+isocenter = [0, 0, 10]
+phantom = "phantoms/20cm-long-40cm-wide-2mm-cylinder.egsphant"
 
 beamnrc-template = "templates/template.egsinp"
 stationary-dose-template = "templates/dose_template.egsinp"
 arc-dose-template = "templates/arc_dose_template.egsinp"
-arc-min = 1
-arc-max = 2
-x-min = 1
-x-max = 3
+
+[collimator]
+precision = 0.0001
+length = 10.0
+diameter = 70.0
+rowcaps = false
+rmax = 50.0
+blocks = 10
+target-distribution = "center"
+target-distance = 40.0

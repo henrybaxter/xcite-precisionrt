@@ -35,7 +35,7 @@ async def run_simulation(sim):
         logger.warning('Could not remove {}'.format(sim['directory']))
     os.makedirs(sim['directory'])
 
-    target = py3ddose.Target(np.array(sim['phantom-isocenter']), sim['lesion-diameter'] / 2)
+    target = py3ddose.Target(np.array(sim['lesion']), sim['lesion-diameter'] / 2)
 
     # figure out the source situation
     y_values = generate_y(sim['target-length'], sim['beam-width'] + sim['beam-gap'], sim['reflect'])

@@ -1,111 +1,179 @@
-# 1 row 2mm beam 2mm holes with varying septas
+# septas
 
 [[simulations]]
-name = "Converging - 0.2mm Septa"
-summary = "Converging collimator with 0.2mm septa."
+name = "Converging - 0mm Septa"
+summary = "Converging collimator with no septa."
 beam-height = 0.2
 [simulations.collimator]
-septa-x = 0.02
-septa-y = 0.02
+rows = 1
+septa-x = 0.0
+septa-y = 0.0
 hole-width = 0.2
 target-shape = "point"
 
 [[simulations]]
-name = "Converging - 0.3mm Septa"
-summary = "Converging collimator with 0.3mm septa."
+name = "Converging - 50 micron Septa"
+summary = "Converging collimator with 50 micron septa."
 beam-height = 0.2
 [simulations.collimator]
-septa-x = 0.03
-septa-y = 0.03
+rows = 1
+septa-x = 0.005
+septa-y = 0.005
 hole-width = 0.2
 target-shape = "point"
 
 [[simulations]]
-name = "Converging - 0.4mm Septa"
-summary = "Converging collimator with 0.4mm septa."
+name = "Converging - 0.1mm Septa"
+summary = "Converging collimator with 0.1mm septa."
 beam-height = 0.2
 [simulations.collimator]
-septa-x = 0.04
-septa-y = 0.04
+rows = 1
+septa-x = 0.01
+septa-y = 0.01
 hole-width = 0.2
 target-shape = "point"
+
 
 [[simulations]]
 name = "Converging - 0.5mm Septa"
 summary = "Converging collimator with 0.5mm septa."
 beam-height = 0.2
 [simulations.collimator]
+rows = 1
 septa-x = 0.05
 septa-y = 0.05
 hole-width = 0.2
 target-shape = "point"
 
 
-# larger hole
+# larger holes
 [[simulations]]
 name = "Converging - 3mm hole"
+summary = "Converging collimator with 3mm wide holes."
+beam-height = 0.2
+[simulations.collimator]
+rows = 1
+septa-x = 0.05
+septa-y = 0.05
+hole-width = 0.3
+target-shape = "point"
+
+[[simulations]]
+name = "Converging - 4mm hole"
 summary = "Converging collimator with 4mm wide holes."
 beam-height = 0.2
 [simulations.collimator]
+rows = 1
 septa-x = 0.05
 septa-y = 0.05
 hole-width = 0.4
 target-shape = "point"
 
+[[simulations]]
+name = "Converging - 5mm hole"
+summary = "Converging collimator with 5mm wide holes."
+beam-height = 0.2
+[simulations.collimator]
+rows = 1
+septa-x = 0.05
+septa-y = 0.05
+hole-width = 0.5
+target-shape = "point"
+
+[[simulations]]
+name = "Converging - 6mm hole"
+summary = "Converging collimator with 6mm wide holes."
+beam-height = 0.2
+[simulations.collimator]
+rows = 1
+septa-x = 0.05
+septa-y = 0.05
+hole-width = 0.6
+target-shape = "point"
+
 # multiple row
 [[simulations]]
-name = "Converging - 5 row"
+name = "Converging - 5 row - 3mm"
 summary = "Converging collimator, using five rows, 10mm beam, and a 0.5mm septa."
 beam-height = 1.0
 [simulations.collimator]
 rows = 5
 septa-x = 0.05
 septa-y = 0.05
-hole-width = 0.2
+hole-width = 0.3
 target-shape = "point"
 
 
-# diverging (lesions)
+# diverging
 [[simulations]]
 name = "Diverging - 1cm Lesion"
-summary = "Diverging collimator. Single row, 2mm hole width, and no minimum septa."
+summary = "Diverging collimator for 1cm lesion. Single row, 2mm hole width, and no minimum septa."
 beam-height = 1.0
 lesion-diameter = 1.0
 [simulations.collimator]
+rows = 1
 septa-x = 0.0
 septa-y = 0.0
 hole-width = 0.2
-target-shape = "circle"
+target-shape = "center"
+target-diameter = 1.0
 
 [[simulations]]
 name = "Diverging - 2cm Lesion"
-summary = "Diverging collimator. Single row, 4mm hole width, and no minimum septa."
-beam-height = 1.0
+summary = "Diverging collimator for 2cm lesion. Single row, 2mm hole width, and no minimum septa."
+beam-height = 0.2
 lesion-diameter = 2.0
 [simulations.collimator]
+rows = 1
 septa-x = 0.0
 septa-y = 0.0
-hole-width = 0.4
+hole-width = 0.2
 target-shape = "circle"
+target-diameter = 2.0
 
 [[simulations]]
 name = "Diverging - 4cm Lesion"
-summary = "Diverging collimator. Single row, 8mm hole width, and no minimum septa."
-beam-height = 1.0
+summary = "Diverging collimator for 4cm lesion. Single row, 8mm hole width, and no minimum septa."
+beam-height = 0.2
 lesion-diameter = 4.0
 [simulations.collimator]
+rows = 1
 septa-x = 0.0
 septa-y = 0.0
-hole-width = 0.8
+hole-width = 0.2
 target-shape = "circle"
+target-diameter = 4.0
 
 # divering (5 rows)
 [[simulations]]
-name = "Diverging - 5 rows"
-summary = "Diverging collimator. Five rows, 2mm hole width, and no minimum septa."
+name = "Diverging - 5 rows - 1cm lesion"
+summary = "Diverging 5 row collimator for 1cm lesion. Five rows, 2mm hole width, and no minimum septa."
 beam-height = 1.0
 [simulations.collimator]
 septa-x = 0.0
 septa-y = 0.0
 hole-width = 0.2
 target-shape = "circle"
+target-diameter = 1.0
+
+[[simulations]]
+name = "Diverging - 5 rows - 2cm lesion"
+summary = "Diverging 5 row collimator for 2cm lesion. Five rows, 2mm hole width, and no minimum septa."
+beam-height = 1.0
+[simulations.collimator]
+septa-x = 0.0
+septa-y = 0.0
+hole-width = 0.2
+target-shape = "circle"
+target-diameter = 2.0
+
+[[simulations]]
+name = "Diverging - 5 rows - 4cm lesion"
+summary = "Diverging 5 row collimator for 4cm lesion. Five rows, 2mm hole width, and no minimum septa."
+beam-height = 1.0
+[simulations.collimator]
+septa-x = 0.0
+septa-y = 0.0
+hole-width = 0.2
+target-shape = "circle"
+target-diameter = 4.0

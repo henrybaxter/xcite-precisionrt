@@ -37,21 +37,21 @@ def clip_y(vectors, min_value, max_value):
 def make_egress(conf, ingress, ingress_center):
     target_center = make_target_center(conf, ingress_center)
     target = make_target(conf, ingress, ingress_center, target_center)
-    zfocus = conf['length'] + conf['lesion-distance']
+    zfocus = conf['length'] + conf['target-distance']
     egress = ingress + (target - ingress) / zfocus * conf['length']
     return egress
 
 
 def make_target_center(conf, ingress_center):
+    if conf['target-distribution'] == 'center':
+        return np.array([0, 0])
     x = ingress_center[0]
     collimator_radius = conf['diameter'] / 2
-    lesion_radius = conf['lesion-diameter'] / 2
-    normalized = x / collimator_radius * lesion_radius
-    if conf['target-distribution'] == 'center':
-        coefficients = [0]
-    elif conf['target-distribution'] == 'left-right':
-        lesion_radius = conf['lesion']['diameter'] / 2
-        midpoint = lesion_radius / 2
+    target_radius = conf['target-diameter'] / 2
+    normalized = x / collimator_radius * target_radius
+    if conf['target-distribution'] == 'left-right':
+        target_radius = conf['target']['diameter'] / 2
+        midpoint = target_radius / 2
         coefficients = [math.copysign(midpoint, x)]
     elif conf['target-distribution'] == 'polynomial':
         coefficients = conf['target-coefficients']
@@ -64,10 +64,10 @@ def make_target(conf, ingress, ingress_center, target_center):
     if conf['target-shape'] == 'point':
         return map_to_circle(ingress, ingress_center, target_center, radius=0)
     elif conf['target-shape'] == 'line':
-        radius = conf['lesion-diameter'] / 2
+        radius = conf['target-diameter'] / 2
         return clip_y(map_to_circle(ingress, ingress_center, target_center, radius), 0, 0)
     elif conf['target-shape'] == 'circle':
-        return map_to_circle(ingress, ingress_center, target_center, conf['lesion-diameter'] / 2)
+        return map_to_circle(ingress, ingress_center, target_center, conf['target-diameter'] / 2)
     else:
         raise ValueError('Unknown target shape {}'.format(conf['target-shape']))
 
@@ -78,7 +78,7 @@ def interpolate(ingress, egress, z, zmax):
     return ingress + (egress - ingress) / zmax * z
 
 
-def calculate_dy(conf, ingress, center, egress, dx, iterations=1000):
+def calculate_dy(conf, ingress, center, egress, dx, iterations=100000):
     septa = conf['septa-y']
     precision = conf['precision']
     height = np.amax(ingress, axis=0)[1] - np.amin(ingress, axis=0)[1]
@@ -89,24 +89,22 @@ def calculate_dy(conf, ingress, center, egress, dx, iterations=1000):
     raise ValueError('calculate_dx failed after {} iterations'.format(iterations))
 
 
-def calculate_dx(conf, ingress, center, egress, iterations=1000):
+def calculate_dx(conf, ingress, center, egress, iterations=100000):
     septa = conf['septa-x']
     precision = conf['precision']
     width = np.amax(ingress, axis=0)[0] - np.amin(ingress, axis=0)[0]
     for i in range(iterations):
         dx = np.array([width + septa + i * precision, 0])
         next_egress = make_egress(conf, ingress + dx, center + dx)
-        if Polygon(egress).distance(Polygon(next_egress)) > septa:
+        degress = Polygon(egress).distance(Polygon(next_egress))
+        if degress > septa:
             return dx
     raise ValueError('calculate_dy failed after {} iterations'.format(iterations))
 
 
 def make_blocks(conf):
-    assert 'lesion-diameter' in conf
     if conf['rows'] % 2 == 0:
         raise ValueError('Only an odd number of rows is supported')
-    conf['septa-x'] = conf.get('septa-x', conf.get('septa'))
-    conf['septa-y'] = conf.get('septa-y', conf.get('septa'))
     if conf['septa-x'] < 0 or conf['septa-y'] < 0:
         raise ValueError('Only non-negative septa values are supported')
     if 'hole-width' in conf and 'hole-height' in conf:
@@ -202,13 +200,8 @@ def make_blocks(conf):
 
 
 def make_collimator(template, config):
-    with open('collimator.defaults.toml') as f:
-        defaults = toml.load(f).copy()
-        defaults.update(config)
-        config.clear()
-        config.update(defaults)
-    collimator = copy.deepcopy(template)
     blocks = make_blocks(config)
+    collimator = copy.deepcopy(template)
     for i, block in enumerate(blocks):
         cm = {
             'type': 'BLOCK',
@@ -217,7 +210,7 @@ def make_collimator(template, config):
             'title': 'BLCK{}'.format(i),
             'zmin': block['zmin'],
             'zmax': block['zmax'],
-            'zfocus': config['length'] + config['lesion-distance'],
+            'zfocus': config['length'] + config['target-distance'],
             'xpmax': config['rmax'],
             'ypmax': config['rmax'],
             'xnmax': -config['rmax'],
@@ -270,9 +263,13 @@ def load_template(path):
         return egsinp.parse_egsinp(f.read())
 
 
-def load_config(path):
+def load_config(path, defaults_path='simulation.defaults.toml'):
+    with open(defaults_path) as f:
+        defaults = toml.load(f)['collimator']
     with open(path) as f:
-        return toml.load(f)
+        config = toml.load(f)
+        config.update(defaults)
+    return config
 
 
 def save_collimator(collimator, path):
@@ -302,12 +299,12 @@ def main():
     start = time.time()
     logging.basicConfig(level=logging.DEBUG)
     args = parse_args()
-    config = load_config(args.config)
     template = load_template(args.template)
+    config = load_config(args.config)
     collimator = make_collimator(template, config)
     save_collimator(collimator, args.output)
     save_config(config, os.path.splitext(args.output)[0] + '.toml')
-    visualize.render(args.output, config['lesion-diameter'])
+    visualize.render(args.output, config.get('target-diameter', 1.0))
     elapsed = time.time() - start
     logger.info('Took {:.2f} seconds'.format(elapsed))
 
