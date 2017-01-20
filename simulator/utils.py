@@ -29,7 +29,6 @@ def regroup(ls):
     return {key: [item[key] for item in ls] for key in ls[0]}
 
 
-
 def run_async(future):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(future)

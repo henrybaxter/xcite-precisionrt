@@ -37,13 +37,7 @@ beamnrc-template = "templates/template.egsinp"
 stationary-dose-template = "templates/dose_template.egsinp"
 arc-dose-template = "templates/arc_dose_template.egsinp"
 
-# TODO replace this with real weighting
-arc-min = 1
-arc-max = 2
-x-min = 1
-x-max = 3
 
-[collimator]
 precision = 0.005
 length = 10.0
 rows = 1
