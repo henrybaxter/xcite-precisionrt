@@ -171,10 +171,11 @@ def dose_to_grays(dose, minutes=30, milliamps=200):
 
 
 def dose_stats(dose, target):
+    # length of 3 - x centers, y centers, z centers
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
-    translated = centers - target.isocenter[:, np.newaxis]
-    # v = volumes(dose.boundaries)
-    d2 = reduce(np.add.outer, np.square(translated))
+    translated = [c - target.isocenter[i] for i, c in enumerate(centers)]
+    xx, yy, zz = np.meshgrid(*translated, indexing='ij')
+    d2 = np.square(xx) + np.square(yy) + np.square(zz)
     r2 = np.square(target.radius)
     in_target = d2 < r2
     # minimum dose to 90% of the
