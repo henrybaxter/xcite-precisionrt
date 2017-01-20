@@ -211,16 +211,17 @@ def dvh(dose, target):
     """
     # temporary hack for bad 3ddose read/writing, we swap x and z to fix it
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
-    translated = centers - target.isocenter[:, np.newaxis]
+    translated = [c - target.isocenter[i] for i, c in enumerate(centers)]
+    xx, yy, zz = np.meshgrid(*translated, indexing='ij')
+    d2 = np.square(xx) + np.square(yy) + np.square(zz)
     v = volumes(dose.boundaries)
-    d2 = reduce(np.add.outer, np.square(translated))
     r2 = np.square(target.radius)
     in_target = d2 < r2
     print(dose.doses[np.where(in_target)])
     # target_volume = np.sum(v[np.where(in_target)])
-    print(dose_to_grays(np.mean(dose.doses[np.where(in_target)])) / (74 * 24))
-    print(dose_to_grays(np.min(dose.doses[np.where(in_target)])) / (74 * 24))
-    print(dose_to_grays(np.max(dose.doses[np.where(in_target)])) / (74 * 24))
+    # print(dose_to_grays(np.mean(dose.doses[np.where(in_target)])) / (74 * 24))
+    # print(dose_to_grays(np.min(dose.doses[np.where(in_target)])) / (74 * 24))
+    # print(dose_to_grays(np.max(dose.doses[np.where(in_target)])) / (74 * 24))
 
     # so we take the minimum? the max? take the max
     BINS = 100
