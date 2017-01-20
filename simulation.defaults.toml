@@ -37,8 +37,8 @@ beamnrc-template = "templates/template.egsinp"
 stationary-dose-template = "templates/dose_template.egsinp"
 arc-dose-template = "templates/arc_dose_template.egsinp"
 
-
-precision = 0.005
+[collimator]
+precision = 0.001
 length = 10.0
 rows = 1
 diameter = 70.0
