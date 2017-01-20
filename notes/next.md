@@ -16,6 +16,15 @@ NEXT
 	3 shots in report OR STL file with tikz
 (7) realistic CT
 
+
+- model electron beam with no overlap
+- model electron beam with more beamlets
+- wording of collimator geometry
+- geometry of entire monte carlo setup
+- are there more sophisticated models we can use?
+
+
+
 DROP the conformity index
 
 - describe the collimator better

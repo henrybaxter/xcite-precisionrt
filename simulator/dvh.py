@@ -8,17 +8,10 @@ into 100 bins (for smoothness), and find those matching that predicate.
 
 """
 import os
-import platform
 import argparse
 import numpy as np
-import matplotlib
-from scipy.interpolate import spline
-if platform.system() == 'Darwin':
-    matplotlib.use('Qt5Agg')
-else:
-    matplotlib.use('Agg')
+from . import matplotlibstub  # NOQA
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 
 from .py3ddose import dvh, read_3ddose, Target
 
@@ -45,6 +38,6 @@ if __name__ == '__main__':
     parser.add_argument('input', nargs='+')
     args = parser.parse_args()
     dose = read_3ddose(args.input[0])
-    target = Target(np.array([0, 10, -10]), 1)
+    target = Target(np.array([0, 10, 0]), 1)
     result = dvh(dose, target)
     plot_dvh(result)

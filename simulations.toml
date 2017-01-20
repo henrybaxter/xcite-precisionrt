@@ -1,34 +1,37 @@
 # 1 row 2mm beam 2mm holes with varying septas
 
+
 [[simulations]]
-name = "Converging - 0.2mm Septa"
-summary = "Converging collimator with 0.2mm septa."
+name = "Converging - 0mm Septa"
+summary = "Converging collimator with no septa."
 beam-height = 0.2
 [simulations.collimator]
-septa-x = 0.02
-septa-y = 0.02
+septa-x = 0.0
+septa-y = 0.0
+hole-width = 0.2
+target-shape = "point"
+
+
+[[simulations]]
+name = "Converging - 50 micron Septa"
+summary = "Converging collimator with 50 micron septa."
+beam-height = 0.2
+[simulations.collimator]
+septa-x = 0.005
+septa-y = 0.005
 hole-width = 0.2
 target-shape = "point"
 
 [[simulations]]
-name = "Converging - 0.3mm Septa"
-summary = "Converging collimator with 0.3mm septa."
+name = "Converging - 100 micron Septa"
+summary = "Converging collimator with 50 micron septa."
 beam-height = 0.2
 [simulations.collimator]
-septa-x = 0.03
-septa-y = 0.03
+septa-x = 0.01
+septa-y = 0.01
 hole-width = 0.2
 target-shape = "point"
 
-[[simulations]]
-name = "Converging - 0.4mm Septa"
-summary = "Converging collimator with 0.4mm septa."
-beam-height = 0.2
-[simulations.collimator]
-septa-x = 0.04
-septa-y = 0.04
-hole-width = 0.2
-target-shape = "point"
 
 [[simulations]]
 name = "Converging - 0.5mm Septa"

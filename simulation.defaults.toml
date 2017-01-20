@@ -7,12 +7,12 @@ pegs4 = "allkV"
 rmax = 50.0
 
 # reflect instead of simulating both sides
-
 reflect = true
 
+# roughly the number of incident electron
 desired-histories = 1e10
 
-# y in cm
+# y in cm in the simulation, but x in cm in the report (after )
 beam-width = 1.0
 # z in cm
 # beam-height = 0.5
@@ -36,6 +36,8 @@ phantom = "phantoms/20cm-2mm-cylinder.egsphant"
 beamnrc-template = "templates/template.egsinp"
 stationary-dose-template = "templates/dose_template.egsinp"
 arc-dose-template = "templates/arc_dose_template.egsinp"
+
+# TODO replace this with real weighting
 arc-min = 1
 arc-max = 2
 x-min = 1
