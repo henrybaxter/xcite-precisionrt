@@ -202,13 +202,8 @@ def make_blocks(conf):
 
 
 def make_collimator(template, config):
-    with open('collimator.defaults.toml') as f:
-        defaults = toml.load(f).copy()
-        defaults.update(config)
-        config.clear()
-        config.update(defaults)
-    collimator = copy.deepcopy(template)
     blocks = make_blocks(config)
+    collimator = copy.deepcopy(template)
     for i, block in enumerate(blocks):
         cm = {
             'type': 'BLOCK',
@@ -270,9 +265,13 @@ def load_template(path):
         return egsinp.parse_egsinp(f.read())
 
 
-def load_config(path):
+def load_config(path, defaults_path='simulation.defaults.toml'):
+    with open(defaults_path) as f:
+        defaults = toml.load(f)['collimator']
     with open(path) as f:
-        return toml.load(f)
+        config = toml.load(f)
+        config.update(defaults)
+    return config
 
 
 def save_collimator(collimator, path):
@@ -302,8 +301,8 @@ def main():
     start = time.time()
     logging.basicConfig(level=logging.DEBUG)
     args = parse_args()
-    config = load_config(args.config)
     template = load_template(args.template)
+    config = load_config(args.config)
     collimator = make_collimator(template, config)
     save_collimator(collimator, args.output)
     save_config(config, os.path.splitext(args.output)[0] + '.toml')

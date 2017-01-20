@@ -42,3 +42,15 @@ arc-min = 1
 arc-max = 2
 x-min = 1
 x-max = 3
+
+[collimator]
+precision = 0.005
+length = 10.0
+rows = 1
+diameter = 70.0
+rowcaps = false
+rmax = 50.0
+blocks = 10
+target-distribution = "center"
+target-diameter = 1.0
+target-distance = 40.0

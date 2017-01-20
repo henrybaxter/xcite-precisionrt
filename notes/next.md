@@ -1,9 +1,5 @@
 NEXT
 
-(1) dose table
-	(1a) dmin/dmax (in target)
-	(1b) d90, d95, d100 (% of target)
-(2) dvh plot
 (3) beam profile plot
 	(3a) with depth
 	(4a) with width (both ways)
