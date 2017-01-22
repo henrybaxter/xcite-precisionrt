@@ -1,3 +1,4 @@
+import pprint
 import json
 import logging
 import os
@@ -14,8 +15,9 @@ from beamviz import visualize
 from . import py3ddose
 from . import dose_contours
 from . import build
-from .utils import run_command, force_symlink, regroup
+from .utils import run_command, force_symlink, regroup, chunks
 from . import beamlet
+from . import doselet
 from . import screenshots
 from . import dvh
 
@@ -28,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 
 async def run_simulation(sim):
+
+    logger.info(pprint.pformat(sim))
 
     try:
         shutil.rmtree(sim['directory'])
@@ -42,22 +46,34 @@ async def run_simulation(sim):
     sim['beamlet-count'] = len(y_values) * (2 if sim['reflect'] else 1)
     sim['beamlet-histories'] = sim['desired-histories'] // sim['beamlet-count']
     sim['total-histories'] = sim['beamlet-histories'] * sim['beamlet-count']
+    logger.info('Will generate {} beamlets with {} histories each for a total of {} histories'.format(
+        sim['beamlet-count'], sim['beamlet-histories'], sim['total-histories']))
 
     # generate the templates that will be used by every simulation
     templates = await generate_templates(sim)
 
-    # generate all simulations
+    # generate phase space beamlets for source, filter, and collimator
+    # if we are using reflection, this is only half!
+    logger.info('Generating beamlets')
     beamlets = await run_beamlets(sim, templates, y_values)
+
+    # now we turn the collimator beamlets into superbeamlets (max 24)
+    # that use reflection
+    logger.info('Combining into collimated into superbeamlets')
+    grouped_collimator = await group_collimator(sim, beamlets['collimator'])
+
+    # now we need to run the doselets
+    logger.info('Running doselets on grouped collimated beamlets')
+    doselets = await run_doselets(sim, templates, grouped_collimator)
+    print(doselets)
+    doses = await combine_dose(sim, doselets)
+
+    logger.info('Combining phase spaces')
+    phsp = await combine_phsp(beamlets, sim['reflect'])
 
     collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
     force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
     scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
-
-    # combine beamlets
-    phsp, doses = await asyncio.gather(*[
-        combine_phsp(beamlets, sim['reflect']),
-        combine_dose(sim, beamlets)
-    ])
 
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
@@ -88,7 +104,7 @@ async def run_simulation(sim):
     # symlink the combined data, beamlets, charts, etc
     link_phsp(sim['directory'], phsp)
     link_doses(sim['directory'], doses)
-    link_doselets(sim['directory'], beamlets)
+    link_doselets(sim['directory'], doselets)
     link_contours(sim['directory'], context['contour_plots'])
     link_grace(sim['directory'], context['grace_plots'])
 
@@ -196,21 +212,20 @@ def link_doses(output_dir, doses):
         force_symlink(source, link_name)
 
 
-def link_doselets(output_dir, beamlets):
+def link_doselets(output_dir, doselets):
     folder = os.path.join(output_dir, 'doselets')
     os.makedirs(folder, exist_ok=True)
-    keys = ['stationary', 'arc']
-    for key in keys:
-        doselets = beamlets[key]
+    for key, _doselets in doselets.items():
         if key == 'arc':
-            doselets = flatten(doselets)
+            _doselets = flatten(_doselets)
         os.makedirs(os.path.join(folder, key), exist_ok=True)
-        for doselet in doselets:
-            source = doselet['npz']
-            if 'phimin' in doselet:
-                slug = '{}-{}-{}'.format(doselet['index'], doselet['phimin'], doselet['phimax'])
+        for i, d in enumerate(_doselets):
+            source = d['npz']
+            if 'phimin' in d:
+                slug = '{:03d}-{:03d}-{:03d}'.format(
+                    i, d['phimin'], d['phimax'])
             else:
-                slug = str(doselet['index'])
+                slug = '{:03d}'.format(i)
             link_name = os.path.join(folder, key, slug + '.3ddose.npz')
             force_symlink(source, link_name)
 
@@ -246,11 +261,32 @@ async def generate_contour_plots(doses, phantom, target):
     return contour_plots
 
 
+async def group_collimator(sim, beamlets):
+    # so we just do 12 groups, and since we reflect, we get the same resolution
+    # then we have 288 dose calculations to run, and yet we can optimize across way more
+    # this means we can run more detailed phantoms etc
+    per_group = len(beamlets) // 12 + 1
+    results = []
+    for bs in chunks(beamlets, per_group):
+        # so if we're supposed to reflect, then we reflect in the sample_combine
+        # this means we don't have to do as many dose calculations, right?
+        # so maybe we could use less, like 13 or something
+        # then we can use a different mechanism for these puppies
+        path = os.path.abspath(await sample_combine(bs, sim['reflect']))
+        command = ['beamdpr', 'stats', '--format=json', path]
+        results.append({
+            'phsp': path,
+            'hash': hashlib.md5(path.encode('utf-8')),
+            'stats': json.loads(await run_command(command))
+        })
+    return results
+
+
 async def combine_phsp(beamlets, reflect):
     operations = {
         'source': sample_combine(beamlets['source'], reflect),
         'filter': sample_combine(beamlets['filter'], reflect),
-        'collimator': sample_combine(beamlets['collimator'], reflect)
+        'collimator': sample_combine(beamlets['collimator'], reflect),
     }
     return {name: await future for name, future in operations.items()}
 
@@ -286,6 +322,8 @@ async def dose_combine(doses, weights=None):
 
 async def optimize_stationary(sim, doses):
     sz = len(doses)
+    print(doses)
+    print(sz)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['x-max'], sim['x-min'], sim['x-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
     return await dose_combine(doses, weights)
@@ -317,33 +355,30 @@ def flatten(ls):
     return result
 
 
-async def combine_dose(sim, beamlets):
+async def combine_dose(sim, doselets):
     return {
-        'stationary': await dose_combine(beamlets['stationary']),
-        'arc': await dose_combine(flatten(beamlets['arc'])),
-        'stationary-weighted': await optimize_stationary(sim, beamlets['stationary']),
-        'arc-weighted': await optimize_arc(sim, beamlets['arc'])
+        'stationary': await dose_combine(doselets['stationary']),
+        'arc': await dose_combine(flatten(doselets['arc'])),
+        'stationary-weighted': await optimize_stationary(sim, doselets['stationary']),
+        'arc-weighted': await optimize_arc(sim, doselets['arc'])
     }
 
 
 async def run_beamlets(sim, templates, y_values):
     beamlets = []
     for i, y in enumerate(y_values):
-        if sim['reflect']:
-            index = (len(y_values) - i - 1, i + len(y_values))
-        else:
-            index = i
-        beamlets.append(beamlet.simulate(sim, templates, index, y))
         if i == sim['operations']:
             break
-    simulations = regroup(await asyncio.gather(*beamlets))
-    if sim['reflect']:
-        # dose calculations were put into tuples
-        # so flatten them, respecting position
-        for key in ['stationary', 'arc']:
-            flat = []
-            for from_reflected, from_original in simulations[key]:
-                flat.insert(0, from_reflected)
-                flat.append(from_original)
-            simulations[key] = flat
-    return simulations
+        beamlets.append(beamlet.simulate(sim, templates, y))
+    return regroup(await asyncio.gather(*beamlets))
+
+
+async def run_doselets(sim, templates, beamlets):
+    # the beamlets, the arc stuff..
+    # we're going to end up with
+    doselets = []
+    for i, b in enumerate(beamlets):
+        if i == sim['operations']:
+            break
+        doselets.append(doselet.simulate(sim, templates, b))
+    return regroup(await asyncio.gather(*doselets))

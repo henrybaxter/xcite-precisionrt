@@ -13,7 +13,7 @@ reflect = true
 desired-histories = 1e10
 
 # y in cm in the simulation, but x in cm in the report (after )
-beam-width = 1.0
+beam-width = 0.2
 # z in cm
 # beam-height = 0.5
 # gap between incident electron beams

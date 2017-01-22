@@ -49,8 +49,9 @@ def target_to_skin(dose, target):
     logger.info('Found skin mean {}'.format(skin_mean))
 
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
-    translated = centers - target.isocenter[:, np.newaxis]
-    d2 = reduce(np.add.outer, np.square(translated))
+    translated = [c - target.isocenter[i] for i, c in enumerate(centers)]
+    xx, yy, zz = np.meshgrid(*translated, indexing='ij')
+    d2 = np.square(xx) + np.square(yy) + np.square(zz)
     r2 = np.square(target.radius)
     target_indices = np.where(d2 < r2)
     target_mean = np.sum(dose.doses[target_indices]) / len(target_indices[0])
@@ -59,6 +60,16 @@ def target_to_skin(dose, target):
     result = target_mean / skin_mean
     logger.info('So target to skin dose is {}'.format(result))
     return result
+
+
+def reflect(dose):
+    # reflect the dose around an axis
+    # that means we need to have a symmetric guy
+    # is that realistic? i'm not sure
+    # plus we could just do a quarter of it
+    # and then re-weight
+    # no let's not
+    pass
 
 
 def optimize_stt(paths, target, output):
@@ -217,7 +228,6 @@ def dvh(dose, target):
     v = volumes(dose.boundaries)
     r2 = np.square(target.radius)
     in_target = d2 < r2
-    print(dose.doses[np.where(in_target)])
     # target_volume = np.sum(v[np.where(in_target)])
     # print(dose_to_grays(np.mean(dose.doses[np.where(in_target)])) / (74 * 24))
     # print(dose_to_grays(np.min(dose.doses[np.where(in_target)])) / (74 * 24))
@@ -247,17 +257,12 @@ def dvh(dose, target):
 
 def paddick(dose, target):
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
-    translated = centers - target.isocenter[:, np.newaxis]
-    index = np.argmin(np.abs(translated), axis=1)
-    print(index)
-    print('boundaries', dose.boundaries[0][index[0]], dose.boundaries[1][index[1]], dose.boundaries[2][index[2]])
-    reference_dose = np.max(dose.doses)
-    normalized = dose.doses / reference_dose
-    print('max normalized', np.max(normalized))
+    translated = [c - target.isocenter[i] for i, c in enumerate(centers)]
+    xx, yy, zz = np.meshgrid(*translated, indexing='ij')
     # get target volume
     # by finding indices of all points in a volume and finding their volume
     v = volumes(dose.boundaries)
-    d2 = reduce(np.add.outer, np.square(translated))
+    d2 = np.square(xx) + np.square(yy) + np.square(zz)
     r2 = np.square(target.radius)
     in_target = d2 < r2
     in_dosed = dose.doses >= 1e-19

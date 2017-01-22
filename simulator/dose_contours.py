@@ -9,6 +9,7 @@ import numpy as np
 from scipy.spatial.distance import pdist
 
 from . import py3ddose
+from . import egsphant
 
 
 def maximally_distant(points, n):
@@ -93,15 +94,22 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
     # this actually generates three files. let's make it functional? or what...
     dose = py3ddose.read_3ddose(dose_path)
     print('max dose is', np.max(dose.doses))
-    phantom = py3ddose.read_egsphant(egsphant_path)
+    with open(egsphant_path) as fp:
+        phantom = egsphant.read_egsphant(fp)
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
-    isocenter = np.argmin(np.abs(centers - target.isocenter[:, np.newaxis]), axis=1)
+    translated = [c - target.isocenter[i] for i, c in enumerate(centers)]
+    xx, yy, zz = np.meshgrid(*translated, indexing='ij')
+    d2 = np.square(xx) + np.square(yy) + np.square(zz)
+    print(d2.shape)
+    isocenter = np.unravel_index(np.argmin(d2), d2.shape)
+    print('isocenter is', isocenter)
+    # isocenter = np.argmin(np.abs(centers - target.isocenter[:, np.newaxis]), axis=1)
     # reference_dose = dose.doses[tuple(isocenter)]
     # highest = np.unravel_index(dose.doses.argmax(), dose.doses.shape)
     reference_dose = np.max(dose.doses)
     normalized = dose.doses / reference_dose * 100
 
-    Z_AXIS, Y_AXIS, X_AXIS = range(3)
+    X_AXIS, Y_AXIS, Z_AXIS = range(3)
     axis_names = {
         X_AXIS: 'x',
         Y_AXIS: 'y',
@@ -113,20 +121,23 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
             x_axis = Y_AXIS
             y_axis = Z_AXIS
             z = isocenter[z_axis]
-            D = normalized[z:z + 1:, :, :]
-            densities = phantom.densitie[z:z + 1:, :, :]
+            print('z is', z)
+            D = normalized[z - 1:z + 2:, :, :]
+            densities = phantom.densities[z, :, :]
         elif z_axis == Y_AXIS:
-            x_axis = Z_AXIS
-            y_axis = X_AXIS
+            x_axis = X_AXIS
+            y_axis = Z_AXIS
             z = isocenter[z_axis]
-            D = normalized[:, z:z + 1, :]
-            densities = phantom.densities[:, z:z + 1, :]
+            print('z is', z)
+            D = normalized[:, z - 1:z + 2, :]
+            densities = phantom.densities[:, z, :]
         elif z_axis == Z_AXIS:
             x_axis = X_AXIS
             y_axis = Y_AXIS
             z = isocenter[z_axis]
-            D = normalized[:, :, z:z + 1]
-            densities = phantom.densities[:, :, z:z + 1]
+            print('z is', z)
+            D = normalized[:, :, z - 1:z + 2]
+            densities = phantom.densities[:, :, z]
 
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
@@ -134,10 +145,15 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         slug = 'contour_{}_{}'.format(x_name, y_name)
 
         # bottom axis is Y
+        print('x_axis = ', x_axis, 'y_axis', y_axis)
+        print([c.shape for c in centers])
         X = centers[x_axis]
         Y = centers[y_axis]
 
+        print('z_axis', z_axis)
+        print('D.shape', D.shape)
         D = np.mean(D, axis=z_axis)
+        print('D.shape after mean', D.shape)
 
         plt.figure()
         extents = [
@@ -146,13 +162,15 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
             np.min(dose.boundaries[y_axis]),
             np.max(dose.boundaries[y_axis])
         ]
-
+        print(densities.shape)
+        print('X.shape', X.shape)
+        print('Y.shape', Y.shape)
         plt.imshow(densities,
                    extent=extents, cmap='gray', vmin=0.2, vmax=1.5,
                    interpolation='nearest')
         # if invert_y:
         #    plt.gca().invert_yaxis()
-        cs = plt.contour(X, Y, D, levels=levels, cmap=cm.jet, linewidths=1)
+        cs = plt.contour(X, Y, D.T, levels=levels, cmap=cm.jet, linewidths=1)
         paths = []
         for i, cc in enumerate(cs.collections):
             for j, pp in enumerate(cc.get_paths()):

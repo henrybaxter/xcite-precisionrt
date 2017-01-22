@@ -23,6 +23,11 @@ executor = ProcessPoolExecutor()
 XCITE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
+def chunks(ls, n):
+    for i in range(0, len(ls), n):
+        yield ls[i:i + n]
+
+
 def regroup(ls):
     if not ls:
         return {}
