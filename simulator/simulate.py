@@ -57,6 +57,10 @@ async def run_simulation(sim):
     logger.info('Generating beamlets')
     beamlets = await run_beamlets(sim, templates, y_values)
 
+    force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
+    collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
+    scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
+
     # now we turn the collimator beamlets into superbeamlets (max 24)
     # that use reflection
     logger.info('Combining into collimated into superbeamlets')
@@ -71,9 +75,6 @@ async def run_simulation(sim):
     logger.info('Combining phase spaces')
     phsp = await combine_phsp(beamlets, sim['reflect'])
 
-    collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
-    force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
-    scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
 
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
@@ -327,7 +328,7 @@ async def optimize_stationary(sim, doses):
 
 
 async def optimize_arc(sim, doses):
-    paths = await [optimize_stationary(sim, d) for d in doses]
+    paths = [await optimize_stationary(sim, d) for d in doses]
     sz = len(paths)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['arc-max'], sim['arc-min'], sim['arc-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
