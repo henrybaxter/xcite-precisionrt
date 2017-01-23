@@ -45,9 +45,9 @@ phantom = "phantoms/20cm-long-40cm-wide-2mm-cylinder.egsphant"
 beamnrc-template = "templates/template.egsinp"
 dose-template = "templates/dose_template.egsinp"
 
-x-max = 3
+x-max = 15
 x-min = 1
-arc-max = 3
+arc-max = 15
 arc-min = 1
 
 [collimator]
