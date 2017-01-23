@@ -1,5 +1,23 @@
 NEXT
 
+need to take those collimated beamlets and construct the right stuff out of them:
+
+
+if we get non-equal groups, what does that mean? the 3ddose stuff is ok
+so why not just use non-equal groups? this normalization will continue to work.
+ok, so we just divide by 24 and hope for the best?
+and what about reflection? we can use reflection to some degree. but for now, let's stick with not
+reflecting the phantom
+1) combine them in equal groups. it is essential we have
+
+1) stop running so many damn dosxyzs
+	- use 0.2cm / 2mm beam width
+	- use 0.1cm / 1mm beam width
+	- use combinations that reduce it to 2cm. now since we center it, we end up with 1-3, 3-5, ... etc
+	- so then we'd have 37 different spots, built out of many different beamlets
+	- now when we combine them all together, we end up with the correct number...
+	- ok so now
+
 (3) beam profile plot
 	(3a) with depth
 	(4a) with width (both ways)

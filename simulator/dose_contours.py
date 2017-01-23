@@ -1,6 +1,7 @@
 import os
 import hashlib
 import json
+import asyncio
 
 from . import matplotlibstub  # NOQA
 import matplotlib.pyplot as plt
@@ -117,30 +118,30 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
     }
     plots = []
     for i, z_axis in enumerate([X_AXIS, Y_AXIS, Z_AXIS]):
+        print()
+        print()
         if z_axis == X_AXIS:
             x_axis = Y_AXIS
             y_axis = Z_AXIS
             z = isocenter[z_axis]
-            print('z is', z)
-            D = normalized[z - 1:z + 2:, :, :]
+            D = normalized[z, :, :]
             densities = phantom.densities[z, :, :]
         elif z_axis == Y_AXIS:
             x_axis = X_AXIS
             y_axis = Z_AXIS
             z = isocenter[z_axis]
-            print('z is', z)
-            D = normalized[:, z - 1:z + 2, :]
+            D = normalized[:, z, :]
             densities = phantom.densities[:, z, :]
         elif z_axis == Z_AXIS:
             x_axis = X_AXIS
             y_axis = Y_AXIS
             z = isocenter[z_axis]
-            print('z is', z)
-            D = normalized[:, :, z - 1:z + 2]
+            D = normalized[:, :, z]
             densities = phantom.densities[:, :, z]
 
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
+        print(x_name, y_name, z)
 
         slug = 'contour_{}_{}'.format(x_name, y_name)
 
@@ -149,10 +150,11 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         print([c.shape for c in centers])
         X = centers[x_axis]
         Y = centers[y_axis]
+        print('X', X)
 
         print('z_axis', z_axis)
         print('D.shape', D.shape)
-        D = np.mean(D, axis=z_axis)
+        # D = np.mean(D, axis=z_axis)
         print('D.shape after mean', D.shape)
 
         plt.figure()
@@ -163,13 +165,14 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
             np.max(dose.boundaries[y_axis])
         ]
         print(densities.shape)
+        print(densities)
         print('X.shape', X.shape)
         print('Y.shape', Y.shape)
         plt.imshow(densities,
                    extent=extents, cmap='gray', vmin=0.2, vmax=1.5,
                    interpolation='nearest')
         # if invert_y:
-        #    plt.gca().invert_yaxis()
+        plt.gca().invert_yaxis()
         cs = plt.contour(X, Y, D.T, levels=levels, cmap=cm.jet, linewidths=1)
         paths = []
         for i, cc in enumerate(cs.collections):
@@ -198,10 +201,16 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
     return plots
 
 
-if __name__ == '__main__':
-    target = py3ddose.Target(np.array([-10, 20, 0], 1))
-    egsphant_path = 'cylindricalp.egsphant'
-    dose_path = 'dose.3ddose'
+async def main():
+    target = py3ddose.Target(np.array([0, 0, 10]), 1)
+    egsphant_path = 'phantoms/20cm-long-40cm-wide-2mm-cylinder.egsphant'
+    dose_path = 'dose/arc-weighted.3ddose'
     output_dir = 'test_contours'
     os.makedirs(output_dir, exist_ok=True)
-    plot(egsphant_path, dose_path, target, output_dir)
+    return await plot(egsphant_path, dose_path, target, output_dir)
+
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.close()
