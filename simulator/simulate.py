@@ -309,7 +309,9 @@ async def dose_combine(doses, weights=None):
         _doses = np.array(_doses)
         if weights is not None:
             result = (_doses.T * weights).T
+            print('Weighted and sum doses is {}'.format(np.sum(result)))
         else:
+            print('Unweighted and sum doses is {}'.format(np.sum(result)))
             result = _doses
         result = py3ddose.Dose(_dose.boundaries, result.sum(axis=0), _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
@@ -319,22 +321,13 @@ async def dose_combine(doses, weights=None):
 
 async def optimize_stationary(sim, doses):
     sz = len(doses)
-    print(doses)
-    print(sz)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['x-max'], sim['x-min'], sim['x-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
     return await dose_combine(doses, weights)
 
 
 async def optimize_arc(sim, doses):
-    futures = []
-    for _doses in doses:
-        print('optimize_arc step')
-        sz = len(_doses)
-        coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['x-max'], sim['x-min'], sim['x-max']], 2)
-        weights = np.polyval(coeffs, np.arange(0, sz))
-        futures.append(dose_combine(_doses, weights))
-    paths = await asyncio.gather(*futures)
+    paths = await [optimize_stationary(sim, d) for d in doses]
     sz = len(paths)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['arc-max'], sim['arc-min'], sim['arc-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
