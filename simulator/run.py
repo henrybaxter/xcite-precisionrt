@@ -2,10 +2,10 @@ import io
 import time
 import argparse
 import os
-
-import pytoml as toml
+import copy
 import logging
 
+import pytoml as toml
 import boto3
 from botocore.exceptions import ClientError as BotoClientError
 
@@ -91,15 +91,17 @@ def read_simulations(args):
         defaults = toml.load(fp)
     results = []
     for sim in simulations:
-        result = defaults.copy()
-        collimator = result['collimator']
-        collimator.update(sim['collimator'])
-        result.update(sim)
-        result['collimator'] = collimator
+        for key, value in defaults.items():
+            if key == 'collimator':
+                collimator = value.copy()
+                collimator.update(sim['collimator'])
+                sim['collimator'] = collimator
+            elif key not in sim:
+                sim[key] = value
         if args.histories:
-            result['desired-histories'] = args.histories
-        result['operations'] = args.operations
-        results.append(result)
+            sim['desired-histories'] = args.histories
+        sim['operations'] = args.operations
+        results.append(sim)
     return [verify_sim(sim) for sim in results]
 
 
