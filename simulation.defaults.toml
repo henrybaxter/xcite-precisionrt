@@ -43,8 +43,7 @@ isocenter = [0, 0, 10]
 phantom = "phantoms/20cm-long-40cm-wide-2mm-cylinder.egsphant"
 
 beamnrc-template = "templates/template.egsinp"
-stationary-dose-template = "templates/dose_template.egsinp"
-arc-dose-template = "templates/arc_dose_template.egsinp"
+dose-template = "templates/dose_template.egsinp"
 
 x-max = 3
 x-min = 1

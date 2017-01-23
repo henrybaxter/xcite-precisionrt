@@ -2,15 +2,15 @@ Cylinder                                                                        
 0
 {egsphant_path}
 0.811, 0.01, 0
-1, 0, 1, 
+1, 0, 1,
 0, 8, {x}, {y}, {z}, -1, {dsource}, {phicol}, 0, 0, 0, 0, 0
-1, {theta}, {phimin}, {phimax}, {nang}, 1
+1, {phi}, {thetamin}, {thetamax}, {nang}, 1
 2, 0, 1, 200, 0, 0, 0, 0
 {phsp_path}
 {ncase}, 0, 500, 33, 97, 100.0, 0, 0, {idat}, 0, , {nrcycl}, 0, 0, {n_split}, 0, 0
  #########################
  :Start MC Transport Parameter:
- 
+
  Global ECUT= 0.811
  Global PCUT= 0.01
  Global SMAX= 5
@@ -32,6 +32,6 @@ Cylinder                                                                        
  Electron impact ionization= On
  Photon cross sections= xcom
  Photon cross-sections output= Off
- 
+
  :Stop MC Transport Parameter:
  #########################

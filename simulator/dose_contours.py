@@ -124,38 +124,33 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
             x_axis = Y_AXIS
             y_axis = Z_AXIS
             z = isocenter[z_axis]
-            D = normalized[z, :, :]
+            D = normalized[z - 1:z + 2, :, :]
             densities = phantom.densities[z, :, :]
         elif z_axis == Y_AXIS:
             x_axis = X_AXIS
             y_axis = Z_AXIS
             z = isocenter[z_axis]
-            D = normalized[:, z, :]
+            D = normalized[:, z - 1:z + 2, :]
             densities = phantom.densities[:, z, :]
         elif z_axis == Z_AXIS:
             x_axis = X_AXIS
             y_axis = Y_AXIS
             z = isocenter[z_axis]
-            D = normalized[:, :, z]
+            D = normalized[:, :, z - 1:z + 2]
             densities = phantom.densities[:, :, z]
-
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
         print(x_name, y_name, z)
-
+        print(D.shape, densities.shape)
+        print('centers', [c.shape for c in centers])
         slug = 'contour_{}_{}'.format(x_name, y_name)
 
         # bottom axis is Y
-        print('x_axis = ', x_axis, 'y_axis', y_axis)
-        print([c.shape for c in centers])
+
         X = centers[x_axis]
         Y = centers[y_axis]
-        print('X', X)
 
-        print('z_axis', z_axis)
-        print('D.shape', D.shape)
-        # D = np.mean(D, axis=z_axis)
-        print('D.shape after mean', D.shape)
+        D = np.mean(D, axis=z_axis)
 
         plt.figure()
         extents = [
@@ -204,7 +199,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
 async def main():
     target = py3ddose.Target(np.array([0, 0, 10]), 1)
     egsphant_path = 'phantoms/20cm-long-40cm-wide-2mm-cylinder.egsphant'
-    dose_path = 'dose/arc-weighted.3ddose'
+    dose_path = 'dose/stationary.3ddose'
     output_dir = 'test_contours'
     os.makedirs(output_dir, exist_ok=True)
     return await plot(egsphant_path, dose_path, target, output_dir)

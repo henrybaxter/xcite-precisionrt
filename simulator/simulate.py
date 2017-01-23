@@ -165,10 +165,8 @@ async def generate_templates(sim):
         build.build_filter(sim),
         build.build_collimator(sim)
     ])))
-    with open(sim['stationary-dose-template']) as f:
-        templates['stationary_dose'] = f.read()
-    with open(sim['arc-dose-template']) as f:
-        templates['arc_dose'] = f.read()
+    with open(sim['dose-template']) as f:
+        templates['dose'] = f.read()
     return templates
 
 
@@ -221,9 +219,8 @@ def link_doselets(output_dir, doselets):
         os.makedirs(os.path.join(folder, key), exist_ok=True)
         for i, d in enumerate(_doselets):
             source = d['npz']
-            if 'phimin' in d:
-                slug = '{:03d}-{:03d}-{:03d}'.format(
-                    i, d['phimin'], d['phimax'])
+            if 'theta' in d:
+                slug = '{:03d}-{:03d}'.format(i, d['theta'])
             else:
                 slug = '{:03d}'.format(i)
             link_name = os.path.join(folder, key, slug + '.3ddose.npz')
@@ -380,5 +377,5 @@ async def run_doselets(sim, templates, beamlets):
     for i, b in enumerate(beamlets):
         if i == sim['operations']:
             break
-        doselets.append(doselet.simulate(sim, templates, b))
+        doselets.append(doselet.simulate(sim, templates['dose'], b))
     return regroup(await asyncio.gather(*doselets))

@@ -162,8 +162,7 @@ def verify_sim(sim):
     assert 'collimator' in sim, "{} does not defined collimator".format(sim['name'])
     sim['egs-home'] = os.path.abspath(os.path.join(os.environ['HEN_HOUSE'], '../egs_home/'))
     paths = [
-        sim['beamnrc-template'], sim['stationary-dose-template'],
-        sim['arc-dose-template'], sim['grace'],
+        sim['beamnrc-template'], sim['dose-template'], sim['grace'],
         os.path.join(os.environ['HEN_HOUSE'], 'pegs4', 'data', sim['pegs4'] + '.pegs4dat'),
     ]
     for path in paths:

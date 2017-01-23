@@ -7,7 +7,7 @@ from .utils import remove, read_3ddose, run_command, XCITE_DIR
 logger = logging.getLogger(__name__)
 
 
-async def simulate(sim, templates, beamlet):
+async def simulate(sim, template, beamlet):
     context = {
         'egsphant_path': os.path.join(XCITE_DIR, sim['phantom']),
         'phsp_path': beamlet['phsp'],
@@ -23,7 +23,8 @@ async def simulate(sim, templates, beamlet):
         'y': sim['isocenter'][1],
         'z': sim['isocenter'][2],
         'idat': 1,
-        'theta': 180,
+        'phi': 90,
+        'theta': 180
     }
 
     doses = {
@@ -31,17 +32,14 @@ async def simulate(sim, templates, beamlet):
     }
 
     # stationary
-    context['phi'] = 0
-    egsinp_str = templates['stationary_dose'].format(**context)
+    egsinp_str = template.format(**context)
     doses['stationary'] = simulate_dose(sim, beamlet, egsinp_str)
 
     # arc
-    for i, (phimin, phimax) in enumerate(dose_angles(sim)):
-        context['nang'] = 1
-        context['phimin'] = phimin
-        context['phimax'] = phimax
-        egsinp_str = templates['arc_dose'].format(**context)
-        dose = simulate_dose(sim, beamlet, egsinp_str, phimin, phimax)
+    for i, theta in enumerate(dose_angles(sim)):
+        context['theta'] = theta
+        egsinp_str = template.format(**context)
+        dose = simulate_dose(sim, beamlet, egsinp_str, theta)
         doses['arc'].append(dose)
         if i == sim['operations']:
             break
@@ -50,7 +48,7 @@ async def simulate(sim, templates, beamlet):
     return doses
 
 
-async def simulate_dose(sim, beamlet, egsinp_str, phimin=0, phimax=0):
+async def simulate_dose(sim, beamlet, egsinp_str, theta=180):
     folder = os.path.join(sim['egs-home'], 'dosxyznrc')
     # hash
     md5 = beamlet['hash'].copy()
@@ -63,8 +61,7 @@ async def simulate_dose(sim, beamlet, egsinp_str, phimin=0, phimax=0):
         '3ddose': os.path.join(folder, '{}.3ddose'.format(base)),
         'npz': os.path.join(folder, '{}.3ddose.npz'.format(base)),
         'egslst': os.path.join(folder, '{}.egslst'.format(base)),
-        'phimin': phimin,
-        'phimax': phimax
+        'theta': theta
     }
 
     if not os.path.exists(dose['npz']):
@@ -86,13 +83,15 @@ async def simulate_dose(sim, beamlet, egsinp_str, phimin=0, phimax=0):
 
 
 def dose_angles(sim):
-    # recall that 180 theta is center
-    # and we do (theta, phi)
-    # we just want pairs of phimin and phimax
     angular_increment = 5  # degrees
     angular_sweep = 120  # degrees
-    n_angles = angular_sweep // angular_increment
+    start_angle = 120
+    n_angles = angular_sweep // angular_increment + 1
     angles = []
     for i in range(n_angles):
-        angles.append((120 + i * angular_increment, 120 + (i + 1) * angular_increment))
+        angles.append(start_angle + i * angular_increment)
     return angles
+
+
+if __name__ == '__main__':
+    print(dose_angles('stuff'))
