@@ -115,7 +115,7 @@ rows = 1
 septa-x = 0.0
 septa-y = 0.0
 hole-width = 0.2
-target-shape = "center"
+target-shape = "circle"
 target-diameter = 1.0
 
 [[simulations]]
