@@ -312,8 +312,8 @@ async def dose_combine(doses, weights=None):
             result = (_doses.T * weights).T
             print('Weighted and sum doses is {}'.format(np.sum(result)))
         else:
-            print('Unweighted and sum doses is {}'.format(np.sum(result)))
             result = _doses
+            print('Unweighted and sum doses is {}'.format(np.sum(result)))
         result = py3ddose.Dose(_dose.boundaries, result.sum(axis=0), _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
         py3ddose.write_npz(npz_path, result)

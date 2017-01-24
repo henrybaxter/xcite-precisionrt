@@ -3,6 +3,7 @@ import argparse
 import logging
 from collections import namedtuple
 from functools import reduce
+from zipfile import BadZipFile
 
 import numpy as np
 import scipy.optimize as optimize
@@ -304,11 +305,14 @@ def read_3ddose(path):
         path = ''.join(path.rsplit('.npz', 1))
     npz_path = path + '.npz'
     if os.path.exists(npz_path):
-        return Dose(**np.load(npz_path))
-    else:
-        dose = _read_3ddose(path)
-        write_npz(npz_path, dose)
-        return dose
+        try:
+            return Dose(**np.load(npz_path))
+        except BadZipFile:
+            logger.error('File at {} is bad, removing'.format(npz_path))
+            os.remove(npz_path)
+    dose = _read_3ddose(path)
+    write_npz(npz_path, dose)
+    return dose
 
 
 def write_npz(path, dose):
