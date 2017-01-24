@@ -150,6 +150,7 @@ name = "Diverging - 5 rows - 1cm lesion"
 summary = "Diverging 5 row collimator for 1cm lesion. Five rows, 2mm hole width, and no minimum septa."
 beam-height = 1.0
 [simulations.collimator]
+rows = 5
 septa-x = 0.0
 septa-y = 0.0
 hole-width = 0.2
@@ -161,6 +162,7 @@ name = "Diverging - 5 rows - 2cm lesion"
 summary = "Diverging 5 row collimator for 2cm lesion. Five rows, 2mm hole width, and no minimum septa."
 beam-height = 1.0
 [simulations.collimator]
+rows = 5
 septa-x = 0.0
 septa-y = 0.0
 hole-width = 0.2
@@ -172,6 +174,7 @@ name = "Diverging - 5 rows - 4cm lesion"
 summary = "Diverging 5 row collimator for 4cm lesion. Five rows, 2mm hole width, and no minimum septa."
 beam-height = 1.0
 [simulations.collimator]
+rows = 5
 septa-x = 0.0
 septa-y = 0.0
 hole-width = 0.2
