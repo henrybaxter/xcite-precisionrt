@@ -57,8 +57,8 @@ async def run_simulation(sim):
     logger.info('Generating beamlets')
     beamlets = await run_beamlets(sim, templates, y_values)
 
-    force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
     collimator_path = os.path.join(sim['directory'], 'collimator.egsinp')
+    force_symlink(beamlets['collimator'][0]['egsinp'], collimator_path)
     scad_path = visualize.render(collimator_path, sim['lesion-diameter'])
 
     # now we turn the collimator beamlets into superbeamlets (max 24)
