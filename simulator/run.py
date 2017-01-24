@@ -90,13 +90,13 @@ def read_simulations(args):
         defaults = toml.load(fp)
     results = []
     for sim in simulations:
-        for key, value in defaults.items():
+        for key, default in defaults.items():
             if key == 'collimator':
-                collimator = value.copy()
+                collimator = default.copy()
                 collimator.update(sim['collimator'])
                 sim['collimator'] = collimator
             elif key not in sim:
-                sim[key] = value
+                sim[key] = default
         if args.histories:
             sim['desired-histories'] = args.histories
         sim['operations'] = args.operations
