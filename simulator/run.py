@@ -107,7 +107,7 @@ def read_simulations(args):
 def claim(simulation):
     """Clearly not thread safe, but it'll do the trick."""
     s3 = boto3.resource('s3')
-    key = os.path.join(os.path.basename(simulation['directory']), 'claimed.toml')
+    key = os.path.join(os.path.basename(simulation['directory']), 'simulation.toml')
     try:
         remote = toml.loads(s3.Object('xcite-simulations', key).get()['Body'].read())
     except BotoClientError:

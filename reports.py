@@ -19,7 +19,7 @@ def get(key):
 
 
 def status(sim):
-    toml_key = os.path.join(os.path.basename(sim['directory']), 'claimed.toml')
+    toml_key = os.path.join(os.path.basename(sim['directory']), 'simulation.toml')
     report_key = os.path.join(sim['directory'], sim['directory'] + '.pdf')
     try:
         remote = toml.loads(s3.Object('xcite-simulations', toml_key).get()['Body'].read().decode('utf-8'))
