@@ -307,7 +307,7 @@ def read_3ddose(path):
     if os.path.exists(npz_path):
         try:
             return Dose(**np.load(npz_path))
-        except BadZipFile:
+        except (BadZipFile, OSError):
             logger.error('File at {} is bad, removing'.format(npz_path))
             os.remove(npz_path)
     dose = _read_3ddose(path)
