@@ -108,7 +108,7 @@ target-shape = "point"
 [[simulations]]
 name = "Diverging - 1cm Lesion"
 summary = "Diverging collimator for 1cm lesion. Single row, 2mm hole width, and no minimum septa."
-beam-height = 1.0
+beam-height = 0.2
 lesion-diameter = 1.0
 [simulations.collimator]
 rows = 1
