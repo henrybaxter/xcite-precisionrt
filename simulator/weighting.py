@@ -35,13 +35,13 @@ def skin_indices(length=20, radius=20, voxel=0.2, sweep=10):
     skin_x_max = 7
     skin_x_min = -7
     angle = sweep / 2 * (np.pi / 180)
-    skin = np.logical_and(
+    skin = np.all([
         r2 <= r2_outer,
         r2 > r2_inner,
         xx <= skin_x_max,
         xx >= skin_x_min,
-        zz <= 1 if sweep == 10 else 5
-    )
+        zz <= (1 if sweep == 10 else 5)
+    ], axis=0)
     return skin
 
 

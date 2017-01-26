@@ -70,7 +70,6 @@ async def run_simulation(sim):
     # now we need to run the doselets
     logger.info('Running doselets on grouped collimated beamlets')
     doselets = await run_doselets(sim, templates, grouped_collimator)
-    print(doselets)
     doses = await combine_dose(sim, doselets)
 
     logger.info('Combining phase spaces')
@@ -249,7 +248,6 @@ async def generate_contour_plots(doses, phantom, target):
     os.makedirs('contours', exist_ok=True)
     futures = []
     for slug, path in doses.items():
-        print(slug, path)
         futures.append(dose_contours.plot(phantom, path, target, slug))
     contours = await asyncio.gather(*futures)
     contour_plots = OrderedDict()
