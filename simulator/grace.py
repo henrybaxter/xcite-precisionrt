@@ -68,7 +68,8 @@ async def make_plots(plots, phsp_paths):
 
 async def make_plot(plot, phsp):
     # phase space, plot options
-    base = hashlib.md5((json.dumps(plot) + phsp).encode('utf-8')).hexdigest()
+    unique_str = json.dumps(plot) + phsp
+    base = hashlib.md5(unique_str.encode('utf-8')).hexdigest()
     # we need to generate a grace file and then an eps file, and we want to keep both
     # unless the eps file exists, we assume something went wrong
     grace_path = os.path.join('grace', base + '.grace')
@@ -87,7 +88,7 @@ async def make_plot(plot, phsp):
     temp_path = grace_path + '.temp'
     plot, lines = plotter(phsp, temp_path, **plot)
     if not os.path.exists(grace_path):
-        await generate(lines, temp_path)
+        await generate(lines, temp_path, plot.get('grace', []))
         await run_command([GRACE, '-hardcopy', '-nosafe', '-printfile', eps_path, temp_path])
         os.rename(temp_path, grace_path)
     plot['grace'] = grace_path
@@ -95,10 +96,10 @@ async def make_plot(plot, phsp):
     return plot
 
 
-async def generate(arguments, output_path):
+async def generate(arguments, output_path, grace_lines):
     # logger.info('Generating grace plot:\n{}'.format('\n'.join(arguments)))
     await run_command(['beamdp'], stdin="\n".join(arguments).encode('utf-8'))
-    result = []
+    result = grace_lines[:]
     to_delete = ['legend', 'subtitle']
     prefix = '@    '
     for line in open(output_path):
@@ -347,11 +348,11 @@ async def main():
         eps_convert(args.eps)
     else:
         phsp_paths = {
-            'source': os.path.join(args.input, 'sampled_source.egsphsp1'),
-            'filter': os.path.join(args.input, 'sampled_filter.egsphsp1'),
-            'collimator': os.path.join(args.input, 'sampled_collimator.egsphsp1')
+            'source': os.path.join(args.input, 'phsp/sampled_source.egsphsp'),
+            'filter': os.path.join(args.input, 'phsp/sampled_filter.egsphsp'),
+            'collimator': os.path.join(args.input, 'phsp/sampled_collimator.egsphsp')
         }
-        plots = await make_plots(phsp_paths, config)
+        plots = await make_plots(config, phsp_paths)
         print(plots)
 
 if __name__ == '__main__':

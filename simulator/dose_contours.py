@@ -85,6 +85,26 @@ def get_manual2(possibles):
 
 DEFAULT_LEVELS = [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0]
 
+# async def depth_plot(dose_path, target):
+async def depth_plot(dose_path, target):
+    # along y we have the percent dose
+    # along x we have the stuff
+    Z = 2
+    dose = py3ddose.read_3ddose(dose_path)
+    # ok so we want a slice, as before, and we could average it
+    # so we want the bottom axis to be z
+    centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
+    translated = [c - target.isocenter[i] for i, c in enumerate(centers)]
+    xx, yy, zz = np.meshgrid(*translated, indexing='ij')
+    d2 = np.square(xx) + np.square(yy) + np.square(zz)
+    isocenter = np.unravel_index(np.argmin(d2), d2.shape)
+    reference_dose = np.max(dose.doses)
+    normalized = dose.doses / reference_dose * 100
+    doses = normalized[:, :, isocenter[Z] - 1:isocenter[Z] + 2]
+    plane = np.mean(doses, axis=Z)
+
+
+
 
 async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEVELS):
     print('Plotting at dose path', dose_path, output_slug)
@@ -101,9 +121,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
     translated = [c - target.isocenter[i] for i, c in enumerate(centers)]
     xx, yy, zz = np.meshgrid(*translated, indexing='ij')
     d2 = np.square(xx) + np.square(yy) + np.square(zz)
-    print(d2.shape)
     isocenter = np.unravel_index(np.argmin(d2), d2.shape)
-    print('isocenter is', isocenter)
     # isocenter = np.argmin(np.abs(centers - target.isocenter[:, np.newaxis]), axis=1)
     # reference_dose = dose.doses[tuple(isocenter)]
     # highest = np.unravel_index(dose.doses.argmax(), dose.doses.shape)
@@ -169,6 +187,12 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         # if invert_y:
         plt.gca().invert_yaxis()
         cs = plt.contour(X, Y, D.T, levels=levels, cmap=cm.jet, linewidths=1)
+        center = (isocenter[x_axis], isocenter[y_axis])
+        center = target.isocenter[x_axis], target.isocenter[y_axis]
+        print('center is', center)
+        print('radius is', target.radius)
+        lesion = plt.Circle(center, target.radius, color='r', alpha=0.2)
+        plt.gcf().gca().add_artist(lesion)
         paths = []
         for i, cc in enumerate(cs.collections):
             for j, pp in enumerate(cc.get_paths()):
@@ -199,7 +223,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
 async def main():
     target = py3ddose.Target(np.array([0, 0, 10]), 1)
     egsphant_path = 'phantoms/20cm-long-40cm-wide-2mm-cylinder.egsphant'
-    dose_path = 'dose/stationary.3ddose'
+    dose_path = 'dose/arc-weighted.3ddose'
     output_dir = 'test_contours'
     os.makedirs(output_dir, exist_ok=True)
     return await plot(egsphant_path, dose_path, target, output_dir)

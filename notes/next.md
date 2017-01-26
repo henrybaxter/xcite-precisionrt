@@ -6,6 +6,7 @@ need to take those collimated beamlets and construct the right stuff out of them
 if we get non-equal groups, what does that mean? the 3ddose stuff is ok
 so why not just use non-equal groups? this normalization will continue to work.
 ok, so we just divide by 24 and hope for the best?
+the weighting is a problem. we were multiplying the beamlets by 2, so all the doses are wrong :()
 and what about reflection? we can use reflection to some degree. but for now, let's stick with not
 reflecting the phantom
 1) combine them in equal groups. it is essential we have
@@ -19,6 +20,7 @@ reflecting the phantom
 	- ok so now
 
 (3) beam profile plot
+# so we want to get the percent of max dose as a function of depth, so it hits 100% at some point
 	(3a) with depth
 	(4a) with width (both ways)
 (4) weighting

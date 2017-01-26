@@ -47,6 +47,7 @@ name = "Collimator Scatter Plot (Small Section)"
 phsp = "collimator"
 type = "scatter"
 slug = "collimator_scatter_section"
+grace = ["@autoscale onread none", "@world -1, -1, 1, 1"]
 [plots.extents]
 xmax = 1
 xmin = -1
