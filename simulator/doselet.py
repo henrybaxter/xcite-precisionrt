@@ -18,7 +18,7 @@ async def simulate(sim, template, beamlet):
         # the isocenter may not be where the lesion is, depending on how we're trying to do things
         # so we want the bore diameter, nothing to do with the lesion
         'dsource': sim['bore-diameter'] / 2,
-        'phicol': 0,
+        'phicol': 90,
         'x': sim['isocenter'][0],
         'y': sim['isocenter'][1],
         'z': sim['isocenter'][2],
