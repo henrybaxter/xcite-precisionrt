@@ -19,6 +19,7 @@ from .utils import run_command, force_symlink, regroup, chunks
 from . import beamlet
 from . import doselet
 from . import screenshots
+from . import weighting
 from . import dvh
 
 from . import collimator_analyzer
@@ -240,7 +241,7 @@ async def generate_target_to_skin(doses, target):
     target_to_skin = {}
     for slug, path in doses.items():
         dose = py3ddose.read_3ddose(path)
-        target_to_skin[slug] = py3ddose.target_to_skin(dose, target)
+        target_to_skin[slug] = weighting.target_to_skin_ratio(dose, target)
     return target_to_skin
 
 
