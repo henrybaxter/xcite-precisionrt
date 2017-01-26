@@ -104,6 +104,32 @@ hole-width = 0.3
 target-shape = "point"
 
 
+[[simulations]]
+name = "Converging - 3 row - 2mm"
+summary = "Converging collimator, using five rows, 10mm beam, and a 0.5mm septa."
+beam-height = 1.0
+[simulations.collimator]
+rows = 3
+septa-x = 0.05
+septa-y = 0.05
+hole-width = 0.2
+target-shape = "point"
+
+
+[[simulations]]
+name = "Converging - 5 row - 2mm - 0.1mm Septa"
+summary = "Converging collimator, using five rows, 10mm beam, and a 0.5mm septa."
+beam-height = 1.0
+[simulations.collimator]
+rows = 5
+septa-x = 0.01
+septa-y = 0.01
+hole-width = 0.2
+target-shape = "point"
+
+
+
+
 # diverging
 [[simulations]]
 name = "Diverging - 1cm Lesion"

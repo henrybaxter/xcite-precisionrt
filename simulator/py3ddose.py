@@ -356,7 +356,10 @@ def combine_3ddose(paths, output_path):
 
 
 def weight_3ddose(paths, output_path, weights):
+    # need to normalize the weights, so that the sum is 1
+    # which means taking the sum of the weights and dividing by that
     weights = np.array(weights)
+    weights /= np.sum(weights)
     assert list(weights.shape) == [len(paths)], '{} != {}'.format(list(weights.shape), [len(paths)])
     doses = []
     # errors = []

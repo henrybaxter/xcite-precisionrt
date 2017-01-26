@@ -293,7 +293,7 @@ async def dose_combine(doses, weights=None):
     inputs = [d['3ddose'] for d in doses]
     if weights is not None:
         inputs += list(weights)
-    s = 'combined' + json.dumps(inputs)
+    s = 'combinedv2' + json.dumps(inputs)
     base = hashlib.md5(s.encode('utf-8')).hexdigest()
     os.makedirs('combined', exist_ok=True)
     npz_path = os.path.join('combined', base + '.3ddose.npz')
@@ -308,6 +308,7 @@ async def dose_combine(doses, weights=None):
             _dose = dose['dose']
         _doses = np.array(_doses)
         if weights is not None:
+            weights /= np.sum(weights)
             result = (_doses.T * weights).T
             print('Weighted and sum doses is {}'.format(np.sum(result)))
         else:
