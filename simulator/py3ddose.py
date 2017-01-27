@@ -273,11 +273,11 @@ def paddick(dose, target):
     in_dosed = dose.doses >= np.amax(dose.doses) * 0.1
     in_both = np.logical_and(in_target, in_dosed)
     target_volume = np.sum(volumes[in_target])
-    print('target volume', target_volume)
+    logger.info('Paddick target volume', target_volume)
     dosed_volume = np.sum(volumes[in_dosed])
-    print('dosed volume', dosed_volume)
+    logger.info('Paddick dosed volume', dosed_volume)
     both_volume = np.sum(volumes[in_both])
-    print('both volume', both_volume)
+    logger.info('Paddick both volume', both_volume)
     underdosed = both_volume / target_volume
     overdosed = both_volume / dosed_volume
     # higher is better
@@ -374,8 +374,6 @@ def weight_3ddose(paths, output_path, weights):
         errors = dose.errors
         # errors.append(dose.errors)
     doses = (np.array(doses).T * weights).T.sum(axis=0)
-    print('Doses calculated')
-    print('Max is {}'.format(np.amax(doses)))
     # doses = np.tensordot(doses, weights, axes=1)
     # errors = np.array(errors)
     # errors = np.sqrt(np.square(errors).sum(axis=0))

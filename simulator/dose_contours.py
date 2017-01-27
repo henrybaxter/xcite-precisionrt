@@ -104,8 +104,6 @@ async def depth_plot(dose_path, target):
     plane = np.mean(doses, axis=Z)
 
 
-
-
 async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEVELS):
     print('Plotting at dose path', dose_path, output_slug)
     iso = target.isocenter.tolist()
@@ -114,7 +112,6 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
     base = hashlib.md5(json.dumps(inputs).encode('utf-8')).hexdigest()
     # this actually generates three files. let's make it functional? or what...
     dose = py3ddose.read_3ddose(dose_path)
-    print('max dose is', np.max(dose.doses))
     with open(egsphant_path) as fp:
         phantom = egsphant.read_egsphant(fp)
     centers = [(b[1:] + b[:-1]) / 2 for b in dose.boundaries]
@@ -136,8 +133,6 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
     }
     plots = []
     for i, z_axis in enumerate([X_AXIS, Y_AXIS, Z_AXIS]):
-        print()
-        print()
         if z_axis == X_AXIS:
             x_axis = Y_AXIS
             y_axis = Z_AXIS
@@ -158,9 +153,6 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
             densities = phantom.densities[:, :, z]
         x_name = axis_names[x_axis]
         y_name = axis_names[y_axis]
-        print(x_name, y_name, z)
-        print(D.shape, densities.shape)
-        print('centers', [c.shape for c in centers])
         slug = 'contour_{}_{}'.format(x_name, y_name)
 
         # bottom axis is Y
@@ -171,18 +163,12 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         D = np.mean(D, axis=z_axis)
         # center = (isocenter[x_axis], isocenter[y_axis])
         center = target.isocenter[x_axis], target.isocenter[y_axis]
-        print('center is', center)
-        print('radius is', target.radius)
         extents = [
             np.min(dose.boundaries[x_axis]),
             np.max(dose.boundaries[x_axis]),
             np.min(dose.boundaries[y_axis]),
             np.max(dose.boundaries[y_axis])
         ]
-        print(densities.shape)
-        print(densities)
-        print('X.shape', X.shape)
-        print('Y.shape', Y.shape)
         plt.figure()
         f, (ax1, ax2) = plt.subplots(2, 1)
         for ax in ax1, ax2:
