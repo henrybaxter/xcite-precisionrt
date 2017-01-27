@@ -205,7 +205,7 @@ def dose_stats(dose, target):
     for key, value in absolute.items():
         percent[key] = absolute[key] / absolute['max']
     for key, value in absolute.items():
-        absolute[key] = dose_to_grays(absolute[key])
+        absolute[key] *= 2.2471e21
     return {
         'percent': percent,
         'absolute': absolute
@@ -242,17 +242,25 @@ def dvh(dose, target):
     # more than 0 grays
     # more than 1 grays
     # more than 2 grays..
-    max_dose = np.max(dose.doses)
+    doses = dose.doses * 2.2471e21
+    max_dose = np.max(doses)
+    print('max dose is', max_dose)
     dose_increment = max_dose / (BINS - 1)
-    target_volume = np.sum(v[np.where(in_target)])
+    print('dose_increment', dose_increment)
+    target_volume = in_target.sum() * np.power(0.2, 3)
+    print('number in target', in_target.sum())
     result = []
     for i in range(BINS):
         current = i * dose_increment
-        greater_than_current = dose.doses > current
+        greater_than_current = doses > current
+        # pr int('number greater than {}: {}'.format(current, greater_than_current.sum()))
+        # print('greater_than_current', greater_than_current)
         should_count = np.logical_and(in_target, greater_than_current)
-        percent_vol = np.sum(v[np.where(should_count)]) / target_volume
+        current_volume = should_count.sum() * np.power(0.2, 3)
+        # print('current volume {}, target volume {}'.format(current_volume, target_volume))
+        percent_vol = current_volume / target_volume
         # print(current, percent_vol)
-        result.append((dose_to_grays(current), percent_vol))
+        result.append((current, percent_vol))
     return result
 
 
