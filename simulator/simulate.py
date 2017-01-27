@@ -80,8 +80,8 @@ async def run_simulation(sim):
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
         'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
         # 'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
-        # 'conformity_index': generate_conformity(doses, target),
-        'target_skin': generate_target_to_skin(doses, target),
+        'conformity': generate_conformity(doses, target),
+        'target_to_skin': generate_target_to_skin(doses, target),
     }
 
     photons = {}
@@ -312,10 +312,10 @@ async def dose_combine(doses, weights=None):
             assert len(doses) == len(weights)
             weights /= (np.sum(weights) * len(weights))
             result = (_doses.T * weights).T
-            print('Weighted and sum doses is {}'.format(np.sum(result)))
+            logger.info('Weighted and sum doses is {}'.format(np.sum(result)))
         else:
             result = _doses
-            print('Unweighted and sum doses is {}'.format(np.sum(result)))
+            logger.info('Unweighted and sum doses is {}'.format(np.sum(result)))
         result = py3ddose.Dose(_dose.boundaries, result.sum(axis=0), _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
         py3ddose.write_npz(npz_path, result)
