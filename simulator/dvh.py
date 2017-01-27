@@ -25,6 +25,7 @@ def plot_dvh(sim, data):
     print('y', y)
     x = np.array(x) / (74 * 24)
     y = np.array(y)
+    plt.figure()
     plt.plot(x, y)
     plt.ylabel('Fractional target volume')
     plt.xlabel('Grays in 30 minutes')

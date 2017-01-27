@@ -191,7 +191,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
                     for k, vv in enumerate(pp.iter_segments()):
                         points.append(vv[0])
                     paths.append(points)
-            ax.clabel(cs, fontsize=8, fmt='%2.0f')
+            ax.clabel(cs, fontsize=4, fmt='%2.0f')
             #f.xlabel(x_name + ' (cm)')
             #f.ylabel(y_name + ' (cm)')
 
