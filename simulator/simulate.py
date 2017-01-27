@@ -110,7 +110,10 @@ async def run_simulation(sim):
     link_grace(sim['directory'], context['grace_plots'])
 
     report.generate(sim, context)
-    return context
+    return {
+        'target_to_skin': context['target_to_skin'],
+        'doses': context['doses']
+    }
 
 
 async def sample_combine(beamlets, reflect, desired=int(1e7)):
