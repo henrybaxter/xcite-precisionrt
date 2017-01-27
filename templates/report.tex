@@ -95,6 +95,7 @@
 
 % contours['xy']
 % contours['yz']
+The lesion is Note that the plane is always sliced through the center of the lesion, which is why the lesion
 
 ((* for plane, contours in contour_plots.items() *))
 	\subsection{Doses in the (((plane.upper()))) plane}
@@ -121,7 +122,7 @@
 \begin{tabular}{l l l l l}
 	& Stationary & Weighted & Arc & Weighted Arc \\
 	\hline
-	Skin-to-Target & ((( target_to_skin['stationary']|f ))) & ((( target_to_skin['stationary-weighted']|f ))) & ((( target_to_skin['arc']|f ))) & ((( target_to_skin['arc-weighted']|f )))
+	Target-to-Skin & ((( target_to_skin['stationary']|f ))) & ((( target_to_skin['stationary-weighted']|f ))) & ((( target_to_skin['arc']|f ))) & ((( target_to_skin['arc-weighted']|f )))
 \end{tabular}
 \end{table}
 

@@ -32,15 +32,20 @@ async def make_screenshots(shots, scad_path):
     futures = [make_screenshot(shot, scad_path) for shot in shots]
     return await asyncio.gather(*futures)
 
+
 async def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='scad.toml')
-    parser.add_argument('scad')
+    parser.add_argument('--config', default='screenshots.toml')
+    # parser.add_argument('scad')
     args = parser.parse_args()
-    with open(args.config) as f:
-        shots = toml.load(f)['shots']
-
-    print(result)
+    with open(args.config) as fp:
+        shots = toml.load(fp)['shots']
+    with open('simulations.toml') as fp:
+        simulations = toml.load(fp)['simulations']
+    for sim in simulations:
+        d = os.path.abspath(os.path.join('reports', sim['name'].replace(' - ', '-').replace(' ', '-')))
+        scad_path = os.path.join(d, 'collimator.scad')
+        await make_screenshots(shots, scad_path)
 
 
 if __name__ == '__main__':
