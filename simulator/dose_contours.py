@@ -181,7 +181,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         # if invert_y:
             # ax.gca().invert_yaxis()
             ax.invert_yaxis()
-            cs = ax.contour(X, Y, D.T, levels=levels, cmap=cm.jet, linewidths=1)
+            cs = ax.contour(X, Y, D.T, levels=levels, cmap=cm.jet, linewidths=0.5)
             lesion = plt.Circle(center, target.radius, color='r', alpha=0.4)
             ax.add_artist(lesion)
             paths = []
