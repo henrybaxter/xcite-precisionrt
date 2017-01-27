@@ -169,9 +169,12 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
             np.min(dose.boundaries[y_axis]),
             np.max(dose.boundaries[y_axis])
         ]
-        plt.figure()
-        f, (ax1, ax2) = plt.subplots(2, 1)
-        for ax in ax1, ax2:
+        F = plt.figure()
+        default = F.get_size_inches()
+        print('Default size is {}'.format(default))
+        F.set_size_inches(default[0] * 4, default[0] * 4)
+        f, ax1 = plt.subplots(1, 1)
+        for ax in [ax1]:
             ax.imshow(densities,
                    extent=extents, cmap='gray', vmin=0.2, vmax=1.5,
                    interpolation='nearest')
@@ -197,7 +200,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         os.makedirs(subfolder, exist_ok=True)
         path = os.path.join(subfolder, filename)
 
-        plt.savefig(path)
+        plt.savefig(path, dpi=600)
         plane = x_name + y_name
         plots.append({
             'output_slug': output_slug,
