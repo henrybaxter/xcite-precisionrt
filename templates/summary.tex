@@ -31,6 +31,11 @@
 
 Dose simulations on a cylindrical water phantom were run for various hexagonal holed collimators using a 200keV electron gun with Tungsten reflection target as the X-ray source. Multiple row collimators were found to have a negative impact on both absolute dose delivered, and target to skin ratio. Septa widths down to 50 microns were found to provide sufficient collimation such that target to skin ratio was maintained, while increasing absolute dose delivered by almost 30\% (50 micron vs 500 micron). Convergent holed collimators are adequate for small lesion sizes, but do not provide coverage for larger lesions, though more investigation into alternative methods is required. Divergent holed collimators deliver more dose to the skin, but this also requires more thorough investigation.
 
+
+\section*{Caveats}
+Due to an important adjustment in skin dose calculation and the form of the phantom, the beam and arc weighting optimization is no longer calculating optimal treatments.  This distorts some of the imagery and dose results, however the results are still comparable against each other. Fixing this problem is not yet possible due to time constraints.
+
+
 \section*{Simulation Properties}
 
 Please examine Figure 1 to see the general geometry, the terminology, and the coordinate system used throughout. Note that the coordinate system on the dose contour plots in individual simulation reports has changed to conform to the coordinates of the rest of the report. The following figure was created in Sketchup, and the file is currently available at \url{https://s3-us-west-2.amazonaws.com/xcite-simulations/conceptual-diagram.skp}.
@@ -94,7 +99,9 @@ Dose is described in grays deposited in 30 minutes and 200 milliamps in the weig
 
 The absolute maximum and minimum doses inside the target volume are denoted by $D_{\mathrm{max}}$ and $D_{\mathrm{min}}$ respectively. The $D_n$ value is the minimum dose that $n\%$ of the target received. Concretely, $D_{90} = 1$ would indicate that 90\% of the target volume received \SI{1}{\gray} in 30 minutes, while 10\% received less than \SI{1}{\gray}.
 
-Note that this implies $D_{\mathrm{min}} = D_{100}$. Unless otherwise indicated, hexagonal holes have an in-diameter of \SI{2}{\mm}.
+Note that this implies $D_{\mathrm{min}} = D_{100}$.
+
+\textbf{Unless otherwise indicated}, hexagonal holes have an in-diameter of \SI{2}{\mm}.
 
 \begin{table}[H]
 \begin{tabular}{l l l l l l}
