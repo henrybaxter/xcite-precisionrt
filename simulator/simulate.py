@@ -336,7 +336,7 @@ async def optimize_arc(sim, doses):
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['arc-max'], sim['arc-min'], sim['arc-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
     weights = weights / np.sum(weights)
-    doses = [{'3ddose': path.replace('.npz', '')} for path in paths]
+    doses = [{'npz': path, '3ddose': path.replace('.npz', '')} for path in paths]
     return await dose_combine(doses, weights)
 
 
