@@ -273,11 +273,11 @@ def paddick(dose, target):
     in_dosed = dose.doses >= np.amax(dose.doses) * 0.1
     in_both = np.logical_and(in_target, in_dosed)
     target_volume = np.sum(volumes[in_target])
-    logger.info('Paddick target volume', target_volume)
+    logger.info('Paddick target volume {}'.format(target_volume))
     dosed_volume = np.sum(volumes[in_dosed])
-    logger.info('Paddick dosed volume', dosed_volume)
+    logger.info('Paddick dosed volume {}'.format(dosed_volume))
     both_volume = np.sum(volumes[in_both])
-    logger.info('Paddick both volume', both_volume)
+    logger.info('Paddick both volume {}'.format(both_volume))
     underdosed = both_volume / target_volume
     overdosed = both_volume / dosed_volume
     # higher is better
