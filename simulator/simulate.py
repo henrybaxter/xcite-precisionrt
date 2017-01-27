@@ -75,19 +75,16 @@ async def run_simulation(sim):
     logger.info('Combining phase spaces')
     phsp = await combine_phsp(beamlets, sim['reflect'])
 
-    futures = {
-        'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
-        'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
-        # 'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
-        # 'conformity': generate_conformity(doses, target),
-        'target_to_skin': generate_target_to_skin(doses, target),
-    }
-
     photons = {}
     for key in ['source', 'filter', 'collimator']:
         photons[key] = sum(bm['stats']['total_photons'] for bm in beamlets[key]) * (2 if sim['reflect'] else 1)
 
     context = {
+        'grace_plots': await grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
+        'contour_plots': await generate_contour_plots(doses, sim['phantom'], target),
+        # 'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
+        # 'conformity': generate_conformity(doses, target),
+        'target_to_skin': await generate_target_to_skin(doses, target),
         'templates': templates,
         'collimator_stats': collimator_analyzer.analyze(templates['collimator']),
         'simulation': sim,
@@ -97,10 +94,6 @@ async def run_simulation(sim):
     }
 
     # turn futures into our context
-    for key, future in futures.items():
-        assert key not in context
-        context[key] = await future
-
     # symlink the combined data, beamlets, charts, etc
     link_phsp(sim['directory'], phsp)
     link_doses(sim['directory'], doses)

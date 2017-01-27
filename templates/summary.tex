@@ -13,6 +13,7 @@
 \usepackage{siunitx}
 \usepackage{mhchem}
 \usepackage{subfig}
+\usepackage[final]{pdfpages}
 
 \title{Simulation Summary}
 \author{
@@ -95,13 +96,13 @@ where $\mu_T$ is the mean dose inside the lesion, and $\mu_S$ is the mean dose i
 \end{table}
 
 \subsection*{Absolute Doses}
-Dose is described in grays deposited in 30 minutes and 200 milliamps in the weighted arced treatment plan.
+Dose is described in grays deposited in 30 minutes at 200 milliamps in the weighted arced treatment plan.
 
 The absolute maximum and minimum doses inside the target volume are denoted by $D_{\mathrm{max}}$ and $D_{\mathrm{min}}$ respectively. The $D_n$ value is the minimum dose that $n\%$ of the target received. Concretely, $D_{90} = 1$ would indicate that 90\% of the target volume received \SI{1}{\gray} in 30 minutes, while 10\% received less than \SI{1}{\gray}.
 
 Note that this implies $D_{\mathrm{min}} = D_{100}$.
 
-\textbf{Unless otherwise indicated}, hexagonal holes have an in-diameter of \SI{2}{\mm}.
+\textbf{Unless otherwise indicated}, hexagonal holes have an in-diameter of \SI{2}{\mm} and septa widths are \SI{0.5}{\mm}.
 
 \begin{table}[H]
 \begin{tabular}{l l l l l l}
@@ -117,6 +118,8 @@ Simulations are of different collimators generating different distributions and 
 \subsection*{Raw results}
 Each simulation generates a variety of files that are saved and can be made available, including dose distributions, phase space files, individual plot figures, and other intermediary information. The following are among the most useful: a pdf report that includes simulation parameters, plots, and a summary; a SCAD file with negative space geometry of the collimator itself; a TOML file that is the plain text input fed to the simulation process, along with some numerical results under the [results] heading.
 
+For convenience, the Diverging 1cm Lesion report has been included in this report below the raw results listing.
+
 \begin{itemize}
 ((* for s in simulations *))
 	\item ((( s.name )))
@@ -128,6 +131,7 @@ Each simulation generates a variety of files that are saved and can be made avai
 ((* endfor *))
 \end{itemize}
 
+\includepdf[pages=-]{../reports/Diverging-1cm-Lesion/Diverging-1cm-Lesion.pdf}
 
 \end{document}
 

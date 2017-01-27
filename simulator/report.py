@@ -61,14 +61,14 @@ def get_env():
 
 
 def generate_summary(summary):
-    print(summary['simulations'][0]['results'])
     report = get_env().get_template('templates/summary.tex').render(summary)
     os.makedirs('summary', exist_ok=True)
-    with open('summary/summary.tex', 'w') as f:
+    slug = 'Precisionrt-RT-Simulation-Summary_Henry-Baxter_University-of-Victoria'
+    with open('summary/{}.tex'.format(slug), 'w') as f:
         f.write(report)
     os.chdir('summary')
     latex_args, rest = latexmake.arg_parser().parse_known_args()
-    latexmake.LatexMaker('summary', latex_args).run()
+    latexmake.LatexMaker(slug, latex_args).run()
     os.chdir('..')
 
 
