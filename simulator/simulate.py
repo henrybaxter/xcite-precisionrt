@@ -297,7 +297,7 @@ async def dose_combine(doses, weights=None):
     inputs = [d['3ddose'] for d in doses]
     if weights is None:
         weights = np.full(len(doses), 1 / len(doses))
-    weights += list(weights)
+    inputs += weights
     s = 'combinedv4' + json.dumps(inputs)
     base = hashlib.md5(s.encode('utf-8')).hexdigest()
     os.makedirs('combined', exist_ok=True)
