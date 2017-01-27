@@ -262,19 +262,21 @@ def paddick(dose, target):
     xx, yy, zz = np.meshgrid(*translated, indexing='ij')
     # get target volume
     # by finding indices of all points in a volume and finding their volume
-    v = volumes(dose.boundaries)
+    # v = volumes(dose.boundaries)
     d2 = np.square(xx) + np.square(yy) + np.square(zz)
     r2 = np.square(target.radius)
     in_target = d2 < r2
-    in_dosed = dose.doses >= 1e-19
+    # when is it considered dosed? when it has more than 10% of the max?
+    # TODO calculate from each boundary
+    dx, dy, dz = np.meshgrid(*[b[1:] - b[:-1] for b in dose.boundaries], indexing='ij')
+    volumes = dx * dy * dz
+    in_dosed = dose.doses >= np.amax(dose.doses) * 0.1
     in_both = np.logical_and(in_target, in_dosed)
-    target_volume = np.sum(v[np.where(in_target)])
+    target_volume = np.sum(volumes[in_target])
     print('target volume', target_volume)
-    dosed_volume = np.sum(v[np.where(in_dosed)])
+    dosed_volume = np.sum(volumes[in_dosed])
     print('dosed volume', dosed_volume)
-    both_volume = np.sum(v[np.where(in_both)])
-    # print('target volume', target_volume)
-    # print('dosed volume', dosed_volume)
+    both_volume = np.sum(volumes[in_both])
     print('both volume', both_volume)
     underdosed = both_volume / target_volume
     overdosed = both_volume / dosed_volume
@@ -359,7 +361,8 @@ def weight_3ddose(paths, output_path, weights):
     # need to normalize the weights, so that the sum is 1
     # which means taking the sum of the weights and dividing by that
     weights = np.array(weights)
-    weights /= np.sum(weights)
+    assert len(weights) == len(paths)
+    weights /= (np.sum(weights) * len(weights))
     assert list(weights.shape) == [len(paths)], '{} != {}'.format(list(weights.shape), [len(paths)])
     doses = []
     # errors = []

@@ -169,8 +169,10 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         Y = centers[y_axis]
 
         D = np.mean(D, axis=z_axis)
-
-        plt.figure()
+        # center = (isocenter[x_axis], isocenter[y_axis])
+        center = target.isocenter[x_axis], target.isocenter[y_axis]
+        print('center is', center)
+        print('radius is', target.radius)
         extents = [
             np.min(dose.boundaries[x_axis]),
             np.max(dose.boundaries[x_axis]),
@@ -181,33 +183,34 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         print(densities)
         print('X.shape', X.shape)
         print('Y.shape', Y.shape)
-        plt.imshow(densities,
+        plt.figure()
+        f, (ax1, ax2) = plt.subplots(2, 1)
+        for ax in ax1, ax2:
+            ax.imshow(densities,
                    extent=extents, cmap='gray', vmin=0.2, vmax=1.5,
                    interpolation='nearest')
         # if invert_y:
-        plt.gca().invert_yaxis()
-        cs = plt.contour(X, Y, D.T, levels=levels, cmap=cm.jet, linewidths=1)
-        center = (isocenter[x_axis], isocenter[y_axis])
-        center = target.isocenter[x_axis], target.isocenter[y_axis]
-        print('center is', center)
-        print('radius is', target.radius)
-        lesion = plt.Circle(center, target.radius, color='r', alpha=0.2)
-        plt.gcf().gca().add_artist(lesion)
-        paths = []
-        for i, cc in enumerate(cs.collections):
-            for j, pp in enumerate(cc.get_paths()):
-                points = []
-                for k, vv in enumerate(pp.iter_segments()):
-                    points.append(vv[0])
-                paths.append(points)
-        plt.clabel(cs, fontsize=8, fmt='%2.0f')
+            # ax.gca().invert_yaxis()
+            ax.invert_yaxis()
+            cs = ax.contour(X, Y, D.T, levels=levels, cmap=cm.jet, linewidths=1)
+            lesion = plt.Circle(center, target.radius, color='r', alpha=0.4)
+            ax.add_artist(lesion)
+            paths = []
+            for i, cc in enumerate(cs.collections):
+                for j, pp in enumerate(cc.get_paths()):
+                    points = []
+                    for k, vv in enumerate(pp.iter_segments()):
+                        points.append(vv[0])
+                    paths.append(points)
+            ax.clabel(cs, fontsize=8, fmt='%2.0f')
+            #f.xlabel(x_name + ' (cm)')
+            #f.ylabel(y_name + ' (cm)')
 
         filename = slug + '.pdf'
         subfolder = os.path.join('contours', output_slug)
         os.makedirs(subfolder, exist_ok=True)
         path = os.path.join(subfolder, filename)
-        plt.xlabel(x_name + ' (cm)')
-        plt.ylabel(y_name + ' (cm)')
+
         plt.savefig(path)
         plane = x_name + y_name
         plots.append({

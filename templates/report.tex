@@ -109,11 +109,23 @@
 
 \section{Results}
 
+\subsection{Dose Volume Histogram}
 \begin{figure}[H]
 \centering
 \includegraphics{(((dvh)))}
 \caption{DVH}
 \end{figure}
+
+\subsection{Targs to Skin}
+\begin{table}[H]
+\begin{tabular}{l l l l l}
+	& Stationary & Weighted & Arc & Weighted Arc \\
+	\hline
+	CI & ((( conformity['stationary']|f ))) & ((( conformity['stationary-weighted']|f ))) & ((( conformity['arc']|f ))) & ((( conformity['arc-weighted']|f ))) \\
+	Skin-to-Target & ((( target_to_skin['stationary']|f ))) & ((( target_to_skin['stationary-weighted']|f ))) & ((( target_to_skin['arc']|f ))) & ((( target_to_skin['arc-weighted']|f )))
+\end{tabular}
+\end{table}
+
 
 \begin{table}[H]
 \begin{tabular}{l l l}

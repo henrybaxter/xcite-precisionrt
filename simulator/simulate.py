@@ -79,9 +79,9 @@ async def run_simulation(sim):
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
         'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
-        #'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
-        'ci': generate_conformity(doses, target),
-        'ts': generate_target_to_skin(doses, target),
+        # 'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
+        # 'conformity_index': generate_conformity(doses, target),
+        'target_skin': generate_target_to_skin(doses, target),
     }
 
     photons = {}
@@ -110,6 +110,7 @@ async def run_simulation(sim):
     link_grace(sim['directory'], context['grace_plots'])
 
     report.generate(sim, context)
+    return context
 
 
 async def sample_combine(beamlets, reflect, desired=int(1e7)):
@@ -308,7 +309,8 @@ async def dose_combine(doses, weights=None):
             _dose = dose['dose']
         _doses = np.array(_doses)
         if weights is not None:
-            weights /= np.sum(weights)
+            assert len(doses) == len(weights)
+            weights /= (np.sum(weights) * len(weights))
             result = (_doses.T * weights).T
             print('Weighted and sum doses is {}'.format(np.sum(result)))
         else:
@@ -321,6 +323,7 @@ async def dose_combine(doses, weights=None):
 
 
 async def optimize_stationary(sim, doses):
+    logger.info('Optimizing stationary')
     sz = len(doses)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['x-max'], sim['x-min'], sim['x-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
@@ -328,6 +331,7 @@ async def optimize_stationary(sim, doses):
 
 
 async def optimize_arc(sim, doses):
+    logger.info('Optimizing arc')
     paths = [await optimize_stationary(sim, d) for d in doses]
     sz = len(paths)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['arc-max'], sim['arc-min'], sim['arc-max']], 2)
