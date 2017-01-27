@@ -101,7 +101,7 @@
 	((* for plot in contours *))
 	\begin{figure}[H]
 	\centering
-	\includegraphics[scale=2.0]{(((plot.path|strip_extension)))}
+	\includegraphics{(((plot.path|strip_extension)))}
 	\caption{(((plot.name)))}
 	\end{figure}
 	((* endfor *))
@@ -116,12 +116,11 @@
 \caption{DVH}
 \end{figure}
 
-\subsection{Targs to Skin}
+\subsection{Target to Skin}
 \begin{table}[H]
 \begin{tabular}{l l l l l}
 	& Stationary & Weighted & Arc & Weighted Arc \\
 	\hline
-	CI & ((( conformity['stationary']|f ))) & ((( conformity['stationary-weighted']|f ))) & ((( conformity['arc']|f ))) & ((( conformity['arc-weighted']|f ))) \\
 	Skin-to-Target & ((( target_to_skin['stationary']|f ))) & ((( target_to_skin['stationary-weighted']|f ))) & ((( target_to_skin['arc']|f ))) & ((( target_to_skin['arc-weighted']|f )))
 \end{tabular}
 \end{table}
