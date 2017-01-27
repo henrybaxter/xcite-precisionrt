@@ -200,7 +200,7 @@ async def plot(egsphant_path, dose_path, target, output_slug, levels=DEFAULT_LEV
         os.makedirs(subfolder, exist_ok=True)
         path = os.path.join(subfolder, filename)
 
-        plt.savefig(path, dpi=600)
+        plt.savefig(path, dpi=300, bbox_inches='tight', pad_inches=0)
         plane = x_name + y_name
         plots.append({
             'output_slug': output_slug,

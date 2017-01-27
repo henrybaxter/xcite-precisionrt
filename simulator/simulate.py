@@ -75,12 +75,11 @@ async def run_simulation(sim):
     logger.info('Combining phase spaces')
     phsp = await combine_phsp(beamlets, sim['reflect'])
 
-
     futures = {
         'grace_plots': grace.make_plots(toml.load(open(sim['grace']))['plots'], phsp),
         'contour_plots': generate_contour_plots(doses, sim['phantom'], target),
         # 'screenshots': screenshots.make_screenshots(toml.load(open(sim['screenshots']))['shots'], scad_path),
-        'conformity': generate_conformity(doses, target),
+        # 'conformity': generate_conformity(doses, target),
         'target_to_skin': generate_target_to_skin(doses, target),
     }
 
@@ -243,6 +242,7 @@ async def generate_conformity(doses, target):
 async def generate_target_to_skin(doses, target):
     target_to_skin = {}
     for slug, path in doses.items():
+        logger.info('Reading dose for target to skin {} {}'.format(slug, path))
         dose = py3ddose.read_3ddose(path)
         target_to_skin[slug] = weighting.target_to_skin_ratio(dose, target)
     return target_to_skin

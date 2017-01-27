@@ -49,6 +49,7 @@ def download(sim):
         if item.key.endswith('simulation.toml'):
             with open(path) as fp:
                 sim = toml.load(fp)
+                sim['urls'] = urls
     print(sim['name'])
     for url in urls:
         print('\t' + url)
