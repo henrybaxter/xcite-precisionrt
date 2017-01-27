@@ -157,6 +157,9 @@ def upload_report(sim):
                     Body=f,
                     ACL='public-read'
                 )
+    key = os.path.join(os.path.basename(sim['directory']), 'simulation.toml')
+    body = io.BytesIO(toml.dumps(sim).encode('utf-8'))
+    s3.Object('xcite-simulations', key).put(Body=body)
 
 
 def verify_sim(sim):
