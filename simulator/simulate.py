@@ -295,7 +295,7 @@ async def dose_combine(doses, weights=None):
     if weights is None:
         weights = np.full(len(doses), 1 / len(doses))
     weights += list(weights)
-    s = 'combinedv3' + json.dumps(inputs)
+    s = 'combinedv4' + json.dumps(inputs)
     base = hashlib.md5(s.encode('utf-8')).hexdigest()
     os.makedirs('combined', exist_ok=True)
     npz_path = os.path.join('combined', base + '.3ddose.npz')
@@ -312,7 +312,9 @@ async def dose_combine(doses, weights=None):
         assert len(doses) == len(weights)
         result = ((_doses.T * weights).T).sum(axis=0)
         logger.info('Weighted and max dose is {}'.format(np.max(result)))
-        result = py3ddose.Dose(_dose.boundaries, result.sum(axis=0), _dose.errors)
+        logger.info('Shape of weighted dose is {}'.format(result.shape))
+        assert len(result.shape) == 3
+        result = py3ddose.Dose(_dose.boundaries, result, _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
         py3ddose.write_npz(npz_path, result)
     return npz_path
@@ -334,11 +336,8 @@ async def optimize_arc(sim, doses):
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['arc-max'], sim['arc-min'], sim['arc-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
     weights = weights / np.sum(weights)
-    base = hashlib.md5(json.dumps(paths).encode('utf-8')).hexdigest()
-    path = 'combined/{}.3ddose'.format(base)
-    py3ddose.weight_3ddose(paths, path, weights)
-    py3ddose.read_3ddose(path)
-    return path + '.npz'
+    doses = [{'npz': path} for path in paths]
+    return await dose_combine(doses, weights)
 
 
 def flatten(ls):

@@ -60,6 +60,16 @@ def get_env():
     return env
 
 
+def generate_summary(summary):
+    report = get_env().get_template('templates/summary.tex').render(summary)
+    with open('summary', 'summary.tex', 'w') as f:
+        f.write(report)
+    os.chdir('summary')
+    latex_args, rest = latexmake.arg_parser().parse_known_args()
+    latexmake.LatexMaker('report', latex_args).run()
+    os.chdir('..')
+
+
 def generate(sim, context):
     report = get_env().get_template('templates/report.tex').render(context)
     with open(os.path.join(sim['directory'], 'report.tex'), 'w') as f:

@@ -7,6 +7,9 @@ s3 = boto3.resource('s3')
 bucket = s3.Bucket('xcite-simulations')
 
 
+from simulator.report import generate_summary
+
+
 def get(key):
     key = os.path.join(bucket, key)
     try:
