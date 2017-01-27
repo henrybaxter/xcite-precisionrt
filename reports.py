@@ -7,9 +7,6 @@ s3 = boto3.resource('s3')
 bucket = s3.Bucket('xcite-simulations')
 
 
-from simulator.report import generate_summary
-
-
 def get(key):
     key = os.path.join(bucket, key)
     try:
@@ -44,23 +41,33 @@ def download(sim):
             continue
         folder = os.path.join('reports', os.path.dirname(item.key))
         os.makedirs(folder, exist_ok=True)
-        with open(os.path.join('reports', item.key), 'wb') as f:
+        path = os.path.join('reports', item.key)
+        with open(path, 'wb') as f:
             f.write(item.get()['Body'].read())
         url = 'https://s3-us-west-2.amazonaws.com/xcite-simulations/' + item.key
         urls.append(url)
+        if item.key.endswith('simulation.toml'):
+            with open(path) as fp:
+                sim = toml.load(fp)
     print(sim['name'])
     for url in urls:
         print('\t' + url)
     print()
+    return sim
 
 
 with open('simulations.toml') as f:
     simulations = toml.load(f)['simulations']
 
 
+sims = []
 for sim in simulations:
     sim['directory'] = sim['name'].replace(' - ', '-').replace(' ', '-')
     s = status(sim)
     print(sim['name'], s)
     if s == 'downloading':
-        download(sim)
+        res = download(sim)
+        if 'results' in res:
+            sims.append(res)
+with open('reports/results.toml', 'w') as fp:
+    toml.dump(fp, {'simulations': sims})

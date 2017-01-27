@@ -37,7 +37,7 @@ def strip_extension(path):
 
 
 def format_float(f):
-    return '{:.2f}'.format(f)
+    return '{:.1f}'.format(f)
 
 
 def percent(f):
@@ -61,12 +61,14 @@ def get_env():
 
 
 def generate_summary(summary):
+    print(summary['simulations'][0]['results'])
     report = get_env().get_template('templates/summary.tex').render(summary)
-    with open('summary', 'summary.tex', 'w') as f:
+    os.makedirs('summary', exist_ok=True)
+    with open('summary/summary.tex', 'w') as f:
         f.write(report)
     os.chdir('summary')
     latex_args, rest = latexmake.arg_parser().parse_known_args()
-    latexmake.LatexMaker('report', latex_args).run()
+    latexmake.LatexMaker('summary', latex_args).run()
     os.chdir('..')
 
 

@@ -281,9 +281,11 @@ def paddick(dose, target):
     underdosed = both_volume / target_volume
     overdosed = both_volume / dosed_volume
     # higher is better
-    logger.info('Target hit {}'.format(underdosed))
-    logger.info('Tissue avoided {}'.format(overdosed))
-    return underdosed * overdosed
+    logger.info('Paddick target hit {}'.format(underdosed))
+    logger.info('Paddick tissue avoided {}'.format(overdosed))
+    result = underdosed * overdosed
+    logger.info('Paddick result {}'.format(result))
+    return result
 
 
 def _read_3ddose(path):

@@ -1,4 +1,6 @@
 import logging
+import hashlib
+import json
 
 import numpy as np
 
@@ -60,12 +62,13 @@ def target_to_skin_ratio(dose, target):
     Don't worry about tensor flow, just calculate the skin target ratio
 
     """
+    b = hashlib.md5(json.dumps(list(dose.doses.reshape(-1))).encode('utf-8')).hexdigest()
     skin_mean = np.mean(dose.doses[skin_indices()])
-    logger.info('Skin mean is {}'.format(skin_mean))
+    logger.info('Skin mean of {} is {}'.format(b, skin_mean))
     target_mean = np.mean(dose.doses[target_indices(dose, target)])
-    logger.info('Target mean is {}'.format(target_mean))
+    logger.info('Target mean of {} is {}'.format(b, target_mean))
     result = target_mean / skin_mean
-    logger.info('Skin target ratio is {}'.format(result))
+    logger.info('Skin target ratio of {} is {}'.format(b, result))
     return result
 
 
