@@ -292,9 +292,10 @@ async def combine_phsp(beamlets, reflect):
 async def dose_combine(doses, weights=None):
     # ok we need to take the hash of each, eg 3ddose path
     inputs = [d['3ddose'] for d in doses]
-    if weights is not None:
-        inputs += list(weights)
-    s = 'combinedv2' + json.dumps(inputs)
+    if weights is None:
+        weights = np.full(len(doses), 1 / len(doses))
+    weights += list(weights)
+    s = 'combinedv3' + json.dumps(inputs)
     base = hashlib.md5(s.encode('utf-8')).hexdigest()
     os.makedirs('combined', exist_ok=True)
     npz_path = os.path.join('combined', base + '.3ddose.npz')
