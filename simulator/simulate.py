@@ -309,13 +309,9 @@ async def dose_combine(doses, weights=None):
             _doses.append(dose['dose'].doses)
             _dose = dose['dose']
         _doses = np.array(_doses)
-        if weights is not None:
-            assert len(doses) == len(weights)
-            result = (_doses.T * weights).T
-            logger.info('Weighted and sum doses is {}'.format(np.sum(result)))
-        else:
-            result = _doses
-            logger.info('Unweighted and sum doses is {}'.format(np.sum(result)))
+        assert len(doses) == len(weights)
+        result = ((_doses.T * weights).T).sum(axis=0)
+        logger.info('Weighted and max dose is {}'.format(np.max(result)))
         result = py3ddose.Dose(_dose.boundaries, result.sum(axis=0), _dose.errors)
         # py3ddose.write_3ddose(dose_path, result)
         py3ddose.write_npz(npz_path, result)
