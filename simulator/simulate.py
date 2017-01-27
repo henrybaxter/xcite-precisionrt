@@ -310,7 +310,6 @@ async def dose_combine(doses, weights=None):
         _doses = np.array(_doses)
         if weights is not None:
             assert len(doses) == len(weights)
-            weights /= (np.sum(weights) * len(weights))
             result = (_doses.T * weights).T
             logger.info('Weighted and sum doses is {}'.format(np.sum(result)))
         else:
@@ -327,6 +326,7 @@ async def optimize_stationary(sim, doses):
     sz = len(doses)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['x-max'], sim['x-min'], sim['x-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
+    weights = weights / np.sum(weights)
     return await dose_combine(doses, weights)
 
 
@@ -336,6 +336,7 @@ async def optimize_arc(sim, doses):
     sz = len(paths)
     coeffs = np.polyfit([0, sz // 2, sz - 1], [sim['arc-max'], sim['arc-min'], sim['arc-max']], 2)
     weights = np.polyval(coeffs, np.arange(0, sz))
+    weights = weights / np.sum(weights)
     base = hashlib.md5(json.dumps(paths).encode('utf-8')).hexdigest()
     path = 'combined/{}.3ddose'.format(base)
     py3ddose.weight_3ddose(paths, path, weights)

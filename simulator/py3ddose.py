@@ -205,7 +205,7 @@ def dose_stats(dose, target):
     for key, value in absolute.items():
         percent[key] = absolute[key] / absolute['max']
     for key, value in absolute.items():
-        absolute[key] = dose_to_grays(absolute[key]) / (74 * 24)
+        absolute[key] = dose_to_grays(absolute[key])
     return {
         'percent': percent,
         'absolute': absolute
@@ -362,7 +362,6 @@ def weight_3ddose(paths, output_path, weights):
     # which means taking the sum of the weights and dividing by that
     weights = np.array(weights)
     assert len(weights) == len(paths)
-    weights /= (np.sum(weights) * len(weights))
     assert list(weights.shape) == [len(paths)], '{} != {}'.format(list(weights.shape), [len(paths)])
     doses = []
     # errors = []
